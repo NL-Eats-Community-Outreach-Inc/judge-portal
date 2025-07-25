@@ -131,7 +131,7 @@ export default function JudgePage() {
           </h2>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-medium flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
                 1
               </div>
               <p className="text-muted-foreground">
@@ -139,7 +139,7 @@ export default function JudgePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-medium flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
                 2
               </div>
               <p className="text-muted-foreground">
@@ -147,7 +147,7 @@ export default function JudgePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-medium flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
                 3
               </div>
               <p className="text-muted-foreground">
@@ -155,7 +155,7 @@ export default function JudgePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary text-white text-xs font-medium flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
                 4
               </div>
               <p className="text-muted-foreground">
@@ -167,13 +167,9 @@ export default function JudgePage() {
 
         {/* CTA */}
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground">
             Ready to start judging? Select your first team from the sidebar.
           </p>
-          <div className="flex items-center justify-center gap-2 text-primary">
-            <span className="text-sm font-medium">Choose a team</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
         </div>
       </div>
     </div>

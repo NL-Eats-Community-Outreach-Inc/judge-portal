@@ -2,12 +2,9 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { LogOut, Settings, Users, Trophy, Target, BarChart3 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { ThemeSwitcher } from '@/components/theme-switcher'
+import { Settings, Users, Trophy, Target, BarChart3 } from 'lucide-react'
 import { AdminEventProvider } from './contexts/admin-event-context'
+import { AdminHeader } from './components/admin-header'
 import EventSelector from './components/event-selector'
 import EventManagement from './components/event-management'
 import UserManagement from './components/user-management'
@@ -17,44 +14,11 @@ import ResultsDashboard from './components/results-dashboard'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('event')
-  const router = useRouter()
-  const supabase = createClient()
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
 
   return (
     <AdminEventProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-50/30 via-background to-slate-50/20 dark:from-gray-950/50 dark:via-background dark:to-gray-900/20">
-        {/* Header */}
-        <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-          <div className="container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-600 dark:to-gray-700 rounded-lg flex items-center justify-center shadow-sm">
-                  <Settings className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-foreground">Admin Portal</h1>
-                  <p className="text-sm text-muted-foreground">Manage your judging events</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <ThemeSwitcher />
-                <Button 
-                  variant="outline" 
-                  onClick={handleSignOut}
-                  className="flex items-center gap-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <AdminHeader />
 
         {/* Event Selector */}
         <div className="container mx-auto px-6 pt-6">
