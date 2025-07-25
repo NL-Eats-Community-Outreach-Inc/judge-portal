@@ -157,7 +157,12 @@ export function JudgeSidebar() {
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">Teams</h2>
+          <h2 
+            className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" 
+            onClick={() => router.push('/judge')}
+          >
+            Teams
+          </h2>
           <Badge variant="secondary" className="text-xs">
             {teams.length} teams
           </Badge>
