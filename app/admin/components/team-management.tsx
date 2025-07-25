@@ -588,7 +588,7 @@ export default function TeamManagement() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the team "{team.name}" and all associated scores.
+                                      This action cannot be undone. This will permanently delete the team &quot;{team.name}&quot; and all associated scores.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>

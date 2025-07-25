@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { scores, teams, criteria, users, events } from '@/lib/db/schema'
-import { eq, sql, and } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,14 +15,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
 
-    // Build base query conditions
-    const whereConditions = []
-    if (eventId) {
-      whereConditions.push(eq(teams.eventId, eventId))
-    }
-
     // Get all scores with team, criterion, and judge info
-    let scoresQuery = db
+    const baseScoresQuery = db
       .select({
         id: scores.id,
         score: scores.score,
@@ -53,14 +45,15 @@ export async function GET(request: NextRequest) {
       .innerJoin(criteria, eq(scores.criterionId, criteria.id))
       .innerJoin(users, eq(scores.judgeId, users.id))
 
-    if (whereConditions.length > 0) {
-      scoresQuery = scoresQuery.where(and(...whereConditions))
-    }
-
-    const allScores = await scoresQuery.orderBy(teams.presentationOrder, criteria.displayOrder)
+    const allScores = eventId 
+      ? await baseScoresQuery
+          .where(eq(teams.eventId, eventId))
+          .orderBy(teams.presentationOrder, criteria.displayOrder)
+      : await baseScoresQuery
+          .orderBy(teams.presentationOrder, criteria.displayOrder)
 
     // Calculate team totals (changed from averages to sums)
-    let teamTotalsQuery = db
+    const baseTeamTotalsQuery = db
       .select({
         teamId: teams.id,
         teamName: teams.name,
@@ -72,16 +65,17 @@ export async function GET(request: NextRequest) {
       .from(teams)
       .leftJoin(scores, eq(scores.teamId, teams.id))
 
-    if (whereConditions.length > 0) {
-      teamTotalsQuery = teamTotalsQuery.where(and(...whereConditions))
-    }
-
-    const teamTotals = await teamTotalsQuery
-      .groupBy(teams.id, teams.name, teams.presentationOrder)
-      .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
+    const teamTotals = eventId 
+      ? await baseTeamTotalsQuery
+          .where(eq(teams.eventId, eventId))
+          .groupBy(teams.id, teams.name, teams.presentationOrder)
+          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
+      : await baseTeamTotalsQuery
+          .groupBy(teams.id, teams.name, teams.presentationOrder)
+          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
 
     // Get criteria averages per team
-    let criteriaAveragesQuery = db
+    const baseCriteriaAveragesQuery = db
       .select({
         teamId: scores.teamId,
         teamName: teams.name,
@@ -94,13 +88,14 @@ export async function GET(request: NextRequest) {
       .innerJoin(teams, eq(scores.teamId, teams.id))
       .innerJoin(criteria, eq(scores.criterionId, criteria.id))
 
-    if (whereConditions.length > 0) {
-      criteriaAveragesQuery = criteriaAveragesQuery.where(and(...whereConditions))
-    }
-
-    const criteriaAverages = await criteriaAveragesQuery
-      .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
-      .orderBy(teams.presentationOrder, criteria.displayOrder)
+    const criteriaAverages = eventId 
+      ? await baseCriteriaAveragesQuery
+          .where(eq(teams.eventId, eventId))
+          .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
+          .orderBy(teams.presentationOrder, criteria.displayOrder)
+      : await baseCriteriaAveragesQuery
+          .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
+          .orderBy(teams.presentationOrder, criteria.displayOrder)
 
     // Get event information and criteria count if eventId is provided
     let eventInfo = null

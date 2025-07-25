@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 
 export default async function AdminLayout({
@@ -7,10 +6,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  
   // Get user session and role
-  const user = await getUserFromSession(supabase)
+  const user = await getUserFromSession()
   
   // Redirect if not authenticated or not an admin
   if (!user || user.role !== 'admin') {

@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
-import { scores, teams, criteria, users, events } from '@/lib/db/schema'
-import { eq, sql, and } from 'drizzle-orm'
+import { scores, teams } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('eventId')
 
     // Get team totals (changed from averages to sums)
-    let teamTotalsQuery = db
+    const baseQuery = db
       .select({
         teamName: teams.name,
         teamOrder: teams.presentationOrder,
@@ -29,13 +27,14 @@ export async function GET(request: NextRequest) {
       .from(teams)
       .leftJoin(scores, eq(scores.teamId, teams.id))
 
-    if (eventId) {
-      teamTotalsQuery = teamTotalsQuery.where(eq(teams.eventId, eventId))
-    }
-
-    const teamTotals = await teamTotalsQuery
-      .groupBy(teams.id, teams.name, teams.presentationOrder)
-      .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
+    const teamTotals = eventId 
+      ? await baseQuery
+          .where(eq(teams.eventId, eventId))
+          .groupBy(teams.id, teams.name, teams.presentationOrder)
+          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
+      : await baseQuery
+          .groupBy(teams.id, teams.name, teams.presentationOrder)
+          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
 
     // Create simplified CSV content - just the team rankings table
     let csvContent = 'Rank,Team Name,Presentation Order,Total Score,Number of Scores,Judge Count\n'

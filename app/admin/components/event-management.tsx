@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Save, Loader2, CheckCircle, Settings, Plus, Edit2, Trash2, Calendar } from 'lucide-react'
+import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
@@ -29,10 +29,14 @@ export default function EventManagement() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    description: string
+    status: 'setup' | 'active' | 'completed'
+  }>({
     name: '',
     description: '',
-    status: 'setup' as const
+    status: 'setup'
   })
   const { toast } = useToast()
 
@@ -98,7 +102,7 @@ export default function EventManagement() {
         throw new Error(error.error || 'Failed to save event')
       }
 
-      const data = await response.json()
+      await response.json()
       
       // Refresh events list in context (this will update both EventSelector and EventManagement)
       await refreshEvents()
@@ -242,7 +246,7 @@ export default function EventManagement() {
                 </Select>
                 {formData.status === 'active' && activeEvent && activeEvent.id !== editingEvent?.id && (
                   <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Warning: Setting this event to active will deactivate "{activeEvent.name}"
+                    Warning: Setting this event to active will deactivate &quot;{activeEvent.name}&quot;
                   </p>
                 )}
               </div>
@@ -388,7 +392,7 @@ export default function EventManagement() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the event "{event.name}" and all associated data.
+                                  This action cannot be undone. This will permanently delete the event &quot;{event.name}&quot; and all associated data.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

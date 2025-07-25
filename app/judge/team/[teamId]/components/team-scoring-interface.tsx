@@ -16,7 +16,7 @@ import type { Team, Criterion } from '@/lib/db/schema'
 interface Score {
   id?: string
   criterionId: string
-  score: number
+  score: number | null
   comment: string
 }
 
@@ -33,12 +33,12 @@ export function TeamScoringInterface({
   team, 
   criteria, 
   judgeId, 
-  eventId 
+  eventId: _ // eslint-disable-line @typescript-eslint/no-unused-vars
 }: TeamScoringInterfaceProps) {
   const [scores, setScores] = useState<Score[]>([])
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [loading, setLoading] = useState(true)
-  const lastSavedState = useRef<Record<string, { score: number; comment: string }>>({})
+  const lastSavedState = useRef<Record<string, { score: number | null; comment: string }>>({})
 
   // Initialize scores from database
   useEffect(() => {
@@ -53,7 +53,7 @@ export function TeamScoringInterface({
         
         // Initialize scores array with existing scores or empty values
         const initialScores = criteria.map(criterion => {
-          const existingScore = data.scores.find((s: any) => s.criterionId === criterion.id)
+          const existingScore = data.scores.find((s: { id?: string; criterionId: string; score: number; comment: string }) => s.criterionId === criterion.id)
           return {
             id: existingScore?.id,
             criterionId: criterion.id,
@@ -176,7 +176,7 @@ export function TeamScoringInterface({
         saveScore(criterionId, currentScore.score, comment)
       }
     })
-  }, [debouncedComments, saveScore]) // Removed scores dependency to prevent loop
+  }, [debouncedComments, saveScore])
 
   const getSaveStatusIcon = (criterionId: string) => {
     const status = saveStatus[criterionId] || 'idle'

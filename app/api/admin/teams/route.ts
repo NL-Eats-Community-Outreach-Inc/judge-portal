@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { teams, events } from '@/lib/db/schema'
@@ -7,8 +6,7 @@ import { eq, max } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,27 +15,37 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
 
-    // Build query conditions
-    let query = db
-      .select({
-        id: teams.id,
-        name: teams.name,
-        description: teams.description,
-        demoUrl: teams.demoUrl,
-        repoUrl: teams.repoUrl,
-        presentationOrder: teams.presentationOrder,
-        createdAt: teams.createdAt,
-        updatedAt: teams.updatedAt,
-        eventId: teams.eventId
-      })
-      .from(teams)
-
-    // Filter by eventId if provided
-    if (eventId) {
-      query = query.where(eq(teams.eventId, eventId))
-    }
-
-    const allTeams = await query.orderBy(teams.presentationOrder)
+    // Build query with conditions
+    const allTeams = eventId 
+      ? await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            description: teams.description,
+            demoUrl: teams.demoUrl,
+            repoUrl: teams.repoUrl,
+            presentationOrder: teams.presentationOrder,
+            createdAt: teams.createdAt,
+            updatedAt: teams.updatedAt,
+            eventId: teams.eventId
+          })
+          .from(teams)
+          .where(eq(teams.eventId, eventId))
+          .orderBy(teams.presentationOrder)
+      : await db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            description: teams.description,
+            demoUrl: teams.demoUrl,
+            repoUrl: teams.repoUrl,
+            presentationOrder: teams.presentationOrder,
+            createdAt: teams.createdAt,
+            updatedAt: teams.updatedAt,
+            eventId: teams.eventId
+          })
+          .from(teams)
+          .orderBy(teams.presentationOrder)
     
     return NextResponse.json({ teams: allTeams })
   } catch (error) {
@@ -48,8 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

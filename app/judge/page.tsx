@@ -73,7 +73,7 @@ export default function JudgePage() {
               <ul className="text-sm text-muted-foreground space-y-2 text-left">
                 <li>• An administrator needs to activate an event</li>
                 <li>• Teams and criteria must be configured</li>
-                <li>• You'll see teams appear in the sidebar once ready</li>
+                <li>• You&apos;ll see teams appear in the sidebar once ready</li>
               </ul>
             </div>
           </Card>
@@ -143,7 +143,7 @@ export default function JudgePage() {
                 2
               </div>
               <p className="text-muted-foreground">
-                Score each criterion based on the project's merit
+                Score each criterion based on the project&apos;s merit
               </p>
             </div>
             <div className="flex items-center gap-3">

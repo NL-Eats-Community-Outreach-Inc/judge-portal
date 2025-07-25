@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import * as schema from '@/lib/db/schema'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST() {
   try {
@@ -40,7 +40,7 @@ export async function POST() {
             })
             results.push({ id: authUser.id, email: authUser.email, action: 'created' })
           } catch (error) {
-            results.push({ id: authUser.id, email: authUser.email, action: 'error', error: error.message })
+            results.push({ id: authUser.id, email: authUser.email, action: 'error', error: error instanceof Error ? error.message : 'Unknown error' })
           }
         } else {
           results.push({ id: authUser.id, email: authUser.email, action: 'exists', role: existingUser[0].role })
@@ -52,6 +52,6 @@ export async function POST() {
     
     return NextResponse.json({ results })
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }

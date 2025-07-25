@@ -7,7 +7,7 @@ import { eq, asc } from 'drizzle-orm'
 export async function GET() {
   try {
     // Verify authentication
-    const user = await authServer.requireAuth()
+    await authServer.requireAuth()
 
     // Get currently active event only
     const activeEvent = await db.select()

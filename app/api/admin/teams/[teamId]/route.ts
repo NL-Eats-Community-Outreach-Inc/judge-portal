@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { teams } from '@/lib/db/schema'
@@ -10,8 +9,7 @@ export async function PUT(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -68,8 +66,7 @@ export async function DELETE(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

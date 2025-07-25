@@ -1,6 +1,5 @@
 import { db } from './index'
-import { users, events, teams, criteria, scores } from './schema'
-import { sql } from 'drizzle-orm'
+import { events, teams, criteria } from './schema'
 import postgres from 'postgres'
 
 const connectionString = process.env.DATABASE_URL!

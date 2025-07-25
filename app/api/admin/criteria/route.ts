@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { criteria, events } from '@/lib/db/schema'
@@ -7,8 +6,7 @@ import { eq } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,15 +15,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
 
-    // Build query conditions
-    let query = db.select().from(criteria)
-
-    // Filter by eventId if provided
-    if (eventId) {
-      query = query.where(eq(criteria.eventId, eventId))
-    }
-
-    const allCriteria = await query.orderBy(criteria.displayOrder)
+    // Build query with conditions
+    const allCriteria = eventId 
+      ? await db.select().from(criteria).where(eq(criteria.eventId, eventId)).orderBy(criteria.displayOrder)
+      : await db.select().from(criteria).orderBy(criteria.displayOrder)
     
     return NextResponse.json({ criteria: allCriteria })
   } catch (error) {
@@ -36,8 +29,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

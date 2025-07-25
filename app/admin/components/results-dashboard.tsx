@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal, Calendar, AlertCircle } from 'lucide-react'
+import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
@@ -52,19 +51,11 @@ interface CriteriaAverage {
   judgeCount: number
 }
 
-interface Event {
-  id: string
-  name: string
-  description: string | null
-  status: 'setup' | 'active' | 'completed'
-  createdAt: string
-  updatedAt: string
-}
 
 export default function ResultsDashboard() {
   const [scores, setScores] = useState<Score[]>([])
   const [teamTotals, setTeamTotals] = useState<TeamTotal[]>([])
-  const [criteriaAverages, setCriteriaAverages] = useState<CriteriaAverage[]>([])
+  const [, setCriteriaAverages] = useState<CriteriaAverage[]>([])
   const [criteriaCount, setCriteriaCount] = useState(0)
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)

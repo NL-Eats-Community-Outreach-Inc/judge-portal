@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { criteria } from '@/lib/db/schema'
@@ -7,14 +6,13 @@ import { eq } from 'drizzle-orm'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { criterionId: string } }
+  { params }: { params: Promise<{ criterionId: string }> }
 ) {
   try {
     // Await params for Next.js 15+ compatibility
     const { criterionId } = await params
     
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -75,14 +73,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { criterionId: string } }
+  { params }: { params: Promise<{ criterionId: string }> }
 ) {
   try {
     // Await params for Next.js 15+ compatibility
     const { criterionId } = await params
     
-    const supabase = await createClient()
-    const user = await getUserFromSession(supabase)
+    const user = await getUserFromSession()
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
