@@ -33,13 +33,29 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      
+      // Get user role from database to determine redirect
+      const { data: roleData, error: roleError } = await supabase
+        .rpc('check_user_role', { user_id: data.user.id });
+      
+      if (roleError) {
+        console.error('Error checking user role:', roleError);
+        router.push("/"); // Let middleware handle the redirect
+      } else {
+        const userRole = roleData?.[0]?.role;
+        if (userRole === 'admin') {
+          router.push("/admin");
+        } else if (userRole === 'judge') {
+          router.push("/judge");
+        } else {
+          router.push("/"); // Let middleware handle the redirect
+        }
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

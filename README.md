@@ -1,105 +1,161 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# JudgePortal
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+A comprehensive real-time judging system for hackathons and competitive events. Built with modern web technologies, JudgePortal enables judges to score teams based on customizable criteria while providing admins with powerful management and analytics capabilities.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## 🎯 Features
 
-## Features
+### For Judges
+- **Automatic Event Detection** - Judges automatically see only the currently active event
+- **Sidebar Navigation** - Easy team selection with completion status indicators
+- **Real-time Auto-save** - Scores save immediately, comments save with intelligent debouncing
+- **Score Validation** - Ensures complete and valid submissions with visual feedback
+- **Progress Tracking** - Visual indicators show scoring completion status per team
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+### For Admins
+- **Multi-Event Management** - Create and manage multiple events with complete data separation
+- **Single Active Event Enforcement** - Prevents confusion by allowing only one active event at a time
+- **User Role Management** - Promote judges to admins, manage permissions
+- **Dynamic Criteria Configuration** - Create custom scoring criteria with configurable ranges
+- **Real-time Results Dashboard** - Live score updates with team rankings and statistics
+- **CSV Export** - Export complete results with individual scores and rankings
+- **Drag-and-Drop Team Ordering** - Easily reorder team presentation sequence
 
-## Demo
+## 🛠️ Tech Stack
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+- **Framework**: [Next.js 14+](https://nextjs.org/) with App Router
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL) with [Drizzle ORM](https://orm.drizzle.team/)
+- **Authentication**: Supabase Auth with role-based access control
+- **UI Components**: [Shadcn UI](https://ui.shadcn.com/) with [Lucide Icons](https://lucide.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with gradient theme
+- **Real-time Updates**: Supabase Realtime subscriptions
+- **Type Safety**: TypeScript with strict mode
 
-## Deploy to Vercel
+## 📋 Prerequisites
 
-Vercel deployment will guide you through creating a Supabase account and project.
+- Node.js 18+ 
+- npm or yarn
+- Supabase account and project
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+## 🚀 Getting Started
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
-
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
-
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
-
+1. **Clone the repository**
    ```bash
-   npx create-next-app --example with-supabase with-supabase-app
+   git clone https://github.com/yourusername/judgeportal.git
+   cd judgeportal
    ```
 
+2. **Install dependencies**
    ```bash
-   yarn create next-app --example with-supabase with-supabase-app
+   npm install
    ```
 
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Set up the database**
    ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
+   # Push the schema to your Supabase database
+   npm run db:push
+   
+   # (Optional) Seed with test data
+   npm run db:seed
    ```
 
-3. Use `cd` to change into the app's directory
-
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=[INSERT SUPABASE PROJECT API ANON KEY]
-   ```
-
-   Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
-
-5. You can now run the Next.js local development server:
-
+5. **Run the development server**
    ```bash
    npm run dev
    ```
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+6. **Open the application**
+   
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+## 📱 Usage
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+### First Time Setup
 
-## Feedback and issues
+1. Create your first admin account by signing up
+2. Manually promote the user to admin role in Supabase dashboard (one-time setup)
+3. Create your first event and set it as "active"
+4. Add teams and scoring criteria
+5. Invite judges to register and start scoring
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+### Judge Workflow
 
-## More Supabase examples
+1. **Login** with email/password
+2. **View Active Event** - Automatically see the current active event details
+3. **Select Teams** - Use the sidebar to navigate between teams
+4. **Submit Scores** - Enter scores for each criterion (auto-saved)
+5. **Add Comments** - Optional feedback (saves after 500ms pause)
+6. **Track Progress** - Visual indicators show completion status
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+### Admin Workflow
+
+1. **Login** as admin
+2. **Manage Events** - Create, edit, and activate events
+3. **Configure Teams** - Add teams with project details and presentation order
+4. **Set Criteria** - Define scoring criteria with min/max ranges
+5. **Manage Users** - Promote judges to admins as needed
+6. **Monitor Results** - View real-time scores and rankings
+7. **Export Data** - Download CSV with complete scoring data
+
+## 🗂️ Project Structure
+
+```
+judgeportal/
+├── app/                   # Next.js app directory
+│   ├── admin/             # Admin panel routes
+│   ├── judge/             # Judge interface routes
+│   ├── api/               # API endpoints
+│   └── auth/              # Authentication pages
+├── components/            # Reusable UI components
+├── lib/                   # Core utilities
+│   ├── auth/              # Authentication helpers
+│   ├── db/                # Database schema and utilities
+│   └── supabase/          # Supabase client configuration
+└── supabase/              # Database migrations
+```
+
+## 🔐 Security
+
+- **Row Level Security (RLS)** - Database-level access control
+- **Role-based Authentication** - Separate judge and admin permissions
+- **Secure API Routes** - Protected endpoints with middleware
+- **Data Isolation** - Complete separation between events
+
+## 📊 Database Schema
+
+The system uses five main tables:
+
+- **events** - Event management with status tracking
+- **users** - User accounts with role assignments
+- **teams** - Team information and project details  
+- **criteria** - Dynamic scoring criteria per event
+- **scores** - Individual judge scores and comments
+
+## 🛠️ Development Commands
+
+```bash
+# Development
+npm run dev          # Start development server with Turbopack
+
+# Database
+npm run db:push      # Push schema changes to database
+npm run db:studio    # Open Drizzle Studio for database management
+npm run db:generate  # Generate migrations
+npm run db:seed      # Seed database with test data
+
+# Production
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+```
+
+---
+
+Built with ❤️ for hackathon organizers and judges at NL Eats.

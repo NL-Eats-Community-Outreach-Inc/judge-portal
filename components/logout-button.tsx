@@ -10,7 +10,8 @@ export function LogoutButton() {
   const logout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    // Force a hard navigation to ensure auth state is fully cleared
+    window.location.href = "/";
   };
 
   return <Button onClick={logout}>Logout</Button>;

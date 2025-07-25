@@ -1,49 +1,40 @@
-import { DeployButton } from "@/components/deploy-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
-import { Hero } from "@/components/hero";
+import { JudgeHero } from "@/components/judge-hero";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { ConnectSupabaseSteps } from "@/components/tutorial/connect-supabase-steps";
-import { SignUpUserSteps } from "@/components/tutorial/sign-up-user-steps";
 import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
+import { Gavel } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center">
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-            <div className="flex gap-5 items-center font-semibold">
-              <Link href={"/"}>Next.js Supabase Starter</Link>
-              <div className="flex items-center gap-2">
-                <DeployButton />
+    <main className="min-h-screen flex flex-col">
+      <div className="flex-1 w-full flex flex-col">
+        <nav className="w-full flex justify-center border-b border-b-gray-200 dark:border-b-gray-800 h-16 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm sticky top-0 z-50">
+          <div className="w-full max-w-7xl flex justify-between items-center p-3 px-5">
+            <div className="flex gap-2 items-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                <Gavel className="w-5 h-5 text-white" />
               </div>
+              <Link href={"/"} className="font-semibold text-lg">
+                Judge Portal
+              </Link>
             </div>
-            {!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
+            <div className="flex items-center gap-4">
+              {!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
+              <ThemeSwitcher />
+            </div>
           </div>
         </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
-          <Hero />
-          <main className="flex-1 flex flex-col gap-6 px-4">
-            <h2 className="font-medium text-xl mb-4">Next steps</h2>
-            {hasEnvVars ? <SignUpUserSteps /> : <ConnectSupabaseSteps />}
-          </main>
+        
+        <div className="flex-1 flex flex-col items-center">
+          <JudgeHero />
         </div>
 
-        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-          <p>
-            Powered by{" "}
-            <a
-              href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
-              target="_blank"
-              className="font-bold hover:underline"
-              rel="noreferrer"
-            >
-              Supabase
-            </a>
+        <footer className="w-full flex items-center justify-center border-t border-gray-200 dark:border-gray-800 text-center text-xs gap-8 py-8 bg-gray-50 dark:bg-gray-900">
+          <p className="text-gray-600 dark:text-gray-400">
+            © 2025 Judge Portal. All rights reserved.
           </p>
-          <ThemeSwitcher />
         </footer>
       </div>
     </main>
