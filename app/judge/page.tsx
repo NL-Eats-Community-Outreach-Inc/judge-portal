@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
-import { ArrowRight, Users, Target, Clock, AlertCircle } from 'lucide-react'
+import { Users, Target, Clock, AlertCircle } from 'lucide-react'
 
 interface Team {
   id: string
