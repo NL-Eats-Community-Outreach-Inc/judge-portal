@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { teams, criteria, events } from '@/lib/db/schema'
 import { eq, and, asc } from 'drizzle-orm'
