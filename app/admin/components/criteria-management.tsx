@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdminEvent } from '../contexts/admin-event-context'
@@ -104,6 +105,7 @@ export default function CriteriaManagement() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingCriteria, setDeletingCriteria] = useState(new Set<string>())
+  const [criterionToDelete, setCriterionToDelete] = useState<Criterion | null>(null)
   const { toast } = useToast()
   const { selectedEvent } = useAdminEvent()
 
@@ -175,13 +177,7 @@ export default function CriteriaManagement() {
     }
   }
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchCriteria()
-    }
-  }, [selectedEvent])
-
-  const fetchCriteria = async () => {
+  const fetchCriteria = useCallback(async () => {
     if (!selectedEvent) {
       setCriteria([])
       setIsLoading(false)
@@ -207,7 +203,13 @@ export default function CriteriaManagement() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedEvent, toast])
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchCriteria()
+    }
+  }, [selectedEvent, fetchCriteria])
 
   const openDialog = (criterion?: Criterion) => {
     if (criterion) {
@@ -322,15 +324,13 @@ export default function CriteriaManagement() {
     }
   }
 
-  const handleDelete = async (criterionId: string) => {
-    if (!confirm('Are you sure you want to delete this criterion? This will also delete all associated scores.')) {
-      return
-    }
+  const handleDelete = async () => {
+    if (!criterionToDelete) return
 
-    setDeletingCriteria(prev => new Set(prev).add(criterionId))
+    setDeletingCriteria(prev => new Set(prev).add(criterionToDelete.id))
     
     try {
-      const response = await fetch(`/api/admin/criteria/${criterionId}`, {
+      const response = await fetch(`/api/admin/criteria/${criterionToDelete.id}`, {
         method: 'DELETE'
       })
 
@@ -339,11 +339,12 @@ export default function CriteriaManagement() {
         throw new Error(error.error || 'Failed to delete criterion')
       }
 
-      setCriteria(prev => prev.filter(criterion => criterion.id !== criterionId))
+      setCriteria(prev => prev.filter(criterion => criterion.id !== criterionToDelete.id))
       toast({
         title: 'Success',
         description: 'Criterion deleted successfully'
       })
+      setCriterionToDelete(null)
     } catch (error) {
       console.error('Error deleting criterion:', error)
       toast({
@@ -354,7 +355,7 @@ export default function CriteriaManagement() {
     } finally {
       setDeletingCriteria(prev => {
         const next = new Set(prev)
-        next.delete(criterionId)
+        next.delete(criterionToDelete.id)
         return next
       })
     }
@@ -554,19 +555,37 @@ export default function CriteriaManagement() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(criterion.id)}
-                                disabled={deletingCriteria.has(criterion.id)}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              >
-                                {deletingCriteria.has(criterion.id) ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setCriterionToDelete(criterion)}
+                                    disabled={deletingCriteria.has(criterion.id)}
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  >
+                                    {deletingCriteria.has(criterion.id) ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the criterion &quot;{criterion.name}&quot; and all associated scores.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setCriterionToDelete(null)}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Delete Criterion
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </TableCell>
                         </SortableRow>
