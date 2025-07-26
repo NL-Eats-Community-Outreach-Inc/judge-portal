@@ -88,21 +88,23 @@
     }
   }
   
-  .dark .animated-char {
-    @keyframes colorWave {
-      0%, 100% {
-        color: hsl(var(--foreground));
-      }
-      25% {
-        color: hsl(220 80% 70%);
-      }
-      50% {
-        color: hsl(280 75% 75%);
-      }
-      75% {
-        color: hsl(340 80% 70%);
-      }
+  @keyframes colorWaveDark {
+    0%, 100% {
+      color: hsl(var(--foreground));
     }
+    25% {
+      color: hsl(220 80% 70%);
+    }
+    50% {
+      color: hsl(280 75% 75%);
+    }
+    75% {
+      color: hsl(340 80% 70%);
+    }
+  }
+  
+  .dark .animated-char {
+    animation: colorWaveDark 4s ease-in-out infinite;
   }
   
   /* Feature card hover effects */
