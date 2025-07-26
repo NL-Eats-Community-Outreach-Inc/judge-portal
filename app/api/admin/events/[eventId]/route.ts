@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // Update the event
+    // Update the event (completed events can be edited to change status)
     const [updatedEvent] = await db
       .update(events)
       .set({
@@ -74,6 +74,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     if (!existingEvent.length) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+    }
+
+    const event = existingEvent[0]
+
+    // Prevent deletion of active or completed events
+    if (event.status === 'active' || event.status === 'completed') {
+      return NextResponse.json({ 
+        error: `Cannot delete ${event.status} events. This preserves data integrity and historical records.` 
+      }, { status: 400 })
     }
 
     // Delete the event (cascading deletes will handle related data)

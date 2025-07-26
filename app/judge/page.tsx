@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Users, Target, Clock, AlertCircle } from 'lucide-react'
+import { useRealtimeTable } from '@/lib/hooks/use-realtime'
 
 interface Team {
   id: string
@@ -13,23 +14,34 @@ export default function JudgePage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  const fetchTeams = async () => {
+  // Enhanced fetch function for real-time sync using useCallback for stable reference
+  const fetchTeams = useCallback(async () => {
     try {
       const response = await fetch('/api/judge/teams')
       if (response.ok) {
         const data = await response.json()
-        setTeams(data.teams)
+        setTeams(data.teams || [])
       }
     } catch (error) {
       console.error('Error fetching teams:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Set up real-time sync for teams and events
+  useRealtimeTable('teams', () => {
+    fetchTeams()
+  }, { enabled: true })
+  
+  useRealtimeTable('events', () => {
+    fetchTeams()
+  }, { enabled: true })
+
+  // Initial fetch
+  useEffect(() => {
+    fetchTeams()
+  }, [fetchTeams])
 
   // Show loading state
   if (loading) {
@@ -101,9 +113,9 @@ export default function JudgePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-6 text-center">
             <Users className="h-8 w-8 mx-auto mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground">Teams</h3>
+            <h3 className="font-semibold text-foreground">{teams.length} Teams</h3>
             <p className="text-sm text-muted-foreground">
-              View teams in the sidebar
+              {teams.length === 1 ? 'Team' : 'Teams'} ready for judging
             </p>
           </Card>
           

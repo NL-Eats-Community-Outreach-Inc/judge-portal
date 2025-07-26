@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
@@ -9,11 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Calendar } from 'lucide-react'
+import { LogOut, User, Calendar, Wifi, WifiOff } from 'lucide-react'
 import { authClient } from '@/lib/auth/client'
 import { useRouter } from 'next/navigation'
 import type { UserWithRole } from '@/lib/auth'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { useRealtimeTable } from '@/lib/hooks/use-realtime'
 
 interface Event {
   id: string
@@ -31,11 +32,8 @@ export function JudgeHeader({ user }: JudgeHeaderProps) {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchEvent()
-  }, [])
-
-  const fetchEvent = async () => {
+  // Enhanced fetch function for real-time sync - use callback to ensure stable reference
+  const fetchEvent = useCallback(async () => {
     try {
       const response = await fetch('/api/judge/event')
       if (response.ok) {
@@ -47,7 +45,17 @@ export function JudgeHeader({ user }: JudgeHeaderProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Set up real-time sync for events table
+  const { isConnected } = useRealtimeTable('events', () => {
+    fetchEvent()
+  }, { enabled: true })
+
+  // Initial fetch
+  useEffect(() => {
+    fetchEvent()
+  }, [fetchEvent])
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -112,6 +120,18 @@ export function JudgeHeader({ user }: JudgeHeaderProps) {
 
         {/* User menu */}
         <div className="flex items-center gap-3">
+          {/* Real-time connection indicator */}
+          <div className="flex items-center gap-1">
+            {isConnected ? (
+              <span title="Connected - Live updates active">
+                <Wifi className="h-4 w-4 text-green-500" />
+              </span>
+            ) : (
+              <span title="Connecting...">
+                <WifiOff className="h-4 w-4 text-yellow-500" />
+              </span>
+            )}
+          </div>
           <ThemeSwitcher />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

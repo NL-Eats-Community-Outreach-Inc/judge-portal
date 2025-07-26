@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { RealtimeProvider } from "@/components/realtime-provider";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -34,8 +35,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <RealtimeProvider enableToasts={false} enableNetworkDetection={true}>
+            {children}
+            <Toaster />
+          </RealtimeProvider>
         </ThemeProvider>
       </body>
     </html>

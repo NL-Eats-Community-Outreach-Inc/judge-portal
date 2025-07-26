@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
-import { teams } from '@/lib/db/schema'
+import { teams, events } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export async function PUT(
@@ -73,6 +73,30 @@ export async function DELETE(
     }
 
     const { teamId } = await params
+
+    // Get team with event information
+    const teamWithEvent = await db
+      .select({
+        teamId: teams.id,
+        eventStatus: events.status
+      })
+      .from(teams)
+      .innerJoin(events, eq(teams.eventId, events.id))
+      .where(eq(teams.id, teamId))
+      .limit(1)
+
+    if (!teamWithEvent.length) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+    }
+
+    const { eventStatus } = teamWithEvent[0]
+
+    // Prevent deletion during active or completed events
+    if (eventStatus === 'active' || eventStatus === 'completed') {
+      return NextResponse.json({ 
+        error: `Cannot delete teams during or after the event. This preserves scoring data and historical records.` 
+      }, { status: 400 })
+    }
 
     // Delete team (cascade will handle related scores)
     const [deletedTeam] = await db

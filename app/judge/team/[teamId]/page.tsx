@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { teams, criteria, events } from '@/lib/db/schema'
 import { eq, and, asc } from 'drizzle-orm'
@@ -22,7 +22,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .limit(1)
 
   if (!currentEvent.length) {
-    notFound()
+    redirect('/judge')
   }
 
   const eventId = currentEvent[0].id
@@ -39,7 +39,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .limit(1)
 
   if (!team.length) {
-    notFound()
+    redirect('/judge')
   }
 
   // Get all criteria for this event

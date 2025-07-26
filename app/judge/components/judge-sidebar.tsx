@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, Circle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRealtimeTable } from '@/lib/hooks/use-realtime'
 
 // Type definitions for our data
 interface Team {
@@ -31,19 +32,67 @@ export function JudgeSidebar() {
   // Extract current team ID from pathname
   const currentTeamId = pathname?.split('/').pop()
 
+  // Enhanced fetch functions for real-time sync - use useCallback for stable references
+  const fetchTeams = useCallback(async () => {
+    try {
+      const response = await fetch('/api/judge/teams')
+      if (response.ok) {
+        const data = await response.json()
+        setTeams(data.teams || [])
+        
+        // If no teams and we're currently on a team page, redirect to judge main page
+        if ((!data.teams || data.teams.length === 0) && pathname?.includes('/judge/team/')) {
+          router.push('/judge')
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error)
+    }
+  }, [pathname, router])
+
+  const fetchScoreCompletion = useCallback(async () => {
+    try {
+      const response = await fetch('/api/judge/completion')
+      if (response.ok) {
+        const data = await response.json()
+        setScoreCompletion(data.completion || [])
+      }
+    } catch (error) {
+      console.error('Error fetching score completion:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Set up real-time sync for teams table
+  useRealtimeTable('teams', () => {
+    fetchTeams()
+  }, { enabled: true })
+
+  // Set up real-time sync for events table (to detect status changes)
+  useRealtimeTable('events', () => {
+    fetchTeams() // Refresh teams when event status changes
+  }, { enabled: true })
+
+  // Set up real-time sync for scores table
+  useRealtimeTable('scores', () => {
+    fetchScoreCompletion()
+  }, { enabled: true })
+
+  // Initial fetch
   useEffect(() => {
     fetchTeams()
     fetchScoreCompletion()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refresh completion status when pathname changes (when switching teams)
+  // Refresh completion status when pathname changes (when switching teams) 
   useEffect(() => {
     if (!loading) {
       fetchScoreCompletion()
     }
-  }, [pathname, loading])
+  }, [pathname, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for score updates to refresh completion status
+  // Keep the existing custom event listener for backward compatibility with the scoring interface
   useEffect(() => {
     const handleScoreUpdate = () => {
       fetchScoreCompletion()
@@ -51,33 +100,7 @@ export function JudgeSidebar() {
 
     window.addEventListener('scoreUpdated', handleScoreUpdate)
     return () => window.removeEventListener('scoreUpdated', handleScoreUpdate)
-  }, [])
-
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch('/api/judge/teams')
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data.teams)
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
-    }
-  }
-
-  const fetchScoreCompletion = async () => {
-    try {
-      const response = await fetch('/api/judge/completion')
-      if (response.ok) {
-        const data = await response.json()
-        setScoreCompletion(data.completion)
-      }
-    } catch (error) {
-      console.error('Error fetching score completion:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getCompletionStatus = (teamId: string) => {
     const status = scoreCompletion.find(s => s.teamId === teamId)

@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useToast } from '@/components/ui/use-toast'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { toast } from 'sonner'
 
 interface Event {
   id: string
@@ -26,58 +26,60 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<Event[]>([])
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/event')
       const data = await response.json()
       
       if (response.ok) {
-        setEvents(data.events || [])
+        const newEvents = data.events || []
+        setEvents(newEvents)
         
-        // Auto-select active event if no event is selected
-        if (!selectedEvent && data.events?.length > 0) {
-          const activeEvent = data.events.find((e: Event) => e.status === 'active')
-          if (activeEvent) {
-            setSelectedEvent(activeEvent)
-          } else {
-            // If no active event, select the first event
-            setSelectedEvent(data.events[0])
+        // Auto-select logic - use current state instead of closure
+        setSelectedEvent(currentSelected => {
+          // Auto-select active event if no event is selected
+          if (!currentSelected && newEvents.length > 0) {
+            const activeEvent = newEvents.find((e: Event) => e.status === 'active')
+            if (activeEvent) {
+              return activeEvent
+            } else {
+              // If no active event, select the first event
+              return newEvents[0]
+            }
+          } else if (currentSelected && newEvents.length > 0) {
+            // Update selected event if it exists in the new events data (to sync status changes)
+            const updatedSelectedEvent = newEvents.find((e: Event) => e.id === currentSelected.id)
+            if (updatedSelectedEvent) {
+              return updatedSelectedEvent
+            }
           }
-        } else if (selectedEvent && data.events?.length > 0) {
-          // Update selected event if it exists in the new events data (to sync status changes)
-          const updatedSelectedEvent = data.events.find((e: Event) => e.id === selectedEvent.id)
-          if (updatedSelectedEvent) {
-            setSelectedEvent(updatedSelectedEvent)
-          }
-        }
+          return currentSelected
+        })
       } else {
         throw new Error(data.error)
       }
     } catch (error) {
       console.error('Error fetching events:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load events',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to load events'
       })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, []) // Remove selectedEvent dependency to break the loop
 
-  const refreshEvents = async () => {
+  const refreshEvents = useCallback(async () => {
     await fetchEvents()
-  }
+  }, [fetchEvents])
 
-  const selectEvent = (event: Event | null) => {
+  const selectEvent = useCallback((event: Event | null) => {
     setSelectedEvent(event)
-  }
+  }, [])
 
   useEffect(() => {
     fetchEvents()
-  }, [])
+  }, [fetchEvents])
 
   const value: AdminEventContextType = {
     events,

@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
+import { useRealtimeTable } from '@/lib/hooks/use-realtime'
 
 interface Event {
   id: string
@@ -38,7 +40,11 @@ export default function EventManagement() {
     description: '',
     status: 'setup'
   })
-  const { toast } = useToast()
+
+  // Set up real-time sync for events table
+  useRealtimeTable('events', () => {
+    refreshEvents()
+  }, { enabled: true })
 
   const resetForm = () => {
     setFormData({
@@ -66,10 +72,8 @@ export default function EventManagement() {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Event name is required',
-        variant: 'destructive'
+      toast.error('Validation Error', {
+        description: 'Event name is required'
       })
       return
     }
@@ -111,16 +115,13 @@ export default function EventManagement() {
       setIsDialogOpen(false)
       resetForm()
       
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: editingEvent ? 'Event updated successfully' : 'Event created successfully'
       })
     } catch (error) {
       console.error('Error saving event:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save event',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to save event'
       })
     } finally {
       setIsSaving(false)
@@ -143,18 +144,15 @@ export default function EventManagement() {
       // Refresh events list in context (this will update both EventSelector and EventManagement)
       await refreshEvents()
       
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Event deleted successfully'
       })
       
       setDeletingEvent(null)
     } catch (error) {
       console.error('Error deleting event:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete event',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to delete event'
       })
     }
   }
@@ -181,9 +179,10 @@ export default function EventManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Header with Create Button */}
+        <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Event Management</h2>
           <p className="text-muted-foreground">Manage your judging events and their status</p>
@@ -378,16 +377,28 @@ export default function EventManagement() {
                             <Edit2 className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setDeletingEvent(event)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive disabled:text-muted-foreground"
+                                      onClick={() => setDeletingEvent(event)}
+                                      disabled={event.status === 'active' || event.status === 'completed'}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </div>
+                              </TooltipTrigger>
+                              {(event.status === 'active' || event.status === 'completed') && (
+                                <TooltipContent>
+                                  <p>Cannot delete {event.status} events</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -414,5 +425,6 @@ export default function EventManagement() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   )
 }

@@ -15,12 +15,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
 
-    // Get team totals (changed from averages to sums)
+    // Get team totals and averages
     const baseQuery = db
       .select({
         teamName: teams.name,
         teamOrder: teams.presentationOrder,
         totalScore: sql<number>`COALESCE(SUM(${scores.score}), 0)`,
+        averageScore: sql<number>`COALESCE(ROUND(SUM(${scores.score})::numeric / NULLIF(COUNT(${scores.score}), 0), 2), 0)`,
         totalScores: sql<number>`COUNT(${scores.score})`,
         judgeCount: sql<number>`COUNT(DISTINCT ${scores.judgeId})`
       })
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
           .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
 
     // Create simplified CSV content - just the team rankings table
-    let csvContent = 'Rank,Team Name,Presentation Order,Total Score,Number of Scores,Judge Count\n'
+    let csvContent = 'Rank,Team Name,Presentation Order,Final Score,Average Score,Number of Scores,Judge Count\n'
     
     teamTotals.forEach((team, index) => {
       const row = [
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
         `"${team.teamName}"`,
         team.teamOrder,
         Number(team.totalScore),
+        Number(team.averageScore),
         team.totalScores,
         team.judgeCount
       ].join(',')

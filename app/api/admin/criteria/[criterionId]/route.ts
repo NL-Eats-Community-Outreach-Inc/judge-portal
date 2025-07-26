@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
-import { criteria } from '@/lib/db/schema'
+import { criteria, events } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export async function PUT(
@@ -16,6 +16,30 @@ export async function PUT(
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get criterion with event information
+    const criterionWithEvent = await db
+      .select({
+        criterionId: criteria.id,
+        eventStatus: events.status
+      })
+      .from(criteria)
+      .innerJoin(events, eq(criteria.eventId, events.id))
+      .where(eq(criteria.id, criterionId))
+      .limit(1)
+
+    if (!criterionWithEvent.length) {
+      return NextResponse.json({ error: 'Criterion not found' }, { status: 404 })
+    }
+
+    const { eventStatus } = criterionWithEvent[0]
+
+    // Prevent modification during active or completed events
+    if (eventStatus === 'active' || eventStatus === 'completed') {
+      return NextResponse.json({ 
+        error: `Cannot modify criteria for ${eventStatus} events. This maintains scoring consistency and historical integrity.` 
+      }, { status: 400 })
     }
 
     const { name, description, minScore, maxScore, displayOrder } = await request.json()
@@ -83,6 +107,30 @@ export async function DELETE(
 
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get criterion with event information
+    const criterionWithEvent = await db
+      .select({
+        criterionId: criteria.id,
+        eventStatus: events.status
+      })
+      .from(criteria)
+      .innerJoin(events, eq(criteria.eventId, events.id))
+      .where(eq(criteria.id, criterionId))
+      .limit(1)
+
+    if (!criterionWithEvent.length) {
+      return NextResponse.json({ error: 'Criterion not found' }, { status: 404 })
+    }
+
+    const { eventStatus } = criterionWithEvent[0]
+
+    // Prevent deletion during active or completed events
+    if (eventStatus === 'active' || eventStatus === 'completed') {
+      return NextResponse.json({ 
+        error: `Cannot delete criteria for ${eventStatus} events. This maintains scoring consistency and historical integrity.` 
+      }, { status: 400 })
     }
 
     // Delete criterion (cascade will handle related scores)
