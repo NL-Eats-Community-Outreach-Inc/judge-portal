@@ -52,13 +52,14 @@ export async function GET(request: NextRequest) {
       : await baseScoresQuery
           .orderBy(teams.presentationOrder, criteria.displayOrder)
 
-    // Calculate team totals (changed from averages to sums)
+    // Calculate team totals and averages
     const baseTeamTotalsQuery = db
       .select({
         teamId: teams.id,
         teamName: teams.name,
         presentationOrder: teams.presentationOrder,
         totalScore: sql<number>`COALESCE(SUM(${scores.score}), 0)`,
+        averageScore: sql<number>`CASE WHEN COUNT(${scores.score}) > 0 THEN ROUND(AVG(${scores.score}::numeric), 2) ELSE 0 END`,
         totalScores: sql<number>`COUNT(${scores.score})`,
         judgeCount: sql<number>`COUNT(DISTINCT ${scores.judgeId})`
       })
@@ -121,7 +122,8 @@ export async function GET(request: NextRequest) {
       scores: allScores,
       teamTotals: teamTotals.map(total => ({
         ...total,
-        totalScore: Number(total.totalScore)
+        totalScore: Number(total.totalScore),
+        averageScore: Number(total.averageScore)
       })),
       criteriaAverages: criteriaAverages.map(avg => ({
         ...avg,

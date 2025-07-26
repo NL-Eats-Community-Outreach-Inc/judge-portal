@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 import {
   DndContext,
@@ -53,7 +54,7 @@ interface CriterionFormData {
 }
 
 // Sortable Row Component
-function SortableRow({ criterion, children }: { criterion: Criterion; children: React.ReactNode }) {
+function SortableRow({ criterion, children, isDragDisabled }: { criterion: Criterion; children: React.ReactNode; isDragDisabled?: boolean }) {
   const {
     attributes,
     listeners,
@@ -61,7 +62,10 @@ function SortableRow({ criterion, children }: { criterion: Criterion; children: 
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: criterion.id })
+  } = useSortable({ 
+    id: criterion.id,
+    disabled: isDragDisabled
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -77,13 +81,26 @@ function SortableRow({ criterion, children }: { criterion: Criterion; children: 
     >
       <TableCell>
         <div className="flex items-center gap-2">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-move p-1 rounded hover:bg-muted"
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
+          {isDragDisabled ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-1 rounded cursor-not-allowed">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Cannot reorder criteria for active/completed events</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-move p-1 rounded hover:bg-muted"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
           <Badge variant="outline">#{criterion.displayOrder}</Badge>
         </div>
       </TableCell>
@@ -106,7 +123,6 @@ export default function CriteriaManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingCriteria, setDeletingCriteria] = useState(new Set<string>())
   const [criterionToDelete, setCriterionToDelete] = useState<Criterion | null>(null)
-  const { toast } = useToast()
   const { selectedEvent } = useAdminEvent()
 
   // Drag and drop sensors
@@ -161,22 +177,20 @@ export default function CriteriaManagement() {
         throw new Error('Failed to update criteria order')
       }
 
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Criteria order updated successfully'
       })
     } catch (error) {
       console.error('Error updating criteria order:', error)
       // Revert on error
       setCriteria(criteria)
-      toast({
-        title: 'Error',
-        description: 'Failed to update criteria order',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to update criteria order'
       })
     }
   }
 
+  // Use useCallback to ensure stable reference for real-time sync
   const fetchCriteria = useCallback(async () => {
     if (!selectedEvent) {
       setCriteria([])
@@ -195,21 +209,18 @@ export default function CriteriaManagement() {
       }
     } catch (error) {
       console.error('Error fetching criteria:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load criteria',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to load criteria'
       })
     } finally {
       setIsLoading(false)
     }
-  }, [selectedEvent, toast])
+  }, [selectedEvent])
 
   useEffect(() => {
-    if (selectedEvent) {
-      fetchCriteria()
-    }
-  }, [selectedEvent, fetchCriteria])
+    fetchCriteria()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const openDialog = (criterion?: Criterion) => {
     if (criterion) {
@@ -245,28 +256,22 @@ export default function CriteriaManagement() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Criterion name is required',
-        variant: 'destructive'
+      toast.error('Validation Error', {
+        description: 'Criterion name is required'
       })
       return
     }
 
     if (formData.minScore >= formData.maxScore) {
-      toast({
-        title: 'Validation Error',
-        description: 'Min score must be less than max score',
-        variant: 'destructive'
+      toast.error('Validation Error', {
+        description: 'Min score must be less than max score'
       })
       return
     }
 
     if (!selectedEvent) {
-      toast({
-        title: 'Error',
-        description: 'No event selected',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'No event selected'
       })
       return
     }
@@ -299,14 +304,12 @@ export default function CriteriaManagement() {
         setCriteria(prev => prev.map(criterion => 
           criterion.id === editingCriterion.id ? data.criterion : criterion
         ))
-        toast({
-          title: 'Success',
+        toast.success('Success', {
           description: 'Criterion updated successfully'
         })
       } else {
         setCriteria(prev => [...prev, data.criterion].sort((a, b) => a.displayOrder - b.displayOrder))
-        toast({
-          title: 'Success',
+        toast.success('Success', {
           description: 'Criterion created successfully'
         })
       }
@@ -314,10 +317,8 @@ export default function CriteriaManagement() {
       closeDialog()
     } catch (error) {
       console.error('Error saving criterion:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save criterion',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to save criterion'
       })
     } finally {
       setIsSubmitting(false)
@@ -340,17 +341,14 @@ export default function CriteriaManagement() {
       }
 
       setCriteria(prev => prev.filter(criterion => criterion.id !== criterionToDelete.id))
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Criterion deleted successfully'
       })
       setCriterionToDelete(null)
     } catch (error) {
       console.error('Error deleting criterion:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete criterion',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to delete criterion'
       })
     } finally {
       setDeletingCriteria(prev => {
@@ -398,8 +396,9 @@ export default function CriteriaManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {getStatsCard()}
+    <TooltipProvider>
+      <div className="space-y-6">
+        {getStatsCard()}
       
       <Card>
         <CardHeader>
@@ -424,12 +423,27 @@ export default function CriteriaManagement() {
                 Refresh
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => openDialog()} className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Criterion
-                  </Button>
-                </DialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DialogTrigger asChild>
+                        <Button 
+                          onClick={() => openDialog()} 
+                          className="flex items-center gap-2"
+                          disabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Criterion
+                        </Button>
+                      </DialogTrigger>
+                    </div>
+                  </TooltipTrigger>
+                  {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
+                    <TooltipContent>
+                      <p>Cannot modify criteria for {selectedEvent?.status} events</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>
@@ -529,7 +543,7 @@ export default function CriteriaManagement() {
                       strategy={verticalListSortingStrategy}
                     >
                       {criteria.map((criterion) => (
-                        <SortableRow key={criterion.id} criterion={criterion}>
+                        <SortableRow key={criterion.id} criterion={criterion} isDragDisabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}>
                           <TableCell className="font-medium w-48">
                             <div className="truncate" title={criterion.name}>
                               {criterion.name}
@@ -547,30 +561,53 @@ export default function CriteriaManagement() {
                           </TableCell>
                           <TableCell className="w-32">
                             <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openDialog(criterion)}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openDialog(criterion)}
+                                      className="h-8 w-8 p-0"
+                                      disabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TooltipTrigger>
+                                {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
+                                  <TooltipContent>
+                                    <p>Cannot edit criteria for {selectedEvent?.status} events</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
                               <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setCriterionToDelete(criterion)}
-                                    disabled={deletingCriteria.has(criterion.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                  >
-                                    {deletingCriteria.has(criterion.id) ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </AlertDialogTrigger>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setCriterionToDelete(criterion)}
+                                          disabled={deletingCriteria.has(criterion.id) || selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
+                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 disabled:text-muted-foreground"
+                                        >
+                                          {deletingCriteria.has(criterion.id) ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                    </div>
+                                  </TooltipTrigger>
+                                  {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
+                                    <TooltipContent>
+                                      <p>Cannot delete criteria for {selectedEvent?.status} events</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -599,5 +636,6 @@ export default function CriteriaManagement() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   )
 }

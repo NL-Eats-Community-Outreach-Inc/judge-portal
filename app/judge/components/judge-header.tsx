@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
@@ -31,11 +31,8 @@ export function JudgeHeader({ user }: JudgeHeaderProps) {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchEvent()
-  }, [])
-
-  const fetchEvent = async () => {
+  // Enhanced fetch function for real-time sync - use callback to ensure stable reference
+  const fetchEvent = useCallback(async () => {
     try {
       const response = await fetch('/api/judge/event')
       if (response.ok) {
@@ -47,7 +44,13 @@ export function JudgeHeader({ user }: JudgeHeaderProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+
+  // Initial fetch
+  useEffect(() => {
+    fetchEvent()
+  }, [fetchEvent])
 
   const handleSignOut = async () => {
     await authClient.signOut()

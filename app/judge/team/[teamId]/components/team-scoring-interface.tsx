@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,20 +32,16 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export function TeamScoringInterface({ 
   team, 
   criteria, 
-  judgeId, 
-  eventId: _ // eslint-disable-line @typescript-eslint/no-unused-vars
+  judgeId: _, // eslint-disable-line @typescript-eslint/no-unused-vars
+  eventId: __ // eslint-disable-line @typescript-eslint/no-unused-vars
 }: TeamScoringInterfaceProps) {
   const [scores, setScores] = useState<Score[]>([])
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [loading, setLoading] = useState(true)
-  const lastSavedState = useRef<Record<string, { score: number | null; comment: string }>>({})
+  const [lastSavedState, setLastSavedState] = useState<Record<string, { score: number | null; comment: string }>>({})
 
-  // Initialize scores from database
-  useEffect(() => {
-    fetchExistingScores()
-  }, [team.id, judgeId])
-
-  const fetchExistingScores = async () => {
+  // Use callback to ensure stable reference for real-time sync
+  const fetchExistingScores = useCallback(async () => {
     try {
       const response = await fetch(`/api/judge/scores?teamId=${team.id}`)
       if (response.ok) {
@@ -65,19 +61,26 @@ export function TeamScoringInterface({
         setScores(initialScores)
         
         // Initialize lastSavedState - only track actually saved scores
-        lastSavedState.current = initialScores.reduce((acc, score) => {
+        const newLastSavedState = initialScores.reduce((acc, score) => {
           if (score.id) { // Only track scores that exist in database
             acc[score.criterionId] = { score: score.score, comment: score.comment }
           }
           return acc
-        }, {} as Record<string, { score: number; comment: string }>)
+        }, {} as Record<string, { score: number | null; comment: string }>)
+        setLastSavedState(newLastSavedState)
       }
     } catch (error) {
       console.error('Error fetching scores:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [team.id, criteria])
+
+  // Initialize scores from database
+  useEffect(() => {
+    fetchExistingScores()
+  }, [fetchExistingScores])
+
 
   const saveScore = useCallback(async (criterionId: string, score: number | null, comment: string) => {
     // Don't save if score is null and comment is empty
@@ -86,7 +89,7 @@ export function TeamScoringInterface({
     }
     
     // Check if this score/comment combination has already been saved
-    const lastSaved = lastSavedState.current[criterionId]
+    const lastSaved = lastSavedState[criterionId]
     if (lastSaved && lastSaved.score === score && lastSaved.comment === comment) {
       return // No need to save if nothing changed
     }
@@ -116,7 +119,7 @@ export function TeamScoringInterface({
         ))
         
         // Update lastSavedState to prevent duplicate saves
-        lastSavedState.current[criterionId] = { score, comment }
+        setLastSavedState(prev => ({ ...prev, [criterionId]: { score, comment } }))
         
         setSaveStatus(prev => ({ ...prev, [criterionId]: 'saved' }))
         
@@ -134,7 +137,7 @@ export function TeamScoringInterface({
       console.error('Error saving score:', error)
       setSaveStatus(prev => ({ ...prev, [criterionId]: 'error' }))
     }
-  }, [team.id])
+  }, [team.id, lastSavedState])
 
   const handleScoreChange = (criterionId: string, newScore: number) => {
     setScores(prev => prev.map(s => 
@@ -176,7 +179,7 @@ export function TeamScoringInterface({
         saveScore(criterionId, currentScore.score, comment)
       }
     })
-  }, [debouncedComments, saveScore])
+  }, [debouncedComments, saveScore, scores])
 
   const getSaveStatusIcon = (criterionId: string) => {
     const status = saveStatus[criterionId] || 'idle'

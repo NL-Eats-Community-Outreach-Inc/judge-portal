@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Loader2, Users, UserCheck, Crown, RefreshCw } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 
 interface User {
   id: string
@@ -21,13 +21,9 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>())
-  const { toast } = useToast()
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  const fetchUsers = async () => {
+  // Use useCallback to ensure stable reference for real-time sync
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/users')
       const data = await response.json()
@@ -39,15 +35,18 @@ export default function UserManagement() {
       }
     } catch (error) {
       console.error('Error fetching users:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load users',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to load users'
       })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchUsers()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'judge') => {
     setUpdatingRoles(prev => new Set(prev).add(userId))
@@ -73,16 +72,13 @@ export default function UserManagement() {
         user.id === userId ? data.user : user
       ))
       
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: `User role updated to ${newRole}`
       })
     } catch (error) {
       console.error('Error updating user role:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update user role',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to update user role'
       })
     } finally {
       setUpdatingRoles(prev => {

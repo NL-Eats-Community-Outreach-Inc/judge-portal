@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
 interface Score {
@@ -38,6 +40,7 @@ interface TeamTotal {
   teamName: string
   presentationOrder: number
   totalScore: number
+  averageScore: number
   totalScores: number
   judgeCount: number
 }
@@ -59,17 +62,11 @@ export default function ResultsDashboard() {
   const [criteriaCount, setCriteriaCount] = useState(0)
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  const { toast } = useToast()
+  const [scoreMode, setScoreMode] = useState<'total' | 'average'>('total')
   const { selectedEvent } = useAdminEvent()
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchResults()
-    }
-  }, [selectedEvent])
-
-
-  const fetchResults = async () => {
+  // Use useCallback to ensure stable reference for real-time sync
+  const fetchResults = useCallback(async () => {
     if (!selectedEvent) return
     
     setIsLoadingResults(true)
@@ -87,15 +84,27 @@ export default function ResultsDashboard() {
       }
     } catch (error) {
       console.error('Error fetching results:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load results',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to load results'
       })
     } finally {
       setIsLoadingResults(false)
     }
-  }
+  }, [selectedEvent])
+
+  
+  // Note: Removed redundant team and criteria subscriptions since:
+  // 1. They all call the same fetchResults function
+  // 2. fetchResults gets all data in one API call
+  // 3. Score changes are the most frequent and important for results
+  // 4. Team/criteria changes will still be reflected when scores are updated
+
+  // Initial fetch when selected event changes
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchResults()
+    }
+  }, [selectedEvent, fetchResults])
 
 
   const handleExport = async () => {
@@ -120,16 +129,13 @@ export default function ResultsDashboard() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Results exported successfully'
       })
     } catch (error) {
       console.error('Error exporting results:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to export results',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to export results'
       })
     } finally {
       setIsExporting(false)
@@ -158,6 +164,14 @@ export default function ResultsDashboard() {
         return <span className="text-sm font-medium text-gray-500">#{rank}</span>
     }
   }
+
+  // Sort teams based on selected score mode
+  const sortedTeamTotals = [...teamTotals].sort((a, b) => {
+    if (scoreMode === 'average') {
+      return b.averageScore - a.averageScore
+    }
+    return b.totalScore - a.totalScore
+  })
 
   const getStatsCards = () => {
     const totalScores = scores.length
@@ -303,24 +317,35 @@ export default function ResultsDashboard() {
               <div>
                 <CardTitle>Team Rankings</CardTitle>
                 <CardDescription>
-                  Teams ranked by total score across all criteria
+                  Teams ranked by {scoreMode === 'total' ? 'total' : 'average'} score across all criteria
                 </CardDescription>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={fetchResults}
-                disabled={isLoadingResults}
-                className="flex items-center gap-2"
-              >
-                {isLoadingResults ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Refresh
-              </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="score-mode" className="text-sm font-medium">
+                  {scoreMode === 'total' ? 'Total Score' : 'Average Score'}
+                </Label>
+                <Switch
+                  id="score-mode"
+                  checked={scoreMode === 'average'}
+                  onCheckedChange={(checked) => setScoreMode(checked ? 'average' : 'total')}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={fetchResults}
+                  disabled={isLoadingResults}
+                  className="flex items-center gap-2"
+                >
+                  {isLoadingResults ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Refresh
+                </Button>
               <Button 
                 onClick={handleExport}
                 disabled={isExporting}
@@ -333,6 +358,7 @@ export default function ResultsDashboard() {
                 )}
                 Export CSV
               </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -350,14 +376,14 @@ export default function ResultsDashboard() {
                   <TableRow>
                     <TableHead>Rank</TableHead>
                     <TableHead>Team</TableHead>
-                    <TableHead>Total Score</TableHead>
+                    <TableHead>Final Score</TableHead>
                     <TableHead>Total Scores</TableHead>
                     <TableHead>Judge Count</TableHead>
                     <TableHead>Progress</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teamTotals.map((team, index) => {
+                  {sortedTeamTotals.map((team, index) => {
                     const getRankStyle = (rank: number) => {
                       switch (rank) {
                         case 1:
@@ -413,7 +439,7 @@ export default function ResultsDashboard() {
                                 : ''
                             }`}
                           >
-                            {team.totalScore}
+                            {scoreMode === 'total' ? team.totalScore : team.averageScore}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-4 font-medium">{team.totalScores}</TableCell>
