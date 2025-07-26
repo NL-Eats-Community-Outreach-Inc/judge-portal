@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -177,13 +177,7 @@ export default function CriteriaManagement() {
     }
   }
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchCriteria()
-    }
-  }, [selectedEvent])
-
-  const fetchCriteria = async () => {
+  const fetchCriteria = useCallback(async () => {
     if (!selectedEvent) {
       setCriteria([])
       setIsLoading(false)
@@ -209,7 +203,13 @@ export default function CriteriaManagement() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedEvent, toast])
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchCriteria()
+    }
+  }, [selectedEvent, fetchCriteria])
 
   const openDialog = (criterion?: Criterion) => {
     if (criterion) {
@@ -575,7 +575,7 @@ export default function CriteriaManagement() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the criterion "{criterion.name}" and all associated scores.
+                                      This action cannot be undone. This will permanently delete the criterion &quot;{criterion.name}&quot; and all associated scores.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
