@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, Plus, Trophy, Edit, Trash2, ExternalLink, Github, RefreshCw, GripVertical } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 import {
   DndContext,
@@ -34,7 +35,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 // Sortable Row Component
-function SortableRow({ team, children }: { team: Team; children: React.ReactNode }) {
+function SortableRow({ team, children, isDragDisabled }: { team: Team; children: React.ReactNode; isDragDisabled?: boolean }) {
   const {
     attributes,
     listeners,
@@ -42,7 +43,10 @@ function SortableRow({ team, children }: { team: Team; children: React.ReactNode
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: team.id })
+  } = useSortable({ 
+    id: team.id,
+    disabled: isDragDisabled
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -58,13 +62,26 @@ function SortableRow({ team, children }: { team: Team; children: React.ReactNode
     >
       <TableCell>
         <div className="flex items-center gap-2">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-move p-1 rounded hover:bg-muted"
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
+          {isDragDisabled ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-1 rounded cursor-not-allowed">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Cannot reorder teams in completed events</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-move p-1 rounded hover:bg-muted"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
           <Badge variant="outline">#{team.presentationOrder}</Badge>
         </div>
       </TableCell>
@@ -106,7 +123,6 @@ export default function TeamManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingTeams, setDeletingTeams] = useState(new Set<string>())
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
-  const { toast } = useToast()
   const { selectedEvent } = useAdminEvent()
 
   // Drag and drop sensors
@@ -161,29 +177,21 @@ export default function TeamManagement() {
         throw new Error('Failed to update team order')
       }
 
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Team order updated successfully'
       })
     } catch (error) {
       console.error('Error updating team order:', error)
       // Revert on error
       setTeams(teams)
-      toast({
-        title: 'Error',
-        description: 'Failed to update team order',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to update team order'
       })
     }
   }
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchTeams()
-    }
-  }, [selectedEvent])
-
-  const fetchTeams = async () => {
+  // Use useCallback to ensure stable reference for real-time sync
+  const fetchTeams = useCallback(async () => {
     if (!selectedEvent) {
       setTeams([])
       setIsLoading(false)
@@ -201,15 +209,20 @@ export default function TeamManagement() {
       }
     } catch (error) {
       console.error('Error fetching teams:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load teams',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to load teams'
       })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedEvent])
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchTeams()
+    }
+  }, [selectedEvent, fetchTeams])
+
 
   const openDialog = (team?: Team) => {
     if (team) {
@@ -245,19 +258,15 @@ export default function TeamManagement() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Team name is required',
-        variant: 'destructive'
+      toast.error('Validation Error', {
+        description: 'Team name is required'
       })
       return
     }
 
     if (!selectedEvent) {
-      toast({
-        title: 'Error',
-        description: 'No event selected',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'No event selected'
       })
       return
     }
@@ -290,14 +299,12 @@ export default function TeamManagement() {
         setTeams(prev => prev.map(team => 
           team.id === editingTeam.id ? data.team : team
         ))
-        toast({
-          title: 'Success',
+        toast.success('Success', {
           description: 'Team updated successfully'
         })
       } else {
         setTeams(prev => [...prev, data.team].sort((a, b) => a.presentationOrder - b.presentationOrder))
-        toast({
-          title: 'Success',
+        toast.success('Success', {
           description: 'Team created successfully'
         })
       }
@@ -305,10 +312,8 @@ export default function TeamManagement() {
       closeDialog()
     } catch (error) {
       console.error('Error saving team:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save team',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to save team'
       })
     } finally {
       setIsSubmitting(false)
@@ -331,18 +336,15 @@ export default function TeamManagement() {
       }
 
       setTeams(prev => prev.filter(team => team.id !== teamToDelete.id))
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Team deleted successfully'
       })
       
       setTeamToDelete(null)
     } catch (error) {
       console.error('Error deleting team:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete team',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to delete team'
       })
     } finally {
       setDeletingTeams(prev => {
@@ -390,8 +392,9 @@ export default function TeamManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {getStatsCard()}
+    <TooltipProvider>
+      <div className="space-y-6">
+        {getStatsCard()}
       
       <Card>
         <CardHeader>
@@ -416,12 +419,27 @@ export default function TeamManagement() {
                 Refresh
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => openDialog()} className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Team
-                  </Button>
-                </DialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DialogTrigger asChild>
+                        <Button 
+                          onClick={() => openDialog()} 
+                          className="flex items-center gap-2"
+                          disabled={selectedEvent?.status === 'completed'}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Team
+                        </Button>
+                      </DialogTrigger>
+                    </div>
+                  </TooltipTrigger>
+                  {selectedEvent?.status === 'completed' && (
+                    <TooltipContent>
+                      <p>Cannot add teams to completed events</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>
@@ -519,7 +537,7 @@ export default function TeamManagement() {
                       strategy={verticalListSortingStrategy}
                     >
                       {teams.map((team) => (
-                        <SortableRow key={team.id} team={team}>
+                        <SortableRow key={team.id} team={team} isDragDisabled={selectedEvent?.status === 'completed'}>
                           <TableCell className="font-medium w-48">
                             <div className="truncate" title={team.name}>
                               {team.name}
@@ -560,30 +578,53 @@ export default function TeamManagement() {
                           </TableCell>
                           <TableCell className="w-32">
                             <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openDialog(team)}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openDialog(team)}
+                                      className="h-8 w-8 p-0"
+                                      disabled={selectedEvent?.status === 'completed'}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TooltipTrigger>
+                                {selectedEvent?.status === 'completed' && (
+                                  <TooltipContent>
+                                    <p>Cannot edit teams in completed events</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
                               <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setTeamToDelete(team)}
-                                    disabled={deletingTeams.has(team.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                  >
-                                    {deletingTeams.has(team.id) ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </AlertDialogTrigger>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setTeamToDelete(team)}
+                                          disabled={deletingTeams.has(team.id) || selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
+                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 disabled:text-muted-foreground"
+                                        >
+                                          {deletingTeams.has(team.id) ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                    </div>
+                                  </TooltipTrigger>
+                                  {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
+                                    <TooltipContent>
+                                      <p>Cannot delete teams during or after event</p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -612,5 +653,6 @@ export default function TeamManagement() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   )
 }
