@@ -104,7 +104,7 @@ export default function ResultsDashboard() {
     if (selectedEvent) {
       fetchResults()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedEvent, fetchResults])
 
 
   const handleExport = async () => {
