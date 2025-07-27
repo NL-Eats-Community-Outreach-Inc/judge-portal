@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar } from 'lucide-react'
+import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
@@ -27,6 +27,7 @@ interface Event {
 export default function EventManagement() {
   const { events, isLoading, refreshEvents } = useAdminEvent()
   const [isSaving, setIsSaving] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
@@ -310,16 +311,38 @@ export default function EventManagement() {
       )}
 
       {/* Events List */}
-      <Card>
+      <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>All Events</CardTitle>
-              <CardDescription>
-                Manage all your judging events ({events.length} total)
-              </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>All Events</CardTitle>
+                <CardDescription>
+                  Manage all your judging events ({events.length} total)
+                </CardDescription>
+              </div>
             </div>
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                setIsRefreshing(true)
+                try {
+                  await refreshEvents()
+                } finally {
+                  setIsRefreshing(false)
+                }
+              }}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -420,6 +443,16 @@ export default function EventManagement() {
         </CardContent>
       </Card>
     </div>
+
+    {/* Subtle loading overlay */}
+    {isRefreshing && (
+      <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+        <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-medium text-foreground">Refreshing events...</span>
+        </div>
+      </div>
+    )}
     </TooltipProvider>
   )
 }

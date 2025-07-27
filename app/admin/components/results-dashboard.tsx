@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal } from 'lucide-react'
+import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
@@ -41,6 +43,7 @@ interface TeamTotal {
   presentationOrder: number
   totalScore: number
   averageScore: number
+  weightedAverageScore: number
   totalScores: number
   judgeCount: number
 }
@@ -62,7 +65,11 @@ export default function ResultsDashboard() {
   const [criteriaCount, setCriteriaCount] = useState(0)
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  const [scoreMode, setScoreMode] = useState<'total' | 'average'>('total')
+  const [scoreMode, setScoreMode] = useState<'total' | 'average' | 'weighted'>('total')
+  const [criteriaWeights, setCriteriaWeights] = useState<Record<string, number>>({})
+  const [tempCriteriaWeights, setTempCriteriaWeights] = useState<Record<string, number>>({})
+  const [showWeightsDialog, setShowWeightsDialog] = useState(false)
+  const [availableCriteria, setAvailableCriteria] = useState<Array<{id: string, name: string}>>([])
   const { selectedEvent } = useAdminEvent()
 
   // Use useCallback to ensure stable reference for real-time sync
@@ -79,6 +86,26 @@ export default function ResultsDashboard() {
         setTeamTotals(data.teamTotals)
         setCriteriaAverages(data.criteriaAverages)
         setCriteriaCount(data.criteriaCount || 0)
+        
+        // Extract unique criteria from scores
+        const criteriaMap = new Map<string, { id: string; name: string; displayOrder: number; minScore: number; maxScore: number }>()
+        data.scores.forEach((s: Score) => {
+          criteriaMap.set(s.criterion.id, s.criterion)
+        })
+        const criteria = Array.from(criteriaMap.values()).map(c => ({ id: c.id, name: c.name }))
+        setAvailableCriteria(criteria)
+        
+        // Initialize weights if not set (equal percentages that sum to 100%)
+        const initialWeights: Record<string, number> = {}
+        const equalWeight = criteria.length > 0 ? 100 / criteria.length : 0
+        criteria.forEach(c => {
+          if (!(c.id in criteriaWeights)) {
+            initialWeights[c.id] = equalWeight
+          }
+        })
+        if (Object.keys(initialWeights).length > 0) {
+          setCriteriaWeights(prev => ({ ...prev, ...initialWeights }))
+        }
       } else {
         throw new Error(data.error)
       }
@@ -90,7 +117,7 @@ export default function ResultsDashboard() {
     } finally {
       setIsLoadingResults(false)
     }
-  }, [selectedEvent])
+  }, [selectedEvent, criteriaWeights])
 
   
   // Note: Removed redundant team and criteria subscriptions since:
@@ -112,7 +139,17 @@ export default function ResultsDashboard() {
     
     setIsExporting(true)
     try {
-      const response = await fetch(`/api/admin/results/export?eventId=${selectedEvent.id}`)
+      // Build URL with score mode and criteria weights for weighted mode
+      const url = new URL(`/api/admin/results/export`, window.location.origin)
+      url.searchParams.set('eventId', selectedEvent.id)
+      url.searchParams.set('scoreMode', scoreMode)
+      
+      // For weighted mode, pass criteria weights
+      if (scoreMode === 'weighted') {
+        url.searchParams.set('criteriaWeights', JSON.stringify(criteriaWeights))
+      }
+      
+      const response = await fetch(url.toString())
       
       if (!response.ok) {
         throw new Error('Failed to export results')
@@ -120,17 +157,17 @@ export default function ResultsDashboard() {
 
       // Create download link
       const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
+      const downloadUrl = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = `judging-results-${selectedEvent?.name || 'event'}-${new Date().toISOString().split('T')[0]}.csv`
+      a.href = downloadUrl
+      a.download = `judging-results-${selectedEvent?.name || 'event'}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
+      window.URL.revokeObjectURL(downloadUrl)
       document.body.removeChild(a)
 
       toast.success('Success', {
-        description: 'Results exported successfully'
+        description: `Results exported successfully (${scoreMode} scores)`
       })
     } catch (error) {
       console.error('Error exporting results:', error)
@@ -165,12 +202,90 @@ export default function ResultsDashboard() {
     }
   }
 
+  // Weight management functions
+  const openWeightsDialog = () => {
+    setTempCriteriaWeights({ ...criteriaWeights })
+    setShowWeightsDialog(true)
+  }
+
+  const handleWeightChange = (criterionId: string, value: string) => {
+    const numValue = parseFloat(value) || 0
+    setTempCriteriaWeights(prev => ({
+      ...prev,
+      [criterionId]: Math.max(0, Math.min(100, numValue))
+    }))
+  }
+
+  const getWeightSum = () => {
+    return Object.values(tempCriteriaWeights).reduce((sum, weight) => sum + weight, 0)
+  }
+
+  const normalizeWeights = () => {
+    const total = getWeightSum()
+    if (total === 0) return
+    
+    const normalized: Record<string, number> = {}
+    Object.entries(tempCriteriaWeights).forEach(([id, weight]) => {
+      normalized[id] = (weight / total) * 100
+    })
+    setTempCriteriaWeights(normalized)
+  }
+
+  const applyWeights = () => {
+    setCriteriaWeights({ ...tempCriteriaWeights })
+    setShowWeightsDialog(false)
+    toast.success('Success', {
+      description: 'Criteria weights updated successfully'
+    })
+  }
+
+  const cancelWeights = () => {
+    setTempCriteriaWeights({})
+    setShowWeightsDialog(false)
+  }
+
+  // Calculate weighted scores on the frontend using criteria weights
+  const getWeightedScore = (teamId: string): number => {
+    if (Object.keys(criteriaWeights).length === 0) return 0
+    
+    // Get all scores for this team grouped by judge
+    const teamScores = scores.filter(s => s.team.id === teamId)
+    const judgeGroups = teamScores.reduce((acc, score) => {
+      if (!acc[score.judge.id]) acc[score.judge.id] = []
+      acc[score.judge.id].push(score)
+      return acc
+    }, {} as Record<string, Score[]>)
+    
+    // Calculate weighted sum for each judge, then sum across all judges
+    const judgeWeightedTotals = Object.values(judgeGroups).map(judgeScores => {
+      let weightedSum = 0
+      
+      judgeScores.forEach(score => {
+        const weight = (criteriaWeights[score.criterion.id] || 0) / 100 // Convert percentage to decimal
+        weightedSum += score.score * weight
+      })
+      
+      return weightedSum
+    })
+    
+    // Return sum of all judges' weighted totals
+    return judgeWeightedTotals.reduce((sum, total) => sum + total, 0)
+  }
+
   // Sort teams based on selected score mode
   const sortedTeamTotals = [...teamTotals].sort((a, b) => {
-    if (scoreMode === 'average') {
-      return b.averageScore - a.averageScore
+    switch (scoreMode) {
+      case 'total':
+        return b.totalScore - a.totalScore
+      case 'average':
+        return b.averageScore - a.averageScore
+      case 'weighted':
+        const aWeighted = getWeightedScore(a.teamId)
+        const bWeighted = getWeightedScore(b.teamId)
+        return bWeighted - aWeighted
+      default:
+        return b.totalScore - a.totalScore
     }
-    return b.totalScore - a.totalScore
   })
 
   const getStatsCards = () => {
@@ -233,15 +348,7 @@ export default function ResultsDashboard() {
     )
   }
 
-  if (isLoadingResults) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    )
-  }
+  // Remove full-page loading state to maintain visual consistency
 
   if (!selectedEvent) {
     return (
@@ -256,7 +363,7 @@ export default function ResultsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Results Dashboard</h2>
@@ -306,10 +413,12 @@ export default function ResultsDashboard() {
 
       {/* Results Content */}
       <>
-        {getStatsCards()}
+        <div className={`relative ${isLoadingResults ? 'opacity-60 pointer-events-none' : ''} transition-opacity duration-200`}>
+          {getStatsCards()}
+        </div>
           
           {/* Team Rankings */}
-          <Card>
+          <Card className={`relative ${isLoadingResults ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -317,20 +426,121 @@ export default function ResultsDashboard() {
               <div>
                 <CardTitle>Team Rankings</CardTitle>
                 <CardDescription>
-                  Teams ranked by {scoreMode === 'total' ? 'total' : 'average'} score across all criteria
+                  Teams ranked by {scoreMode === 'total' ? 'total' : scoreMode === 'average' ? 'average' : 'weighted average'} score across all criteria
                 </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="score-mode" className="text-sm font-medium">
-                  {scoreMode === 'total' ? 'Total Score' : 'Average Score'}
-                </Label>
-                <Switch
-                  id="score-mode"
-                  checked={scoreMode === 'average'}
-                  onCheckedChange={(checked) => setScoreMode(checked ? 'average' : 'total')}
-                />
+              <div className="flex items-center gap-3">
+                <Select value={scoreMode} onValueChange={(value: 'total' | 'average' | 'weighted') => setScoreMode(value)}>
+                  <SelectTrigger className="w-56 bg-gradient-to-r from-slate-50/50 to-blue-50/30 dark:from-slate-800/30 dark:to-blue-900/20 border-slate-200 dark:border-slate-700 shadow-sm">
+                    <SelectValue>
+                      {scoreMode === 'total' && 'Total Score'}
+                      {scoreMode === 'average' && 'Average Score'}
+                      {scoreMode === 'weighted' && 'Weighted Score'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-background/95 backdrop-blur-sm border border-border/50 shadow-lg">
+                    <SelectItem value="total" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Total Score</span>
+                        <span className="text-xs text-muted-foreground">Sum of all judges&apos; total scores</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="average" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Average Score</span>
+                        <span className="text-xs text-muted-foreground">Average of all judges&apos; total scores</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="weighted" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Weighted Score</span>
+                        <span className="text-xs text-muted-foreground">Sum of weighted scores by criteria importance</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {scoreMode === 'weighted' && (
+                  <Dialog open={showWeightsDialog} onOpenChange={setShowWeightsDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openWeightsDialog}
+                        className="flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-50/50 to-purple-50/30 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-200 dark:border-indigo-700"
+                      >
+                        <Settings className="h-3 w-3" />
+                        Configure Weights
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Settings className="h-5 w-5 text-primary" />
+                          Configure Criteria Weights
+                        </DialogTitle>
+                        <DialogDescription>
+                          Set the importance percentage for each criterion. All weights must sum to 100%.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        {availableCriteria.map((criterion) => (
+                          <div key={criterion.id} className="space-y-2">
+                            <Label htmlFor={`weight-${criterion.id}`} className="text-sm font-medium">
+                              {criterion.name}
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`weight-${criterion.id}`}
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value={tempCriteriaWeights[criterion.id]?.toFixed(1) || '0.0'}
+                                onChange={(e) => handleWeightChange(criterion.id, e.target.value)}
+                                className="flex-1"
+                              />
+                              <span className="text-sm text-muted-foreground min-w-[20px]">%</span>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Total:</span>
+                            <span className={`text-sm font-medium ${
+                              Math.abs(getWeightSum() - 100) < 0.1 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {getWeightSum().toFixed(1)}%
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={normalizeWeights}
+                            className="w-full"
+                          >
+                            Auto-normalize to 100%
+                          </Button>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={cancelWeights}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={applyWeights}
+                          disabled={Math.abs(getWeightSum() - 100) > 0.1}
+                        >
+                          Apply Changes
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button 
@@ -439,7 +649,7 @@ export default function ResultsDashboard() {
                                 : ''
                             }`}
                           >
-                            {scoreMode === 'total' ? team.totalScore : team.averageScore}
+                            {scoreMode === 'total' ? team.totalScore : scoreMode === 'average' ? team.averageScore : getWeightedScore(team.teamId).toFixed(2)}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-4 font-medium">{team.totalScores}</TableCell>
@@ -466,6 +676,7 @@ export default function ResultsDashboard() {
           )}
         </CardContent>
       </Card>
+
 
       {/* Recent Scores - Commented out for new judge scores table */}
       {/*
@@ -531,7 +742,7 @@ export default function ResultsDashboard() {
       */}
 
       {/* Judge Scores Matrix - Three Layer: Judge → Team → Criterion */}
-      <Card>
+      <Card className={`relative ${isLoadingResults ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Star className="h-5 w-5 text-primary" />
@@ -707,6 +918,16 @@ export default function ResultsDashboard() {
       </Card>
 
       </>
+
+      {/* Subtle loading overlay */}
+      {isLoadingResults && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing results...</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
