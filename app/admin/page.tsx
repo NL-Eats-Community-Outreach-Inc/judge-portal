@@ -37,41 +37,37 @@ export default function AdminDashboard() {
               <span className="text-sm">Events</span>
             </TabsTrigger>
             <TabsTrigger 
-              value="users" 
-              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:via-cyan-50 data-[state=active]:to-sky-50 dark:data-[state=active]:from-blue-950/40 dark:data-[state=active]:via-cyan-950/40 dark:data-[state=active]:to-sky-950/40 data-[state=active]:text-cyan-700 dark:data-[state=active]:text-cyan-300 data-[state=active]:shadow-md data-[state=active]:border-cyan-200/50 dark:data-[state=active]:border-cyan-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
-            >
-              <Users className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
-              <span className="text-sm">Users</span>
-            </TabsTrigger>
-            <TabsTrigger 
               value="teams" 
-              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-50 data-[state=active]:via-teal-50 data-[state=active]:to-cyan-100 dark:data-[state=active]:from-cyan-950/40 dark:data-[state=active]:via-teal-950/40 dark:data-[state=active]:to-cyan-900/40 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-md data-[state=active]:border-teal-200/50 dark:data-[state=active]:border-teal-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
+              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-50 data-[state=active]:via-cyan-50 data-[state=active]:to-sky-50 dark:data-[state=active]:from-blue-950/40 dark:data-[state=active]:via-cyan-950/40 dark:data-[state=active]:to-sky-950/40 data-[state=active]:text-cyan-700 dark:data-[state=active]:text-cyan-300 data-[state=active]:shadow-md data-[state=active]:border-cyan-200/50 dark:data-[state=active]:border-cyan-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
             >
               <Trophy className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
               <span className="text-sm">Teams</span>
             </TabsTrigger>
             <TabsTrigger 
               value="criteria" 
-              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-50 data-[state=active]:via-purple-50 data-[state=active]:to-violet-50 dark:data-[state=active]:from-teal-950/40 dark:data-[state=active]:via-purple-950/40 dark:data-[state=active]:to-violet-950/40 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-md data-[state=active]:border-purple-200/50 dark:data-[state=active]:border-purple-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
+              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-50 data-[state=active]:via-teal-50 data-[state=active]:to-cyan-100 dark:data-[state=active]:from-cyan-950/40 dark:data-[state=active]:via-teal-950/40 dark:data-[state=active]:to-cyan-900/40 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-md data-[state=active]:border-teal-200/50 dark:data-[state=active]:border-teal-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
             >
               <Target className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
               <span className="text-sm">Criteria</span>
             </TabsTrigger>
             <TabsTrigger 
               value="results" 
-              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-50 data-[state=active]:via-violet-50 data-[state=active]:to-indigo-50 dark:data-[state=active]:from-purple-950/40 dark:data-[state=active]:via-violet-950/40 dark:data-[state=active]:to-indigo-950/40 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:shadow-md data-[state=active]:border-violet-200/50 dark:data-[state=active]:border-violet-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
+              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-50 data-[state=active]:via-purple-50 data-[state=active]:to-violet-50 dark:data-[state=active]:from-teal-950/40 dark:data-[state=active]:via-purple-950/40 dark:data-[state=active]:to-violet-950/40 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 data-[state=active]:shadow-md data-[state=active]:border-purple-200/50 dark:data-[state=active]:border-purple-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
             >
               <BarChart3 className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
               <span className="text-sm">Results</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-50 data-[state=active]:via-violet-50 data-[state=active]:to-indigo-50 dark:data-[state=active]:from-purple-950/40 dark:data-[state=active]:via-violet-950/40 dark:data-[state=active]:to-indigo-950/40 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:shadow-md data-[state=active]:border-violet-200/50 dark:data-[state=active]:border-violet-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
+            >
+              <Users className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
+              <span className="text-sm">Users</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="event" className="space-y-6">
             <EventManagement />
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <UserManagement />
           </TabsContent>
 
           <TabsContent value="teams" className="space-y-6">
@@ -84,6 +80,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="results" className="space-y-6">
             <ResultsDashboard />
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <UserManagement />
           </TabsContent>
         </Tabs>
         </main>

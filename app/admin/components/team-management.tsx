@@ -112,6 +112,7 @@ interface TeamFormData {
 export default function TeamManagement() {
   const [teams, setTeams] = useState<Team[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [formData, setFormData] = useState<TeamFormData>({
@@ -335,7 +336,14 @@ export default function TeamManagement() {
         throw new Error(error.error || 'Failed to delete team')
       }
 
-      setTeams(prev => prev.filter(team => team.id !== teamToDelete.id))
+      setTeams(prev => {
+        const filtered = prev.filter(team => team.id !== teamToDelete.id)
+        // Recalculate presentation order
+        return filtered.map((team, index) => ({
+          ...team,
+          presentationOrder: index + 1
+        }))
+      })
       toast.success('Success', {
         description: 'Team deleted successfully'
       })
@@ -396,7 +404,7 @@ export default function TeamManagement() {
       <div className="space-y-6">
         {getStatsCard()}
       
-      <Card>
+      <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -411,11 +419,22 @@ export default function TeamManagement() {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={fetchTeams}
-                disabled={isLoading}
+                onClick={async () => {
+                  setIsRefreshing(true)
+                  try {
+                    await fetchTeams()
+                  } finally {
+                    setIsRefreshing(false)
+                  }
+                }}
+                disabled={isRefreshing}
                 className="flex items-center gap-2"
               >
-                <RefreshCw className="h-4 w-4" />
+                {isRefreshing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
                 Refresh
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -653,6 +672,16 @@ export default function TeamManagement() {
         </CardContent>
       </Card>
     </div>
+
+    {/* Subtle loading overlay */}
+    {isRefreshing && (
+      <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+        <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-medium text-foreground">Refreshing teams...</span>
+        </div>
+      </div>
+    )}
     </TooltipProvider>
   )
 }

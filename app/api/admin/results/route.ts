@@ -52,28 +52,51 @@ export async function GET(request: NextRequest) {
       : await baseScoresQuery
           .orderBy(teams.presentationOrder, criteria.displayOrder)
 
-    // Calculate team totals and averages
-    const baseTeamTotalsQuery = db
-      .select({
-        teamId: teams.id,
-        teamName: teams.name,
-        presentationOrder: teams.presentationOrder,
-        totalScore: sql<number>`COALESCE(SUM(${scores.score}), 0)`,
-        averageScore: sql<number>`CASE WHEN COUNT(${scores.score}) > 0 THEN ROUND(AVG(${scores.score}::numeric), 2) ELSE 0 END`,
-        totalScores: sql<number>`COUNT(${scores.score})`,
-        judgeCount: sql<number>`COUNT(DISTINCT ${scores.judgeId})`
-      })
-      .from(teams)
-      .leftJoin(scores, eq(scores.teamId, teams.id))
+    // Calculate team totals using proper judge-level aggregation
+    const baseTeamTotalsQuery = sql`
+      WITH judge_totals AS (
+        SELECT 
+          teams.id as "teamId",
+          teams.name as "teamName",
+          teams.presentation_order as "presentationOrder",
+          scores.judge_id as "judgeId",
+          users.email as "judgeEmail",
+          SUM(scores.score::numeric) as judge_total,
+          COUNT(scores.score) as criteria_scored
+        FROM teams
+        LEFT JOIN scores ON scores.team_id = teams.id
+        LEFT JOIN users ON scores.judge_id = users.id
+        ${eventId ? sql`WHERE teams.event_id = ${eventId}` : sql``}
+        GROUP BY teams.id, teams.name, teams.presentation_order, scores.judge_id, users.email
+      ),
+      team_calculations AS (
+        SELECT 
+          "teamId",
+          "teamName",
+          "presentationOrder",
+          COALESCE(SUM(judge_total), 0) as total_score,
+          COALESCE(AVG(judge_total), 0) as average_score,
+          COALESCE(AVG(judge_total), 0) as weighted_average_score,
+          COUNT("judgeId") as judge_count,
+          SUM(criteria_scored) as total_scores
+        FROM judge_totals
+        WHERE judge_total IS NOT NULL
+        GROUP BY "teamId", "teamName", "presentationOrder"
+      )
+      SELECT 
+        "teamId",
+        "teamName", 
+        "presentationOrder",
+        ROUND(total_score::numeric, 2) as "totalScore",
+        ROUND(average_score::numeric, 2) as "averageScore", 
+        ROUND(weighted_average_score::numeric, 2) as "weightedAverageScore",
+        total_scores as "totalScores",
+        judge_count as "judgeCount"
+      FROM team_calculations
+      ORDER BY total_score DESC
+    `
 
-    const teamTotals = eventId 
-      ? await baseTeamTotalsQuery
-          .where(eq(teams.eventId, eventId))
-          .groupBy(teams.id, teams.name, teams.presentationOrder)
-          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
-      : await baseTeamTotalsQuery
-          .groupBy(teams.id, teams.name, teams.presentationOrder)
-          .orderBy(sql<number>`COALESCE(SUM(${scores.score}), 0) DESC`)
+    const teamTotals = await db.execute(baseTeamTotalsQuery)
 
     // Get criteria averages per team
     const baseCriteriaAveragesQuery = db
@@ -120,10 +143,15 @@ export async function GET(request: NextRequest) {
       event: eventInfo,
       criteriaCount,
       scores: allScores,
-      teamTotals: teamTotals.map(total => ({
-        ...total,
+      teamTotals: (teamTotals as Array<Record<string, unknown>>).map((total: Record<string, unknown>) => ({
+        teamId: total.teamId,
+        teamName: total.teamName,
+        presentationOrder: Number(total.presentationOrder),
         totalScore: Number(total.totalScore),
-        averageScore: Number(total.averageScore)
+        averageScore: Number(total.averageScore),
+        weightedAverageScore: Number(total.weightedAverageScore),
+        totalScores: Number(total.totalScores),
+        judgeCount: Number(total.judgeCount)
       })),
       criteriaAverages: criteriaAverages.map(avg => ({
         ...avg,

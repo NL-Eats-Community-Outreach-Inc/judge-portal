@@ -112,6 +112,7 @@ function SortableRow({ criterion, children, isDragDisabled }: { criterion: Crite
 export default function CriteriaManagement() {
   const [criteria, setCriteria] = useState<Criterion[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCriterion, setEditingCriterion] = useState<Criterion | null>(null)
   const [formData, setFormData] = useState<CriterionFormData>({
@@ -218,8 +219,10 @@ export default function CriteriaManagement() {
   }, [selectedEvent])
 
   useEffect(() => {
-    fetchCriteria()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (selectedEvent) {
+      fetchCriteria()
+    }
+  }, [selectedEvent, fetchCriteria])
 
 
   const openDialog = (criterion?: Criterion) => {
@@ -283,7 +286,7 @@ export default function CriteriaManagement() {
       
       const requestBody = editingCriterion 
         ? { ...formData, displayOrder: editingCriterion.displayOrder }
-        : { ...formData, eventId: selectedEvent.id, displayOrder: criteria.length + 1 }
+        : { ...formData, eventId: selectedEvent.id }
       
       const response = await fetch(url, {
         method,
@@ -340,7 +343,14 @@ export default function CriteriaManagement() {
         throw new Error(error.error || 'Failed to delete criterion')
       }
 
-      setCriteria(prev => prev.filter(criterion => criterion.id !== criterionToDelete.id))
+      setCriteria(prev => {
+        const filtered = prev.filter(criterion => criterion.id !== criterionToDelete.id)
+        // Recalculate display order
+        return filtered.map((criterion, index) => ({
+          ...criterion,
+          displayOrder: index + 1
+        }))
+      })
       toast.success('Success', {
         description: 'Criterion deleted successfully'
       })
@@ -400,7 +410,7 @@ export default function CriteriaManagement() {
       <div className="space-y-6">
         {getStatsCard()}
       
-      <Card>
+      <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -415,11 +425,22 @@ export default function CriteriaManagement() {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={fetchCriteria}
-                disabled={isLoading}
+                onClick={async () => {
+                  setIsRefreshing(true)
+                  try {
+                    await fetchCriteria()
+                  } finally {
+                    setIsRefreshing(false)
+                  }
+                }}
+                disabled={isRefreshing}
                 className="flex items-center gap-2"
               >
-                <RefreshCw className="h-4 w-4" />
+                {isRefreshing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
                 Refresh
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -636,6 +657,16 @@ export default function CriteriaManagement() {
         </CardContent>
       </Card>
     </div>
+
+    {/* Subtle loading overlay */}
+    {isRefreshing && (
+      <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+        <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-medium text-foreground">Refreshing criteria...</span>
+        </div>
+      </div>
+    )}
     </TooltipProvider>
   )
 }

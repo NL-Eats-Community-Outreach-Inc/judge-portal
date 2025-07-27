@@ -20,6 +20,7 @@ interface User {
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>())
 
   // Use useCallback to ensure stable reference for real-time sync
@@ -160,9 +161,11 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-      {getStatsCards()}
+      <div className={`relative ${isRefreshing ? 'opacity-60 pointer-events-none' : ''} transition-opacity duration-200`}>
+        {getStatsCards()}
+      </div>
       
-      <Card>
+      <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -176,11 +179,22 @@ export default function UserManagement() {
             </div>
             <Button 
               variant="outline" 
-              onClick={fetchUsers}
-              disabled={isLoading}
+              onClick={async () => {
+                setIsRefreshing(true)
+                try {
+                  await fetchUsers()
+                } finally {
+                  setIsRefreshing(false)
+                }
+              }}
+              disabled={isRefreshing}
               className="flex items-center gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               Refresh
             </Button>
           </div>
@@ -241,6 +255,16 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Subtle loading overlay */}
+      {isRefreshing && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing users...</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

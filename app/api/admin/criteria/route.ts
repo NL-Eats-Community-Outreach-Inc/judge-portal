@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { eventId, name, description, minScore, maxScore, displayOrder } = await request.json()
+    const { eventId, name, description, minScore, maxScore } = await request.json()
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })
@@ -53,16 +53,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Min score must be less than max score' }, { status: 400 })
     }
 
-    if (typeof displayOrder !== 'number') {
-      return NextResponse.json({ error: 'Display order must be a number' }, { status: 400 })
-    }
-
     // Verify event exists
     const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1)
     
     if (event.length === 0) {
       return NextResponse.json({ error: 'Event not found' }, { status: 400 })
     }
+
+    // Get the next display order for this event by querying actual database state
+    const existingCriteria = await db.select({ displayOrder: criteria.displayOrder })
+      .from(criteria)
+      .where(eq(criteria.eventId, eventId))
+    
+    const nextDisplayOrder = existingCriteria.length > 0 
+      ? Math.max(...existingCriteria.map(c => c.displayOrder)) + 1 
+      : 1
 
     // Create new criterion
     const [criterion] = await db
@@ -73,7 +78,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         minScore,
         maxScore,
-        displayOrder
+        displayOrder: nextDisplayOrder
       })
       .returning()
 
