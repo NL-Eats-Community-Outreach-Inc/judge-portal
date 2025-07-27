@@ -299,7 +299,7 @@ export default function UserManagement() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the judge "{user.email}" and all their associated scores.
+                                    This action cannot be undone. This will permanently delete the judge &quot;{user.email}&quot; and all their associated scores.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
