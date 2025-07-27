@@ -65,6 +65,7 @@ export default function ResultsDashboard() {
   const [criteriaCount, setCriteriaCount] = useState(0)
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isExportingJudgeScores, setIsExportingJudgeScores] = useState(false)
   const [scoreMode, setScoreMode] = useState<'total' | 'average' | 'weighted'>('total')
   const [criteriaWeights, setCriteriaWeights] = useState<Record<string, number>>({})
   const [tempCriteriaWeights, setTempCriteriaWeights] = useState<Record<string, number>>({})
@@ -176,6 +177,41 @@ export default function ResultsDashboard() {
       })
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleExportJudgeScores = async () => {
+    if (!selectedEvent) return
+    
+    setIsExportingJudgeScores(true)
+    try {
+      const response = await fetch(`/api/admin/results/export-judge-scores?eventId=${selectedEvent.id}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to export judge scores')
+      }
+
+      // Create download link
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = `judge-scores-detail-${selectedEvent?.name || 'event'}-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(downloadUrl)
+      document.body.removeChild(a)
+
+      toast.success('Success', {
+        description: 'Judge scores exported successfully'
+      })
+    } catch (error) {
+      console.error('Error exporting judge scores:', error)
+      toast.error('Error', {
+        description: 'Failed to export judge scores'
+      })
+    } finally {
+      setIsExportingJudgeScores(false)
     }
   }
 
@@ -744,14 +780,28 @@ export default function ResultsDashboard() {
       {/* Judge Scores Matrix - Three Layer: Judge → Team → Criterion */}
       <Card className={`relative ${isLoadingResults ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Star className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Detailed Scores by Judge</CardTitle>
-              <CardDescription>
-                Individual criterion scores given by each judge to all teams
-              </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Star className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Detailed Scores by Judge</CardTitle>
+                <CardDescription>
+                  Individual criterion scores given by each judge to all teams
+                </CardDescription>
+              </div>
             </div>
+            <Button 
+              onClick={handleExportJudgeScores}
+              disabled={isExportingJudgeScores}
+              className="flex items-center gap-2"
+            >
+              {isExportingJudgeScores ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export CSV
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
