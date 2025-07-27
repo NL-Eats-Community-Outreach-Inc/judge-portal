@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Loader2, Users, UserCheck, Crown, RefreshCw } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Loader2, Users, UserCheck, Crown, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface User {
@@ -22,6 +23,7 @@ export default function UserManagement() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>())
+  const [deletingUsers, setDeletingUsers] = useState(new Set<string>())
 
   // Use useCallback to ensure stable reference for real-time sync
   const fetchUsers = useCallback(async () => {
@@ -83,6 +85,37 @@ export default function UserManagement() {
       })
     } finally {
       setUpdatingRoles(prev => {
+        const next = new Set(prev)
+        next.delete(userId)
+        return next
+      })
+    }
+  }
+
+  const handleDelete = async (userId: string) => {
+    setDeletingUsers(prev => new Set(prev).add(userId))
+    
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete user')
+      }
+
+      setUsers(prev => prev.filter(user => user.id !== userId))
+      toast.success('Success', {
+        description: 'Judge deleted successfully'
+      })
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to delete user'
+      })
+    } finally {
+      setDeletingUsers(prev => {
         const next = new Set(prev)
         next.delete(userId)
         return next
@@ -226,26 +259,62 @@ export default function UserManagement() {
                         {new Date(user.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={user.role}
-                          onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
-                          disabled={updatingRoles.has(user.id)}
-                        >
-                          <SelectTrigger className="w-32">
-                            {updatingRoles.has(user.id) ? (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                <span>Updating...</span>
-                              </div>
-                            ) : (
-                              <SelectValue />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="judge">Judge</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={user.role}
+                            onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
+                            disabled={updatingRoles.has(user.id)}
+                          >
+                            <SelectTrigger className="w-32">
+                              {updatingRoles.has(user.id) ? (
+                                <div className="flex items-center gap-2">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <span>Updating...</span>
+                                </div>
+                              ) : (
+                                <SelectValue />
+                              )}
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="judge">Judge</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {user.role === 'judge' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={deletingUsers.has(user.id)}
+                                >
+                                  {deletingUsers.has(user.id) ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the judge "{user.email}" and all their associated scores.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(user.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Judge
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
