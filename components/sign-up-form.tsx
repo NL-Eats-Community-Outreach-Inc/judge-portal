@@ -54,7 +54,7 @@ export function SignUpForm({
       if (data.user && data.session) {
         // User is auto-confirmed and logged in, redirect to root and let middleware handle role-based routing
         console.log('User auto-confirmed and logged in');
-        router.push("/");
+        router.push("/judge");
       } else {
         // User needs email confirmation, show success page
         console.log('User created, awaiting email confirmation');
