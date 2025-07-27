@@ -16,9 +16,11 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 - **Single Active Event Enforcement** - Prevents confusion by allowing only one active event at a time
 - **User Role Management** - Promote judges to admins, manage permissions
 - **Dynamic Criteria Configuration** - Create custom scoring criteria with configurable ranges
-- **Real-time Results Dashboard** - Live score updates with team rankings and statistics
-- **CSV Export** - Export complete results with individual scores and rankings
+- **Real-time Results Dashboard** - Live score updates with team rankings, statistics, and configurable scoring modes
+- **Advanced CSV Export** - Export complete results with sum/average/weighted scores and individual judge data
 - **Drag-and-Drop Team Ordering** - Easily reorder team presentation sequence
+- **Data Integrity Safeguards** - Prevent destructive operations during active judging sessions
+- **Multiple Scoring Modes** - Toggle between sum, average, and weighted scoring with real-time recalculation
 
 ## 🛠️ Tech Stack
 

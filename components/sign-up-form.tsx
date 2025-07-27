@@ -50,12 +50,16 @@ export function SignUpForm({
       
       if (error) throw error;
       
-      // If user is immediately confirmed (dev mode), create database record
-      if (data.user && !data.user.email_confirmed_at) {
+      // Check if user is immediately confirmed (email confirmation disabled)
+      if (data.user && data.session) {
+        // User is auto-confirmed and logged in, redirect to root and let middleware handle role-based routing
+        console.log('User auto-confirmed and logged in');
+        router.push("/");
+      } else {
+        // User needs email confirmation, show success page
         console.log('User created, awaiting email confirmation');
+        router.push("/auth/sign-up-success");
       }
-      
-      router.push("/auth/sign-up-success");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
