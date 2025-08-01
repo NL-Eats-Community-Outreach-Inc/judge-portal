@@ -141,7 +141,7 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
   const loadingContent = (
     <aside className={cn(
       "bg-muted/30 border-r border-border p-4 h-full",
-      !isMobile && "w-80"
+      !isMobile && "w-64 lg:w-80"
     )}>
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
@@ -155,7 +155,7 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
   const noEventContent = (
     <aside className={cn(
       "bg-muted/30 border-r border-border flex flex-col h-full",
-      !isMobile && "w-80"
+      !isMobile && "w-64 lg:w-80"
     )}>
       <div className="p-4 border-b border-border">
         <h2 className="font-semibold text-foreground">Teams</h2>
@@ -216,7 +216,7 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
   const sidebarContent = (
     <aside className={cn(
       "bg-muted/30 border-r border-border flex flex-col h-full",
-      !isMobile && "w-80"
+      !isMobile && "w-64 lg:w-80"
     )}>
       {/* Header */}
       <div className="p-4 border-b border-border">

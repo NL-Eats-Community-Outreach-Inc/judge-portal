@@ -72,10 +72,10 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   }
 
   return (
-    <header className="bg-background border-b border-border">
-      <div className="min-h-16 px-4 md:px-6 flex items-center justify-between gap-4">
+    <header className="bg-background border-b border-border shrink-0">
+      <div className="min-h-16 px-4 md:px-6 flex items-center justify-between gap-4 max-w-full overflow-hidden">
         {/* Mobile menu button + Event info */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
           {/* Mobile menu button - only visible on mobile */}
           <Button
             variant="ghost"
@@ -88,18 +88,18 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
           </Button>
 
           {/* Event info */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             {loading ? (
               <div className="space-y-1">
                 <div className="h-4 w-32 md:w-48 bg-muted animate-pulse rounded" />
                 <div className="h-3 w-24 md:w-32 bg-muted animate-pulse rounded" />
               </div>
             ) : event ? (
-              <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate max-w-[120px] sm:max-w-[200px] md:max-w-[300px]">{event.name}</h1>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">{event.name}</h1>
                     <div className="shrink-0">
                       {getStatusBadge(event.status)}
                     </div>
@@ -113,16 +113,16 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground">No Active Event</h1>
-                    <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs">
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">No Active Event</h1>
+                    <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
                       Inactive
                     </Badge>
                   </div>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
+                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
                     No event is currently active for judging
                   </p>
                 </div>

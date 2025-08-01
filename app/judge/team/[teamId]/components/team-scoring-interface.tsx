@@ -281,7 +281,7 @@ export function TeamScoringInterface({
     // Medium range (11-25): Compact grid
     if (range <= 25) {
       return (
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 md:gap-2 max-w-full sm:max-w-[300px]">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 md:gap-2 max-w-full sm:max-w-[280px] lg:max-w-[300px]">
           {Array.from({ length: range }, (_, i) => {
             const value = criterion.minScore + i
             const isSelected = score?.score === value
@@ -332,7 +332,7 @@ export function TeamScoringInterface({
               className="flex-1"
             />
           </div>
-          <div className="flex gap-1.5 md:gap-2">
+          <div className="flex gap-1.5 md:gap-2 w-full">
             {presets.map((preset) => (
               <Button
                 key={preset}
@@ -340,7 +340,7 @@ export function TeamScoringInterface({
                 size="sm"
                 onClick={() => handleScoreChange(criterion.id, preset)}
                 className={cn(
-                  "flex-1 text-xs px-2 h-8 md:h-9 transition-all duration-200 hover:scale-105",
+                  "flex-1 text-xs px-1 md:px-2 h-8 md:h-9 transition-all duration-200 hover:scale-105 min-w-0",
                   score?.score === preset && "bg-gradient-to-r from-primary to-primary/90"
                 )}
               >
@@ -355,7 +355,7 @@ export function TeamScoringInterface({
     // Extra large range (51+): Number input with controls
     return (
       <div className="space-y-3">
-        <div className="flex items-center gap-2 md:gap-3 max-w-full sm:max-w-[300px]">
+        <div className="flex items-center gap-2 md:gap-3 max-w-full sm:max-w-[280px] lg:max-w-[300px]">
           <Button
             variant="outline"
             size="icon"
@@ -442,13 +442,13 @@ export function TeamScoringInterface({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 px-4 md:px-0 py-4 md:py-0">
+    <div className="max-w-full md:max-w-3xl lg:max-w-4xl mx-auto space-y-4 md:space-y-6 px-4 md:px-6 py-4 md:py-6 min-w-0">
       {/* Team header */}
       <Card className="p-4 md:p-6">
         <div className="space-y-3 md:space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">
+          <div className="flex items-start justify-between min-w-0">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground truncate min-w-0">
                 {team.name}
               </h1>
               <Badge variant="outline" className="mt-2">
