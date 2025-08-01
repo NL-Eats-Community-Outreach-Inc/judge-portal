@@ -12,12 +12,6 @@ import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle }
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { Team, Criterion } from '@/lib/db/schema'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 interface Score {
   id?: string
@@ -205,45 +199,15 @@ export function TeamScoringInterface({
 
   const getSaveStatusIcon = (criterionId: string) => {
     const status = saveStatus[criterionId] || 'idle'
-    const currentScore = scores.find(s => s.criterionId === criterionId)
-    const hasCommentWithoutScore = currentScore?.score === null && currentScore?.comment
     
     switch (status) {
       case 'saving':
         return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
       case 'saved':
         return <Check className="h-4 w-4 text-green-500" />
-      case 'validation-warning':
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Please set a score before adding comments</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )
       case 'error':
         return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
-        // Show validation warning if there's a comment without score, even when status is idle
-        if (hasCommentWithoutScore) {
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Please set a score before adding comments</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )
-        }
         return null
     }
   }
@@ -536,6 +500,13 @@ export function TeamScoringInterface({
                     onChange={(e) => handleCommentChange(criterion.id, e.target.value)}
                     rows={3}
                   />
+                  {/* Show inline warning when there's a comment without score */}
+                  {score?.score === null && score?.comment && (
+                    <div className="flex items-center gap-2 text-amber-600 text-sm mt-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>Please set a score before adding comments</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
