@@ -6,6 +6,12 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, Circle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 
 // Type definitions for our data
 interface Team {
@@ -21,7 +27,13 @@ interface ScoreCompletion {
   partial: boolean
 }
 
-export function JudgeSidebar() {
+interface JudgeSidebarProps {
+  isMobile?: boolean
+  isOpen?: boolean
+  onClose?: () => void
+}
+
+export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: JudgeSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [teams, setTeams] = useState<Team[]>([])
@@ -119,55 +131,104 @@ export function JudgeSidebar() {
 
   const handleTeamSelect = (teamId: string) => {
     router.push(`/judge/team/${teamId}`)
+    // Close mobile sidebar when a team is selected
+    if (isMobile && onClose) {
+      onClose()
+    }
   }
 
-  if (loading) {
-    return (
-      <aside className="w-80 bg-muted/30 border-r border-border p-4">
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
-          ))}
-        </div>
-      </aside>
-    )
-  }
+  // Create loading content
+  const loadingContent = (
+    <aside className={cn(
+      "bg-muted/30 border-r border-border p-4 h-full",
+      !isMobile && "w-80"
+    )}>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+        ))}
+      </div>
+    </aside>
+  )
 
-  // Show "NO EVENT" state when there are no teams
-  if (teams.length === 0) {
-    return (
-      <aside className="w-80 bg-muted/30 border-r border-border flex flex-col">
-        <div className="p-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">Teams</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            No active event
-          </p>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
-              <Clock className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">No Active Event</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                There is currently no active event for judging. Please contact an administrator.
-              </p>
-            </div>
+  // Create "NO EVENT" content
+  const noEventContent = (
+    <aside className={cn(
+      "bg-muted/30 border-r border-border flex flex-col h-full",
+      !isMobile && "w-80"
+    )}>
+      <div className="p-4 border-b border-border">
+        <h2 className="font-semibold text-foreground">Teams</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          No active event
+        </p>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+            <Clock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">No Active Event</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              There is currently no active event for judging. Please contact an administrator.
+            </p>
           </div>
         </div>
-      </aside>
-    )
+      </div>
+    </aside>
+  )
+
+  // Handle loading state
+  if (loading) {
+    if (isMobile) {
+      return (
+        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Teams Navigation</SheetTitle>
+            </SheetHeader>
+            {loadingContent}
+          </SheetContent>
+        </Sheet>
+      )
+    }
+    return loadingContent
   }
 
-  return (
-    <aside className="w-80 bg-muted/30 border-r border-border flex flex-col">
+  // Handle "NO EVENT" state
+  if (teams.length === 0) {
+    if (isMobile) {
+      return (
+        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Teams Navigation</SheetTitle>
+            </SheetHeader>
+            {noEventContent}
+          </SheetContent>
+        </Sheet>
+      )
+    }
+    return noEventContent
+  }
+
+  const sidebarContent = (
+    <aside className={cn(
+      "bg-muted/30 border-r border-border flex flex-col h-full",
+      !isMobile && "w-80"
+    )}>
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h2 
             className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" 
-            onClick={() => router.push('/judge')}
+            onClick={() => {
+              router.push('/judge')
+              if (isMobile && onClose) {
+                onClose()
+              }
+            }}
           >
             Teams
           </h2>
@@ -235,4 +296,21 @@ export function JudgeSidebar() {
       </div>
     </aside>
   )
+
+  // For mobile, wrap in Sheet component
+  if (isMobile) {
+    return (
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+        <SheetContent side="left" className="w-80 p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Teams Navigation</SheetTitle>
+          </SheetHeader>
+          {sidebarContent}
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // For desktop, return sidebar directly
+  return sidebarContent
 }
