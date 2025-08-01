@@ -34,9 +34,9 @@ export function JudgeLayoutClient({ user, children }: JudgeLayoutClientProps) {
   }, [])
 
   return (
-    <div className="h-screen-safe flex bg-background" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
+    <div className="h-screen-safe flex bg-background overflow-hidden" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
       {/* Desktop sidebar - hidden on mobile, visible on desktop */}
-      <div className="hidden md:block">
+      <div className="hidden md:block shrink-0">
         <JudgeSidebar />
       </div>
       
@@ -50,7 +50,7 @@ export function JudgeLayoutClient({ user, children }: JudgeLayoutClientProps) {
       </div>
       
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <JudgeHeader 
           user={user}
           onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
