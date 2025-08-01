@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { JudgeSidebar } from './judge-sidebar'
 import { JudgeHeader } from './judge-header'
 import type { UserWithRole } from '@/lib/auth'
@@ -13,8 +13,28 @@ interface JudgeLayoutClientProps {
 export function JudgeLayoutClient({ user, children }: JudgeLayoutClientProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
+  // Set CSS custom property for dynamic viewport height (mobile browser fix)
+  useEffect(() => {
+    const setViewportHeight = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    // Set initial value
+    setViewportHeight()
+
+    // Update on resize (includes mobile browser UI show/hide)
+    window.addEventListener('resize', setViewportHeight)
+    window.addEventListener('orientationchange', setViewportHeight)
+
+    return () => {
+      window.removeEventListener('resize', setViewportHeight)
+      window.removeEventListener('orientationchange', setViewportHeight)
+    }
+  }, [])
+
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-screen-safe flex bg-background" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
       {/* Desktop sidebar - hidden on mobile, visible on desktop */}
       <div className="hidden md:block">
         <JudgeSidebar />
