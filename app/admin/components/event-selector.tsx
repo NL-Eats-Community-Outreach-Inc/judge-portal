@@ -1,6 +1,6 @@
 'use client'
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Calendar, Settings, CheckCircle, Clock, AlertCircle } from 'lucide-react'
@@ -71,8 +71,13 @@ export default function EventSelector() {
                 selectEvent(event || null)
               }}
             >
-              <SelectTrigger className="min-w-64 max-w-md h-8 text-sm">
-                <SelectValue placeholder="Select an event" />
+              <SelectTrigger className="w-64 h-8 text-sm">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {selectedEvent && getStatusIcon(selectedEvent.status)}
+                  <span className="truncate">
+                    {selectedEvent ? selectedEvent.name : "Select an event"}
+                  </span>
+                </div>
               </SelectTrigger>
               <SelectContent>
                 {events.map((event) => (
