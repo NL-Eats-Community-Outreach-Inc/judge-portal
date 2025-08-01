@@ -36,20 +36,20 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         setEvents(data.events || [])
         
-        // Auto-select active event if no event is selected
-        if (!selectedEvent && data.events?.length > 0) {
+        // Smart event selection logic
+        if (data.events?.length > 0) {
           const activeEvent = data.events.find((e: Event) => e.status === 'active')
+          const currentEventStillExists = selectedEvent ? data.events.find((e: Event) => e.id === selectedEvent.id) : null
+          
           if (activeEvent) {
+            // Always prefer active event
             setSelectedEvent(activeEvent)
+          } else if (currentEventStillExists) {
+            // Keep current selection if it still exists and no active event
+            setSelectedEvent(currentEventStillExists)
           } else {
-            // If no active event, select the first event
+            // Fallback to first event if no active event and current selection is invalid/missing
             setSelectedEvent(data.events[0])
-          }
-        } else if (selectedEvent && data.events?.length > 0) {
-          // Update selected event if it exists in the new events data (to sync status changes)
-          const updatedSelectedEvent = data.events.find((e: Event) => e.id === selectedEvent.id)
-          if (updatedSelectedEvent) {
-            setSelectedEvent(updatedSelectedEvent)
           }
         }
       } else {
