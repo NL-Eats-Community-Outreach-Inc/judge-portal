@@ -621,7 +621,7 @@ export default function ResultsDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Rank</TableHead>
-                    <TableHead>Team</TableHead>
+                    <TableHead className="w-[150px] max-w-[150px]">Team</TableHead>
                     <TableHead>Final Score</TableHead>
                     <TableHead>Total Scores</TableHead>
                     <TableHead>Judge Count</TableHead>
@@ -663,9 +663,11 @@ export default function ResultsDashboard() {
                             {getRankIcon(index + 1)}
                           </div>
                         </TableCell>
-                        <TableCell className="py-4">
+                        <TableCell className="py-4 w-[150px] max-w-[150px]">
                           <div className="space-y-1">
-                            <div className="font-semibold text-foreground">{team.teamName}</div>
+                            <div className="font-semibold text-foreground truncate" title={team.teamName}>
+                              {team.teamName}
+                            </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-1">
                               <span className="w-1 h-1 bg-muted-foreground/60 rounded-full"></span>
                               Order #{team.presentationOrder}
@@ -875,13 +877,15 @@ export default function ResultsDashboard() {
                         <TableHead 
                           key={team.id} 
                           colSpan={uniqueCriteria.length}
-                          className={`text-center font-semibold border-b-0 px-2 ${
+                          className={`text-center font-semibold border-b-0 px-2 w-[120px] max-w-[120px] ${
                             teamIndex % 2 === 0 
                               ? 'bg-slate-50/80 dark:bg-slate-800/30' 
                               : 'bg-blue-50/80 dark:bg-blue-900/20'
                           } ${teamIndex < uniqueTeams.length - 1 ? 'border-r-2 border-border' : ''}`}
                         >
-                          {team.name}
+                          <div className="truncate" title={team.name}>
+                            {team.name}
+                          </div>
                         </TableHead>
                       ))}
                     </TableRow>

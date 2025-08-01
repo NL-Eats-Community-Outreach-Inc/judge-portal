@@ -98,9 +98,11 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
               <div className="flex items-center gap-2 md:gap-3">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">{event.name}</h1>
-                    {getStatusBadge(event.status)}
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate max-w-[120px] sm:max-w-[200px] md:max-w-[300px]">{event.name}</h1>
+                    <div className="shrink-0">
+                      {getStatusBadge(event.status)}
+                    </div>
                   </div>
                   {/* Hide description on mobile */}
                   {/* {event.description && (
