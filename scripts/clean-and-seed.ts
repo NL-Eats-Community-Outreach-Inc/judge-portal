@@ -145,7 +145,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Creativity and novelty of the technical solution, use of cutting-edge technologies',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 1
+        displayOrder: 1,
+        weight: 40,
+        category: 'technical'
       },
       {
         eventId: event1Id,
@@ -153,7 +155,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Clean, maintainable code with proper documentation and testing practices',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 2
+        displayOrder: 2,
+        weight: 30,
+        category: 'technical'
       },
       {
         eventId: event1Id,
@@ -161,7 +165,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Intuitive design, usability, and overall user interface quality',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 3
+        displayOrder: 3,
+        weight: 30,
+        category: 'technical'
       },
       {
         eventId: event1Id,
@@ -169,7 +175,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Potential to solve actual problems and create meaningful change',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 4
+        displayOrder: 4,
+        weight: 50,
+        category: 'business'
       },
       {
         eventId: event1Id,
@@ -177,7 +185,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Quality of live demonstration and team presentation skills',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 5
+        displayOrder: 5,
+        weight: 50,
+        category: 'business'
       }
     ]).returning()
 
@@ -189,7 +199,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Size and growth potential of the target market, problem validation',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 1
+        displayOrder: 1,
+        weight: 25,
+        category: 'business'
       },
       {
         eventId: event2Id,
@@ -197,7 +209,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Viability and scalability of the revenue model and go-to-market strategy',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 2
+        displayOrder: 2,
+        weight: 25,
+        category: 'business'
       },
       {
         eventId: event2Id,
@@ -205,7 +219,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Experience, expertise, and complementary skills of the founding team',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 3
+        displayOrder: 3,
+        weight: 20,
+        category: 'business'
       },
       {
         eventId: event2Id,
@@ -213,7 +229,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Unique value proposition and competitive advantages',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 4
+        displayOrder: 4,
+        weight: 15,
+        category: 'business'
       },
       {
         eventId: event2Id,
@@ -221,7 +239,9 @@ const cleanAndSeedDatabase = async () => {
         description: 'Realistic financial forecasts and funding requirements',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 5
+        displayOrder: 5,
+        weight: 15,
+        category: 'business'
       }
     ]).returning()
 

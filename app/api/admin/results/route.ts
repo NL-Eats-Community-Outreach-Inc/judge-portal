@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
 
-    // Get all scores with team, criterion, and judge info
+    // Get all scores with team, criterion, and judge info including award types and categories
     const baseScoresQuery = db
       .select({
         id: scores.id,
@@ -26,14 +26,16 @@ export async function GET(request: NextRequest) {
         team: {
           id: teams.id,
           name: teams.name,
-          presentationOrder: teams.presentationOrder
+          presentationOrder: teams.presentationOrder,
+          awardType: teams.awardType
         },
         criterion: {
           id: criteria.id,
           name: criteria.name,
           displayOrder: criteria.displayOrder,
           minScore: criteria.minScore,
-          maxScore: criteria.maxScore
+          maxScore: criteria.maxScore,
+          category: criteria.category
         },
         judge: {
           id: users.id,
@@ -52,9 +54,25 @@ export async function GET(request: NextRequest) {
       : await baseScoresQuery
           .orderBy(teams.presentationOrder, criteria.displayOrder)
 
-    // Calculate team totals using proper judge-level aggregation
+    // Calculate team totals using proper judge-level aggregation with weighted scores
+    // Filter scores by team award type vs criteria category and normalize weights for "both" teams
     const baseTeamTotalsQuery = sql`
-      WITH judge_totals AS (
+      WITH team_weights AS (
+        SELECT 
+          teams.id as team_id,
+          teams.award_type,
+          SUM(criteria.weight) as total_weight_for_team
+        FROM teams
+        LEFT JOIN criteria ON criteria.event_id = teams.event_id
+        WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
+          AND (
+            (teams.award_type = 'technical' AND criteria.category = 'technical') OR
+            (teams.award_type = 'business' AND criteria.category = 'business') OR
+            (teams.award_type = 'both')
+          )
+        GROUP BY teams.id, teams.award_type
+      ),
+      judge_totals AS (
         SELECT 
           teams.id as "teamId",
           teams.name as "teamName",
@@ -62,11 +80,22 @@ export async function GET(request: NextRequest) {
           scores.judge_id as "judgeId",
           users.email as "judgeEmail",
           SUM(scores.score::numeric) as judge_total,
+          SUM(
+            scores.score::numeric * 
+            (criteria.weight::numeric / COALESCE(tw.total_weight_for_team::numeric, 100.0))
+          ) as judge_weighted_total,
           COUNT(scores.score) as criteria_scored
         FROM teams
         LEFT JOIN scores ON scores.team_id = teams.id
         LEFT JOIN users ON scores.judge_id = users.id
-        ${eventId ? sql`WHERE teams.event_id = ${eventId}` : sql``}
+        LEFT JOIN criteria ON scores.criterion_id = criteria.id
+        LEFT JOIN team_weights tw ON tw.team_id = teams.id
+        WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
+          AND (
+            (teams.award_type = 'technical' AND criteria.category = 'technical') OR
+            (teams.award_type = 'business' AND criteria.category = 'business') OR
+            (teams.award_type = 'both')
+          )
         GROUP BY teams.id, teams.name, teams.presentation_order, scores.judge_id, users.email
       ),
       team_calculations AS (
@@ -76,7 +105,7 @@ export async function GET(request: NextRequest) {
           "presentationOrder",
           COALESCE(SUM(judge_total), 0) as total_score,
           COALESCE(AVG(judge_total), 0) as average_score,
-          COALESCE(AVG(judge_total), 0) as weighted_average_score,
+          COALESCE(AVG(judge_weighted_total), 0) as weighted_score,
           COUNT("judgeId") as judge_count,
           SUM(criteria_scored) as total_scores
         FROM judge_totals
@@ -89,7 +118,7 @@ export async function GET(request: NextRequest) {
         "presentationOrder",
         ROUND(total_score::numeric, 2) as "totalScore",
         ROUND(average_score::numeric, 2) as "averageScore", 
-        ROUND(weighted_average_score::numeric, 2) as "weightedAverageScore",
+        ROUND(weighted_score::numeric, 2) as "weightedScore",
         total_scores as "totalScores",
         judge_count as "judgeCount"
       FROM team_calculations
@@ -98,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     const teamTotals = await db.execute(baseTeamTotalsQuery)
 
-    // Get criteria averages per team
+    // Get criteria averages per team (filtered by team award type vs criteria category)
     const baseCriteriaAveragesQuery = db
       .select({
         teamId: scores.teamId,
@@ -114,10 +143,23 @@ export async function GET(request: NextRequest) {
 
     const criteriaAverages = eventId 
       ? await baseCriteriaAveragesQuery
-          .where(eq(teams.eventId, eventId))
+          .where(
+            sql`${teams.eventId} = ${eventId} AND (
+              (${teams.awardType} = 'technical' AND ${criteria.category} = 'technical') OR
+              (${teams.awardType} = 'business' AND ${criteria.category} = 'business') OR
+              (${teams.awardType} = 'both')
+            )`
+          )
           .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
           .orderBy(teams.presentationOrder, criteria.displayOrder)
       : await baseCriteriaAveragesQuery
+          .where(
+            sql`(
+              (${teams.awardType} = 'technical' AND ${criteria.category} = 'technical') OR
+              (${teams.awardType} = 'business' AND ${criteria.category} = 'business') OR
+              (${teams.awardType} = 'both')
+            )`
+          )
           .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
           .orderBy(teams.presentationOrder, criteria.displayOrder)
 
@@ -149,7 +191,7 @@ export async function GET(request: NextRequest) {
         presentationOrder: Number(total.presentationOrder),
         totalScore: Number(total.totalScore),
         averageScore: Number(total.averageScore),
-        weightedAverageScore: Number(total.weightedAverageScore),
+        weightedScore: Number(total.weightedScore),
         totalScores: Number(total.totalScores),
         judgeCount: Number(total.judgeCount)
       })),

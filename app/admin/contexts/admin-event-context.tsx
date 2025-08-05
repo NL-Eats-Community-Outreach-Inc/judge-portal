@@ -77,7 +77,7 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchEvents()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: AdminEventContextType = {
     events,

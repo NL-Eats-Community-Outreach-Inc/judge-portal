@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { eventId, name, description, minScore, maxScore } = await request.json()
+    const { eventId, name, description, minScore, maxScore, weight, category } = await request.json()
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })
@@ -53,6 +53,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Min score must be less than max score' }, { status: 400 })
     }
 
+    if (typeof weight !== 'number' || weight < 0 || weight > 100) {
+      return NextResponse.json({ error: 'Weight must be a number between 0 and 100' }, { status: 400 })
+    }
+
+    if (!category || !['technical', 'business'].includes(category)) {
+      return NextResponse.json({ error: 'Category must be either "technical" or "business"' }, { status: 400 })
+    }
+
     // Verify event exists
     const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1)
     
@@ -60,14 +68,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Event not found' }, { status: 400 })
     }
 
-    // Get the next display order for this event by querying actual database state
-    const existingCriteria = await db.select({ displayOrder: criteria.displayOrder })
+    // Get existing criteria for weight validation and display order
+    const existingCriteria = await db.select()
       .from(criteria)
       .where(eq(criteria.eventId, eventId))
     
     const nextDisplayOrder = existingCriteria.length > 0 
       ? Math.max(...existingCriteria.map(c => c.displayOrder)) + 1 
       : 1
+
+    // Calculate current weight totals by category
+    const weightTotals = existingCriteria.reduce((acc, crit) => {
+      acc[crit.category] = (acc[crit.category] || 0) + crit.weight
+      return acc
+    }, {} as Record<string, number>)
+
+    // Add the new criterion's weight to the appropriate category
+    const newWeightTotal = (weightTotals[category] || 0) + weight
+
+    // Validate that the category weight total won't exceed 100%
+    if (newWeightTotal > 100) {
+      return NextResponse.json({ 
+        error: `Cannot add criterion: ${category} category weights would total ${newWeightTotal}% (maximum 100%)` 
+      }, { status: 400 })
+    }
 
     // Create new criterion
     const [criterion] = await db
@@ -78,7 +102,9 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         minScore,
         maxScore,
-        displayOrder: nextDisplayOrder
+        displayOrder: nextDisplayOrder,
+        weight,
+        category
       })
       .returning()
 

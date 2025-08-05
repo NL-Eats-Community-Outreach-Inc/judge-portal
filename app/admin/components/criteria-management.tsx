@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
@@ -41,6 +42,8 @@ interface Criterion {
   minScore: number
   maxScore: number
   displayOrder: number
+  weight: number
+  category: 'technical' | 'business'
   createdAt: string
   updatedAt: string
   eventId: string
@@ -51,6 +54,8 @@ interface CriterionFormData {
   description: string
   minScore: number
   maxScore: number
+  weight: number
+  category: 'technical' | 'business'
 }
 
 // Sortable Row Component
@@ -119,12 +124,20 @@ export default function CriteriaManagement() {
     name: '',
     description: '',
     minScore: 1,
-    maxScore: 10
+    maxScore: 10,
+    weight: 20,
+    category: 'technical'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingCriteria, setDeletingCriteria] = useState(new Set<string>())
   const [criterionToDelete, setCriterionToDelete] = useState<Criterion | null>(null)
   const { selectedEvent } = useAdminEvent()
+
+  // Calculate weight totals by category
+  const weightTotals = criteria.reduce((acc, criterion) => {
+    acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
+    return acc
+  }, {} as Record<string, number>)
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -232,7 +245,9 @@ export default function CriteriaManagement() {
         name: criterion.name,
         description: criterion.description || '',
         minScore: criterion.minScore,
-        maxScore: criterion.maxScore
+        maxScore: criterion.maxScore,
+        weight: criterion.weight,
+        category: criterion.category
       })
     } else {
       setEditingCriterion(null)
@@ -240,7 +255,9 @@ export default function CriteriaManagement() {
         name: '',
         description: '',
         minScore: 1,
-        maxScore: 10
+        maxScore: 10,
+        weight: 20,
+        category: 'technical'
       })
     }
     setIsDialogOpen(true)
@@ -253,7 +270,9 @@ export default function CriteriaManagement() {
       name: '',
       description: '',
       minScore: 1,
-      maxScore: 10
+      maxScore: 10,
+      weight: 20,
+      category: 'technical'
     })
   }
 
@@ -277,6 +296,47 @@ export default function CriteriaManagement() {
         description: 'No event selected'
       })
       return
+    }
+
+    // Smart weight validation - warn about non-100% totals, prevent >100%
+    const simulatedCriteria = editingCriterion 
+      ? criteria.map(c => c.id === editingCriterion.id ? { ...c, weight: formData.weight, category: formData.category } : c)
+      : [...criteria, { ...formData, id: 'temp', category: formData.category, weight: formData.weight, displayOrder: criteria.length + 1, eventId: selectedEvent?.id || '', name: formData.name, description: formData.description, minScore: formData.minScore, maxScore: formData.maxScore, createdAt: '', updatedAt: '' }]
+    
+    const newWeightTotals = simulatedCriteria.reduce((acc, criterion) => {
+      acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
+      return acc
+    }, {} as Record<string, number>)
+
+    const technicalTotal = newWeightTotals.technical || 0
+    const businessTotal = newWeightTotals.business || 0
+    
+    // Only block if would exceed 100% (let backend handle final validation)
+    if (technicalTotal > 100) {
+      toast.error('Weight Validation Error', {
+        description: `Technical criteria weights would total ${technicalTotal}% (maximum 100%)`
+      })
+      return
+    }
+    
+    if (businessTotal > 100) {
+      toast.error('Weight Validation Error', {
+        description: `Business criteria weights would total ${businessTotal}% (maximum 100%)`
+      })
+      return
+    }
+
+    // Soft warning for non-100% totals (but allow the operation)
+    if (technicalTotal > 0 && technicalTotal !== 100) {
+      toast.warning('Weight Notice', {
+        description: `Technical weights will total ${technicalTotal}%. Consider adjusting to 100% for optimal scoring.`
+      })
+    }
+    
+    if (businessTotal > 0 && businessTotal !== 100) {
+      toast.warning('Weight Notice', {
+        description: `Business weights will total ${businessTotal}%. Consider adjusting to 100% for optimal scoring.`
+      })
     }
 
     setIsSubmitting(true)
@@ -409,6 +469,62 @@ export default function CriteriaManagement() {
     <TooltipProvider>
       <div className="space-y-6">
         {getStatsCard()}
+        
+        {/* Weight Summary Card */}
+        {criteria.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">Weight Distribution</div>
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">Technical</Badge>
+                    <span className={`text-sm font-medium ${
+                      (weightTotals.technical || 0) === 100 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : (weightTotals.technical || 0) > 100
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {weightTotals.technical || 0}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">Business</Badge>
+                    <span className={`text-sm font-medium ${
+                      (weightTotals.business || 0) === 100 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : (weightTotals.business || 0) > 100
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {weightTotals.business || 0}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2">
+                {(() => {
+                  const techTotal = weightTotals.technical || 0
+                  const bizTotal = weightTotals.business || 0
+                  const bothPerfect = techTotal === 100 && bizTotal === 100
+                  const anyOver = techTotal > 100 || bizTotal > 100
+                  const anyUnder = (techTotal > 0 && techTotal < 100) || (bizTotal > 0 && bizTotal < 100)
+                  
+                  if (bothPerfect) {
+                    return <p className="text-xs text-green-600 dark:text-green-400">✓ Perfect weight distribution!</p>
+                  } else if (anyOver) {
+                    return <p className="text-xs text-red-600 dark:text-red-400">⚠ Some categories exceed 100% - adjust weights</p>
+                  } else if (anyUnder) {
+                    return <p className="text-xs text-amber-600 dark:text-amber-400">Consider adjusting weights to total 100% per category</p>
+                  } else {
+                    return <p className="text-xs text-muted-foreground">Weights are used for final score calculation</p>
+                  }
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       
       <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
@@ -517,6 +633,85 @@ export default function CriteriaManagement() {
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="weight">Weight (%)</Label>
+                        <Input
+                          id="weight"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.weight}
+                          onChange={(e) => setFormData(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
+                          placeholder="e.g., 25"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value: 'technical' | 'business') => setFormData(prev => ({ ...prev, category: value }))}
+                        >
+                          <SelectTrigger id="category">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="technical">Technical</SelectItem>
+                            <SelectItem value="business">Business</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {/* Weight Preview */}
+                    <div className="grid gap-2 p-3 bg-muted/30 rounded-lg">
+                      <Label className="text-xs font-medium text-muted-foreground">Weight Preview</Label>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        {(() => {
+                          // Calculate what totals would be after this change
+                          const simulatedCriteria = editingCriterion 
+                            ? criteria.map(c => c.id === editingCriterion.id ? { ...c, weight: formData.weight, category: formData.category } : c)
+                            : [...criteria, { ...formData, id: 'temp', category: formData.category, weight: formData.weight, displayOrder: criteria.length + 1, eventId: selectedEvent?.id || '', name: formData.name, description: formData.description, minScore: formData.minScore, maxScore: formData.maxScore, createdAt: '', updatedAt: '' }]
+                          
+                          const previewTotals = simulatedCriteria.reduce((acc, criterion) => {
+                            acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
+                            return acc
+                          }, {} as Record<string, number>)
+
+                          const techTotal = previewTotals.technical || 0
+                          const bizTotal = previewTotals.business || 0
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Technical:</span>
+                                <span className={`font-medium ${
+                                  techTotal === 100 
+                                    ? 'text-green-600 dark:text-green-400' 
+                                    : techTotal > 100
+                                      ? 'text-red-600 dark:text-red-400'
+                                      : 'text-amber-600 dark:text-amber-400'
+                                }`}>
+                                  {techTotal}%
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Business:</span>
+                                <span className={`font-medium ${
+                                  bizTotal === 100 
+                                    ? 'text-green-600 dark:text-green-400' 
+                                    : bizTotal > 100
+                                      ? 'text-red-600 dark:text-red-400'
+                                      : 'text-amber-600 dark:text-amber-400'
+                                }`}>
+                                  {bizTotal}%
+                                </span>
+                              </div>
+                            </>
+                          )
+                        })()}
+                      </div>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={closeDialog}>
@@ -552,10 +747,12 @@ export default function CriteriaManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-24">Order</TableHead>
-                      <TableHead className="w-48">Criterion Name</TableHead>
-                      <TableHead className="w-64">Description</TableHead>
-                      <TableHead className="w-32">Score Range</TableHead>
-                      <TableHead className="w-32">Actions</TableHead>
+                      <TableHead className="w-40">Criterion Name</TableHead>
+                      <TableHead className="w-48">Description</TableHead>
+                      <TableHead className="w-24">Category</TableHead>
+                      <TableHead className="w-24">Weight</TableHead>
+                      <TableHead className="w-28">Score Range</TableHead>
+                      <TableHead className="w-28">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -565,22 +762,41 @@ export default function CriteriaManagement() {
                     >
                       {criteria.map((criterion) => (
                         <SortableRow key={criterion.id} criterion={criterion} isDragDisabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}>
-                          <TableCell className="font-medium w-48">
+                          <TableCell className="font-medium w-40">
                             <div className="truncate" title={criterion.name}>
                               {criterion.name}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground w-64">
+                          <TableCell className="text-muted-foreground w-48">
                             <div className="truncate" title={criterion.description || ''}>
                               {criterion.description || '—'}
                             </div>
                           </TableCell>
-                          <TableCell className="w-32">
+                          <TableCell className="w-24">
+                            <Badge variant={criterion.category === 'technical' ? 'default' : 'secondary'}>
+                              {criterion.category.charAt(0).toUpperCase() + criterion.category.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-24">
+                            <Badge 
+                              variant="outline"
+                              className={
+                                weightTotals[criterion.category] === 100 
+                                  ? 'border-green-500/50 text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20'
+                                  : weightTotals[criterion.category] > 100
+                                    ? 'border-red-500/50 text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20'
+                                    : 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                              }
+                            >
+                              {criterion.weight}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-28">
                             <Badge variant="secondary">
                               {criterion.minScore} - {criterion.maxScore}
                             </Badge>
                           </TableCell>
-                          <TableCell className="w-32">
+                          <TableCell className="w-28">
                             <div className="flex gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>

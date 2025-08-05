@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, Plus, Trophy, Edit, Trash2, ExternalLink, Github, RefreshCw, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
@@ -97,6 +98,7 @@ interface Team {
   demoUrl: string | null
   repoUrl: string | null
   presentationOrder: number
+  awardType: 'technical' | 'business' | 'both'
   createdAt: string
   updatedAt: string
   eventId: string
@@ -107,6 +109,7 @@ interface TeamFormData {
   description: string
   demoUrl: string
   repoUrl: string
+  awardType: 'technical' | 'business' | 'both'
 }
 
 export default function TeamManagement() {
@@ -119,11 +122,13 @@ export default function TeamManagement() {
     name: '',
     description: '',
     demoUrl: '',
-    repoUrl: ''
+    repoUrl: '',
+    awardType: 'both'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingTeams, setDeletingTeams] = useState(new Set<string>())
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
+  const [awardTypeFilter, setAwardTypeFilter] = useState<'all' | 'technical' | 'business' | 'both'>('all')
   const { selectedEvent } = useAdminEvent()
 
   // Drag and drop sensors
@@ -232,7 +237,8 @@ export default function TeamManagement() {
         name: team.name,
         description: team.description || '',
         demoUrl: team.demoUrl || '',
-        repoUrl: team.repoUrl || ''
+        repoUrl: team.repoUrl || '',
+        awardType: team.awardType || 'both'
       })
     } else {
       setEditingTeam(null)
@@ -240,7 +246,8 @@ export default function TeamManagement() {
         name: '',
         description: '',
         demoUrl: '',
-        repoUrl: ''
+        repoUrl: '',
+        awardType: 'both'
       })
     }
     setIsDialogOpen(true)
@@ -253,7 +260,8 @@ export default function TeamManagement() {
       name: '',
       description: '',
       demoUrl: '',
-      repoUrl: ''
+      repoUrl: '',
+      awardType: 'both'
     })
   }
 
@@ -363,6 +371,12 @@ export default function TeamManagement() {
     }
   }
 
+  // Filter teams based on award type
+  const filteredTeams = teams.filter(team => {
+    if (awardTypeFilter === 'all') return true
+    return team.awardType === awardTypeFilter
+  })
+
   const getStatsCard = () => (
     <Card className="mb-6">
       <CardContent className="flex items-center p-6">
@@ -370,8 +384,10 @@ export default function TeamManagement() {
           <Trophy className="h-6 w-6 text-gray-700 dark:text-gray-300" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-foreground">{teams.length}</p>
-          <p className="text-muted-foreground text-sm">Total Teams</p>
+          <p className="text-2xl font-bold text-foreground">{filteredTeams.length}</p>
+          <p className="text-muted-foreground text-sm">
+            {awardTypeFilter === 'all' ? 'Total Teams' : `${awardTypeFilter.charAt(0).toUpperCase() + awardTypeFilter.slice(1)} Teams`}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -417,6 +433,17 @@ export default function TeamManagement() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Select value={awardTypeFilter} onValueChange={(value: 'all' | 'technical' | 'business' | 'both') => setAwardTypeFilter(value)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by award type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Award Types</SelectItem>
+                  <SelectItem value="technical">Technical Awards</SelectItem>
+                  <SelectItem value="business">Business Awards</SelectItem>
+                  <SelectItem value="both">General Awards</SelectItem>
+                </SelectContent>
+              </Select>
               <Button 
                 variant="outline" 
                 onClick={async () => {
@@ -509,6 +536,22 @@ export default function TeamManagement() {
                         placeholder="https://github.com/username/repository"
                       />
                     </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="award-type">Award Type</Label>
+                      <Select
+                        value={formData.awardType}
+                        onValueChange={(value: 'technical' | 'business' | 'both') => setFormData(prev => ({ ...prev, awardType: value }))}
+                      >
+                        <SelectTrigger id="award-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="technical">Technical Awards</SelectItem>
+                          <SelectItem value="business">Business Awards</SelectItem>
+                          <SelectItem value="both">General Awards</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={closeDialog}>
@@ -527,11 +570,11 @@ export default function TeamManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          {teams.length === 0 ? (
+          {filteredTeams.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Trophy className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p>No teams yet</p>
-              <p className="text-sm">Create your first team to get started</p>
+              <p>{teams.length === 0 ? 'No teams yet' : `No ${awardTypeFilter} teams`}</p>
+              <p className="text-sm">{teams.length === 0 ? 'Create your first team to get started' : 'Try a different filter or create more teams'}</p>
             </div>
           ) : (
             <div className="rounded-md border">
@@ -544,30 +587,44 @@ export default function TeamManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-24">Order</TableHead>
-                      <TableHead className="w-48">Team Name</TableHead>
-                      <TableHead className="w-64">Description</TableHead>
-                      <TableHead className="w-32">Links</TableHead>
-                      <TableHead className="w-32">Actions</TableHead>
+                      <TableHead className="w-40">Team Name</TableHead>
+                      <TableHead className="w-48">Description</TableHead>
+                      <TableHead className="w-28">Award Type</TableHead>
+                      <TableHead className="w-28">Links</TableHead>
+                      <TableHead className="w-28">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     <SortableContext 
-                      items={teams.map(team => team.id)} 
+                      items={filteredTeams.map(team => team.id)} 
                       strategy={verticalListSortingStrategy}
                     >
-                      {teams.map((team) => (
+                      {filteredTeams.map((team) => (
                         <SortableRow key={team.id} team={team} isDragDisabled={selectedEvent?.status === 'completed'}>
-                          <TableCell className="font-medium w-48">
+                          <TableCell className="font-medium w-40">
                             <div className="truncate" title={team.name}>
                               {team.name}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground w-64">
+                          <TableCell className="text-muted-foreground w-48">
                             <div className="truncate" title={team.description || ''}>
                               {team.description || '—'}
                             </div>
                           </TableCell>
-                          <TableCell className="w-32">
+                          <TableCell className="w-28">
+                            <Badge 
+                              variant={
+                                team.awardType === 'technical' ? 'default' : 
+                                team.awardType === 'business' ? 'secondary' : 
+                                'outline'
+                              }
+                            >
+                              {team.awardType === 'technical' ? 'Technical' :
+                               team.awardType === 'business' ? 'Business' :
+                               'General'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-28">
                             <div className="flex gap-2">
                               {team.demoUrl && (
                                 <Button
@@ -595,7 +652,7 @@ export default function TeamManagement() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="w-32">
+                          <TableCell className="w-28">
                             <div className="flex gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>

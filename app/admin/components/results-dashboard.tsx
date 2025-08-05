@@ -6,10 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal, Settings } from 'lucide-react'
+import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
 
@@ -23,6 +20,7 @@ interface Score {
     id: string
     name: string
     presentationOrder: number
+    awardType: 'technical' | 'business' | 'both'
   }
   criterion: {
     id: string
@@ -30,6 +28,7 @@ interface Score {
     displayOrder: number
     minScore: number
     maxScore: number
+    category: 'technical' | 'business'
   }
   judge: {
     id: string
@@ -43,7 +42,7 @@ interface TeamTotal {
   presentationOrder: number
   totalScore: number
   averageScore: number
-  weightedAverageScore: number
+  weightedScore: number
   totalScores: number
   judgeCount: number
 }
@@ -67,10 +66,6 @@ export default function ResultsDashboard() {
   const [isExporting, setIsExporting] = useState(false)
   const [isExportingJudgeScores, setIsExportingJudgeScores] = useState(false)
   const [scoreMode, setScoreMode] = useState<'total' | 'average' | 'weighted'>('total')
-  const [criteriaWeights, setCriteriaWeights] = useState<Record<string, number>>({})
-  const [tempCriteriaWeights, setTempCriteriaWeights] = useState<Record<string, number>>({})
-  const [showWeightsDialog, setShowWeightsDialog] = useState(false)
-  const [availableCriteria, setAvailableCriteria] = useState<Array<{id: string, name: string}>>([])
   const { selectedEvent } = useAdminEvent()
 
   // Use useCallback to ensure stable reference for real-time sync
@@ -88,25 +83,7 @@ export default function ResultsDashboard() {
         setCriteriaAverages(data.criteriaAverages)
         setCriteriaCount(data.criteriaCount || 0)
         
-        // Extract unique criteria from scores
-        const criteriaMap = new Map<string, { id: string; name: string; displayOrder: number; minScore: number; maxScore: number }>()
-        data.scores.forEach((s: Score) => {
-          criteriaMap.set(s.criterion.id, s.criterion)
-        })
-        const criteria = Array.from(criteriaMap.values()).map(c => ({ id: c.id, name: c.name }))
-        setAvailableCriteria(criteria)
-        
-        // Initialize weights if not set (equal percentages that sum to 100%)
-        const initialWeights: Record<string, number> = {}
-        const equalWeight = criteria.length > 0 ? 100 / criteria.length : 0
-        criteria.forEach(c => {
-          if (!(c.id in criteriaWeights)) {
-            initialWeights[c.id] = equalWeight
-          }
-        })
-        if (Object.keys(initialWeights).length > 0) {
-          setCriteriaWeights(prev => ({ ...prev, ...initialWeights }))
-        }
+        // Weights are now managed in database, no frontend initialization needed
       } else {
         throw new Error(data.error)
       }
@@ -118,7 +95,7 @@ export default function ResultsDashboard() {
     } finally {
       setIsLoadingResults(false)
     }
-  }, [selectedEvent, criteriaWeights])
+  }, [selectedEvent])
 
   
   // Note: Removed redundant team and criteria subscriptions since:
@@ -140,15 +117,10 @@ export default function ResultsDashboard() {
     
     setIsExporting(true)
     try {
-      // Build URL with score mode and criteria weights for weighted mode
+      // Build URL with score mode - weights come from database
       const url = new URL(`/api/admin/results/export`, window.location.origin)
       url.searchParams.set('eventId', selectedEvent.id)
       url.searchParams.set('scoreMode', scoreMode)
-      
-      // For weighted mode, pass criteria weights
-      if (scoreMode === 'weighted') {
-        url.searchParams.set('criteriaWeights', JSON.stringify(criteriaWeights))
-      }
       
       const response = await fetch(url.toString())
       
@@ -156,12 +128,17 @@ export default function ResultsDashboard() {
         throw new Error('Failed to export results')
       }
 
-      // Create download link
+      // Create download link - use filename from backend Content-Disposition header
       const blob = await response.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = downloadUrl
-      a.download = `judging-results-${selectedEvent?.name || 'event'}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv`
+      
+      // Extract filename from Content-Disposition header if available
+      const contentDisposition = response.headers.get('content-disposition')
+      const filenameMatch = contentDisposition?.match(/filename="([^"]*)"/)
+      a.download = filenameMatch?.[1] || `judging-results-${selectedEvent?.name || 'event'}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv`
+      
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(downloadUrl)
@@ -238,76 +215,6 @@ export default function ResultsDashboard() {
     }
   }
 
-  // Weight management functions
-  const openWeightsDialog = () => {
-    setTempCriteriaWeights({ ...criteriaWeights })
-    setShowWeightsDialog(true)
-  }
-
-  const handleWeightChange = (criterionId: string, value: string) => {
-    const numValue = parseFloat(value) || 0
-    setTempCriteriaWeights(prev => ({
-      ...prev,
-      [criterionId]: Math.max(0, Math.min(100, numValue))
-    }))
-  }
-
-  const getWeightSum = () => {
-    return Object.values(tempCriteriaWeights).reduce((sum, weight) => sum + weight, 0)
-  }
-
-  const normalizeWeights = () => {
-    const total = getWeightSum()
-    if (total === 0) return
-    
-    const normalized: Record<string, number> = {}
-    Object.entries(tempCriteriaWeights).forEach(([id, weight]) => {
-      normalized[id] = (weight / total) * 100
-    })
-    setTempCriteriaWeights(normalized)
-  }
-
-  const applyWeights = () => {
-    setCriteriaWeights({ ...tempCriteriaWeights })
-    setShowWeightsDialog(false)
-    toast.success('Success', {
-      description: 'Criteria weights updated successfully'
-    })
-  }
-
-  const cancelWeights = () => {
-    setTempCriteriaWeights({})
-    setShowWeightsDialog(false)
-  }
-
-  // Calculate weighted scores on the frontend using criteria weights
-  const getWeightedScore = (teamId: string): number => {
-    if (Object.keys(criteriaWeights).length === 0) return 0
-    
-    // Get all scores for this team grouped by judge
-    const teamScores = scores.filter(s => s.team.id === teamId)
-    const judgeGroups = teamScores.reduce((acc, score) => {
-      if (!acc[score.judge.id]) acc[score.judge.id] = []
-      acc[score.judge.id].push(score)
-      return acc
-    }, {} as Record<string, Score[]>)
-    
-    // Calculate weighted sum for each judge, then sum across all judges
-    const judgeWeightedTotals = Object.values(judgeGroups).map(judgeScores => {
-      let weightedSum = 0
-      
-      judgeScores.forEach(score => {
-        const weight = (criteriaWeights[score.criterion.id] || 0) / 100 // Convert percentage to decimal
-        weightedSum += score.score * weight
-      })
-      
-      return weightedSum
-    })
-    
-    // Return sum of all judges' weighted totals
-    return judgeWeightedTotals.reduce((sum, total) => sum + total, 0)
-  }
-
   // Sort teams based on selected score mode
   const sortedTeamTotals = [...teamTotals].sort((a, b) => {
     switch (scoreMode) {
@@ -316,9 +223,7 @@ export default function ResultsDashboard() {
       case 'average':
         return b.averageScore - a.averageScore
       case 'weighted':
-        const aWeighted = getWeightedScore(a.teamId)
-        const bWeighted = getWeightedScore(b.teamId)
-        return bWeighted - aWeighted
+        return b.weightedScore - a.weightedScore
       default:
         return b.totalScore - a.totalScore
     }
@@ -462,7 +367,7 @@ export default function ResultsDashboard() {
               <div>
                 <CardTitle>Team Rankings</CardTitle>
                 <CardDescription>
-                  Teams ranked by {scoreMode === 'total' ? 'total' : scoreMode === 'average' ? 'average' : 'weighted average'} score across all criteria
+                  Teams ranked by {scoreMode === 'total' ? 'total' : scoreMode === 'average' ? 'average' : 'weighted'} score across all criteria
                 </CardDescription>
               </div>
             </div>
@@ -492,91 +397,11 @@ export default function ResultsDashboard() {
                     <SelectItem value="weighted" className="cursor-pointer hover:bg-accent/80 transition-colors">
                       <div className="flex flex-col">
                         <span className="font-medium">Weighted Score</span>
-                        <span className="text-xs text-muted-foreground">Sum of weighted scores by criteria importance</span>
+                        <span className="text-xs text-muted-foreground">Weighted by pre-defined criteria importance</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                {scoreMode === 'weighted' && (
-                  <Dialog open={showWeightsDialog} onOpenChange={setShowWeightsDialog}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={openWeightsDialog}
-                        className="flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-50/50 to-purple-50/30 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-200 dark:border-indigo-700"
-                      >
-                        <Settings className="h-3 w-3" />
-                        Configure Weights
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          <Settings className="h-5 w-5 text-primary" />
-                          Configure Criteria Weights
-                        </DialogTitle>
-                        <DialogDescription>
-                          Set the importance percentage for each criterion. All weights must sum to 100%.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        {availableCriteria.map((criterion) => (
-                          <div key={criterion.id} className="space-y-2">
-                            <Label htmlFor={`weight-${criterion.id}`} className="text-sm font-medium">
-                              {criterion.name}
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                id={`weight-${criterion.id}`}
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                value={tempCriteriaWeights[criterion.id]?.toFixed(1) || '0.0'}
-                                onChange={(e) => handleWeightChange(criterion.id, e.target.value)}
-                                className="flex-1"
-                              />
-                              <span className="text-sm text-muted-foreground min-w-[20px]">%</span>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        <div className="pt-4 border-t">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Total:</span>
-                            <span className={`text-sm font-medium ${
-                              Math.abs(getWeightSum() - 100) < 0.1 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {getWeightSum().toFixed(1)}%
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={normalizeWeights}
-                            className="w-full"
-                          >
-                            Auto-normalize to 100%
-                          </Button>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={cancelWeights}>
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={applyWeights}
-                          disabled={Math.abs(getWeightSum() - 100) > 0.1}
-                        >
-                          Apply Changes
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
               <div className="flex gap-2">
                 <Button 
@@ -687,7 +512,7 @@ export default function ResultsDashboard() {
                                 : ''
                             }`}
                           >
-                            {scoreMode === 'total' ? team.totalScore : scoreMode === 'average' ? team.averageScore : getWeightedScore(team.teamId).toFixed(2)}
+                            {scoreMode === 'total' ? team.totalScore : scoreMode === 'average' ? team.averageScore : team.weightedScore.toFixed(2)}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-4 font-medium">{team.totalScores}</TableCell>
@@ -779,14 +604,14 @@ export default function ResultsDashboard() {
       </Card>
       */}
 
-      {/* Judge Scores Matrix - Three Layer: Judge → Team → Criterion */}
+      {/* Team Scores Matrix - Single Table Layout */}
       <Card className={`relative ${isLoadingResults ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Star className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Detailed Scores by Judge</CardTitle>
+                <CardTitle>Detailed Scores by Team</CardTitle>
                 <CardDescription>
                   Individual criterion scores given by each judge to all teams
                 </CardDescription>
@@ -808,13 +633,17 @@ export default function ResultsDashboard() {
         </CardHeader>
         <CardContent>
           {(() => {
-            // Process scores data to create three-layer structure: Judge → Team → Criterion
+            // Process scores data to create structure with team-specific criteria filtering
             const uniqueTeams = Array.from(new Set(scores.map(s => s.team.id)))
-              .map(teamId => ({
-                id: teamId,
-                name: scores.find(s => s.team.id === teamId)?.team.name || '',
-                presentationOrder: scores.find(s => s.team.id === teamId)?.team.presentationOrder || 0
-              }))
+              .map(teamId => {
+                const teamScore = scores.find(s => s.team.id === teamId)
+                return {
+                  id: teamId,
+                  name: teamScore?.team.name || '',
+                  presentationOrder: teamScore?.team.presentationOrder || 0,
+                  awardType: teamScore?.team.awardType || 'both'
+                }
+              })
               .sort((a, b) => a.presentationOrder - b.presentationOrder)
 
             const uniqueJudges = Array.from(new Set(scores.map(s => s.judge.id)))
@@ -822,34 +651,48 @@ export default function ResultsDashboard() {
                 id: judgeId,
                 email: scores.find(s => s.judge.id === judgeId)?.judge.email || ''
               }))
+              .sort((a, b) => a.email.localeCompare(b.email))
 
-            const uniqueCriteria = Array.from(new Set(scores.map(s => s.criterion.id)))
-              .map(criterionId => ({
-                id: criterionId,
-                name: scores.find(s => s.criterion.id === criterionId)?.criterion.name || '',
-                displayOrder: scores.find(s => s.criterion.id === criterionId)?.criterion.displayOrder || 0,
-                maxScore: scores.find(s => s.criterion.id === criterionId)?.criterion.maxScore || 0
-              }))
+            // Get all available criteria sorted by display order
+            const allCriteria = Array.from(new Set(scores.map(s => s.criterion.id)))
+              .map(criterionId => {
+                const criterionScore = scores.find(s => s.criterion.id === criterionId)
+                return {
+                  id: criterionId,
+                  name: criterionScore?.criterion.name || '',
+                  displayOrder: criterionScore?.criterion.displayOrder || 0,
+                  maxScore: criterionScore?.criterion.maxScore || 0,
+                  category: criterionScore?.criterion.category || 'technical'
+                }
+              })
               .sort((a, b) => a.displayOrder - b.displayOrder)
 
-            // Create three-layer lookup: judge[team[criterion]] = score
+            // Helper function to get criteria for a specific team based on award type
+            const getCriteriaForTeam = (teamAwardType: 'technical' | 'business' | 'both') => {
+              return allCriteria.filter(criterion => {
+                if (teamAwardType === 'both') return true
+                return criterion.category === teamAwardType
+              })
+            }
+
+            // Create score matrix: team[judge[criterion]] = score
             const scoreMatrix: Record<string, Record<string, Record<string, number>>> = {}
             
-            uniqueJudges.forEach(judge => {
-              scoreMatrix[judge.id] = {}
-              uniqueTeams.forEach(team => {
-                scoreMatrix[judge.id][team.id] = {}
+            uniqueTeams.forEach(team => {
+              scoreMatrix[team.id] = {}
+              uniqueJudges.forEach(judge => {
+                scoreMatrix[team.id][judge.id] = {}
               })
             })
 
             // Populate the matrix with actual scores
             scores.forEach(score => {
-              if (scoreMatrix[score.judge.id] && scoreMatrix[score.judge.id][score.team.id]) {
-                scoreMatrix[score.judge.id][score.team.id][score.criterion.id] = score.score
+              if (scoreMatrix[score.team.id] && scoreMatrix[score.team.id][score.judge.id]) {
+                scoreMatrix[score.team.id][score.judge.id][score.criterion.id] = score.score
               }
             })
 
-            if (uniqueJudges.length === 0 || uniqueTeams.length === 0 || uniqueCriteria.length === 0) {
+            if (uniqueJudges.length === 0 || uniqueTeams.length === 0 || allCriteria.length === 0) {
               return (
                 <div className="text-center py-12 text-muted-foreground">
                   <Star className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -863,44 +706,44 @@ export default function ResultsDashboard() {
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    {/* Primary header row - Team names */}
+                    {/* Primary header row - Judge names */}
                     <TableRow>
                       <TableHead 
                         className="min-w-[140px] sticky left-0 bg-background border-r border-b-0"
                         rowSpan={2}
                       >
                         <div className="flex items-center h-full">
-                          <span className="font-semibold">Judge</span>
+                          <span className="font-semibold">Team</span>
                         </div>
                       </TableHead>
-                      {uniqueTeams.map((team, teamIndex) => (
+                      {uniqueJudges.map((judge, judgeIndex) => (
                         <TableHead 
-                          key={team.id} 
-                          colSpan={uniqueCriteria.length}
+                          key={judge.id} 
+                          colSpan={allCriteria.length}
                           className={`text-center font-semibold border-b-0 px-2 w-[120px] max-w-[120px] ${
-                            teamIndex % 2 === 0 
+                            judgeIndex % 2 === 0 
                               ? 'bg-slate-50/80 dark:bg-slate-800/30' 
                               : 'bg-blue-50/80 dark:bg-blue-900/20'
-                          } ${teamIndex < uniqueTeams.length - 1 ? 'border-r-2 border-border' : ''}`}
+                          } ${judgeIndex < uniqueJudges.length - 1 ? 'border-r-2 border-border' : ''}`}
                         >
-                          <div className="truncate" title={team.name}>
-                            {team.name}
+                          <div className="truncate" title={judge.email}>
+                            {judge.email.split('@')[0]}
                           </div>
                         </TableHead>
                       ))}
                     </TableRow>
-                    {/* Secondary header row - Criterion names */}
+                    {/* Secondary header row - Criterion names (sorted by display order) */}
                     <TableRow>
-                      {uniqueTeams.map((team, teamIndex) => 
-                        uniqueCriteria.map((criterion, criterionIndex) => (
+                      {uniqueJudges.map((judge, judgeIndex) => 
+                        allCriteria.map((criterion, criterionIndex) => (
                           <TableHead 
-                            key={`${team.id}-${criterion.id}`}
+                            key={`${judge.id}-${criterion.id}`}
                             className={`text-center text-xs font-medium min-w-[80px] px-2 py-3 ${
-                              teamIndex % 2 === 0 
+                              judgeIndex % 2 === 0 
                                 ? 'bg-slate-50/60 dark:bg-slate-800/20' 
                                 : 'bg-blue-50/60 dark:bg-blue-900/15'
                             } ${
-                              criterionIndex === uniqueCriteria.length - 1 && teamIndex < uniqueTeams.length - 1 
+                              criterionIndex === allCriteria.length - 1 && judgeIndex < uniqueJudges.length - 1 
                                 ? 'border-r-2 border-border' 
                                 : ''
                             }`}
@@ -919,50 +762,62 @@ export default function ResultsDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {uniqueJudges.map((judge, judgeIndex) => (
-                      <TableRow key={judge.id} className={judgeIndex % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                        <TableCell className="font-medium sticky left-0 bg-background border-r py-4">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{judge.email.split('@')[0]}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {judge.email.split('@')[1]}
-                            </span>
-                          </div>
-                        </TableCell>
-                        {uniqueTeams.map((team, teamIndex) => 
-                          uniqueCriteria.map((criterion, criterionIndex) => {
-                            const score = scoreMatrix[judge.id][team.id][criterion.id]
-                            const hasScore = score !== undefined
-                            
-                            return (
-                              <TableCell 
-                                key={`${team.id}-${criterion.id}`}
-                                className={`text-center py-4 px-2 ${
-                                  teamIndex % 2 === 0 
-                                    ? 'bg-slate-50/40 dark:bg-slate-800/15' 
-                                    : 'bg-blue-50/40 dark:bg-blue-900/10'
-                                } ${
-                                  criterionIndex === uniqueCriteria.length - 1 && teamIndex < uniqueTeams.length - 1 
-                                    ? 'border-r-2 border-border' 
-                                    : ''
-                                }`}
-                              >
-                                {hasScore ? (
-                                  <Badge 
-                                    variant="outline" 
-                                    className="font-medium bg-white/80 dark:bg-background/80 min-w-[50px]"
-                                  >
-                                    {score}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">—</span>
-                                )}
-                              </TableCell>
-                            )
-                          })
-                        )}
-                      </TableRow>
-                    ))}
+                    {uniqueTeams.map((team, teamIndex) => {
+                      const teamCriteria = getCriteriaForTeam(team.awardType)
+                      const teamCriteriaIds = new Set(teamCriteria.map(c => c.id))
+                      
+                      return (
+                        <TableRow key={team.id} className={teamIndex % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                          <TableCell className="font-medium sticky left-0 bg-background border-r py-4">
+                            <div className="flex flex-col">
+                              <span className="font-medium truncate" title={team.name}>{team.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                Order #{team.presentationOrder} • {team.awardType === 'both' ? 'General' : team.awardType.charAt(0).toUpperCase() + team.awardType.slice(1)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          {uniqueJudges.map((judge, judgeIndex) => 
+                            allCriteria.map((criterion, criterionIndex) => {
+                              const score = scoreMatrix[team.id][judge.id][criterion.id]
+                              const hasScore = score !== undefined
+                              const isRelevantCriteria = teamCriteriaIds.has(criterion.id)
+                              
+                              return (
+                                <TableCell 
+                                  key={`${judge.id}-${criterion.id}`}
+                                  className={`text-center py-4 px-2 ${
+                                    judgeIndex % 2 === 0 
+                                      ? 'bg-slate-50/40 dark:bg-slate-800/15' 
+                                      : 'bg-blue-50/40 dark:bg-blue-900/10'
+                                  } ${
+                                    criterionIndex === allCriteria.length - 1 && judgeIndex < uniqueJudges.length - 1 
+                                      ? 'border-r-2 border-border' 
+                                      : ''
+                                  } ${
+                                    !isRelevantCriteria ? 'opacity-20 bg-gray-100/50 dark:bg-gray-800/30' : ''
+                                  }`}
+                                >
+                                  {isRelevantCriteria && hasScore ? (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="font-medium bg-white/80 dark:bg-background/80 min-w-[50px]"
+                                    >
+                                      {score}
+                                    </Badge>
+                                  ) : isRelevantCriteria ? (
+                                    <span className="text-muted-foreground text-sm">—</span>
+                                  ) : (
+                                    <span className="text-muted-foreground/50 text-xs opacity-50">
+                                      N/A
+                                    </span>
+                                  )}
+                                </TableCell>
+                              )
+                            })
+                          )}
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
