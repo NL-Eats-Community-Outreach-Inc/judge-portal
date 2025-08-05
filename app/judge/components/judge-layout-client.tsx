@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { JudgeSidebar } from './judge-sidebar'
 import { JudgeHeader } from './judge-header'
 import { TooltipProvider } from '@/components/ui/tooltip'
