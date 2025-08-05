@@ -8,10 +8,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle, Trophy, Briefcase, Target } from 'lucide-react'
+import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle, Trophy, Briefcase, Target, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { Team, Criterion } from '@/lib/db/schema'
+import ReactMarkdown from 'react-markdown'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface Score {
   id?: string
@@ -39,6 +42,17 @@ export function TeamScoringInterface({
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({})
   const [loading, setLoading] = useState(true)
   const [lastSavedState, setLastSavedState] = useState<Record<string, { score: number | null; comment: string }>>({})
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+
+  // Detect touch device
+  useEffect(() => {
+    const checkTouchDevice = () => {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
+    }
+    checkTouchDevice()
+    window.addEventListener('resize', checkTouchDevice)
+    return () => window.removeEventListener('resize', checkTouchDevice)
+  }, [])
 
   // Use callback to ensure stable reference for real-time sync
   const fetchExistingScores = useCallback(async () => {
@@ -240,6 +254,90 @@ export function TeamScoringInterface({
     }
   }
 
+  const renderCriterionDescription = (criterion: Criterion) => {
+    if (!criterion.description) return null
+
+    const fullDescription = (
+      <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => <p className="mb-1.5 last:mb-0 text-xs">{children}</p>,
+            ul: ({ children }) => <ul className="mb-1.5 ml-3 list-disc last:mb-0 text-xs">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-1.5 ml-3 list-decimal last:mb-0 text-xs">{children}</ol>,
+            li: ({ children }) => <li className="mb-0.5 text-xs">{children}</li>,
+            strong: ({ children }) => <strong className="font-semibold text-xs">{children}</strong>,
+            em: ({ children }) => <em className="italic text-xs">{children}</em>,
+          }}
+        >
+          {criterion.description}
+        </ReactMarkdown>
+      </div>
+    )
+
+    const truncatedDescription = (
+      <div className="text-xs md:text-sm text-muted-foreground mt-1 prose prose-sm dark:prose-invert max-w-none line-clamp-3">
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+            ul: ({ children }) => <ul className="mb-1 ml-4 list-disc last:mb-0">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-1 ml-4 list-decimal last:mb-0">{children}</ol>,
+            li: ({ children }) => <li className="mb-0.5">{children}</li>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            em: ({ children }) => <em className="italic">{children}</em>,
+          }}
+        >
+          {criterion.description}
+        </ReactMarkdown>
+      </div>
+    )
+
+    if (isTouchDevice) {
+      // Mobile/Tablet: Show info icon with popover
+      return (
+        <div className="flex items-start gap-2">
+          <div className="flex-1">
+            {truncatedDescription}
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground flex-shrink-0 mt-0.5"
+              >
+                <Info className="h-3 w-3" />
+                <span className="sr-only">View full description</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" side="top" align="end">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">{criterion.name}</h4>
+                {fullDescription}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )
+    } else {
+      // Desktop: Show tooltip on hover
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-help">
+              {truncatedDescription}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-80 p-4" side="top" align="start">
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">{criterion.name}</h4>
+              {fullDescription}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+  }
+
   const renderScoreInput = (criterion: Criterion, score: Score | undefined) => {
     const range = criterion.maxScore - criterion.minScore + 1
     
@@ -434,7 +532,8 @@ export function TeamScoringInterface({
   }
 
   return (
-    <div className="max-w-full md:max-w-3xl lg:max-w-4xl mx-auto space-y-4 md:space-y-6 px-4 md:px-6 py-4 md:py-6 min-w-0">
+    <TooltipProvider>
+      <div className="max-w-full md:max-w-3xl lg:max-w-4xl mx-auto space-y-4 md:space-y-6 px-4 md:px-6 py-4 md:py-6 min-w-0">
       {/* Team header */}
       <Card className="p-4 md:p-6">
         <div className="space-y-3 md:space-y-4">
@@ -497,11 +596,7 @@ export function TeamScoringInterface({
                     <h3 className="font-semibold text-foreground text-sm md:text-base">
                       {criterion.name}
                     </h3>
-                    {criterion.description && (
-                      <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-2 overflow-hidden break-words">
-                        {criterion.description}
-                      </p>
-                    )}
+                    {renderCriterionDescription(criterion)}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {getSaveStatusIcon(criterion.id)}
@@ -566,6 +661,7 @@ export function TeamScoringInterface({
           </div>
         </div>
       </Card>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }

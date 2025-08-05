@@ -610,6 +610,9 @@ export default function CriteriaManagement() {
                         rows={3}
                         className="resize-none"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Supports markdown formatting: **bold**, *italic*, line breaks, and lists
+                      </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
@@ -769,7 +772,15 @@ export default function CriteriaManagement() {
                           </TableCell>
                           <TableCell className="text-muted-foreground w-48">
                             <div className="truncate" title={criterion.description || ''}>
-                              {criterion.description || '—'}
+                              {criterion.description ? 
+                                criterion.description
+                                  .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+                                  .replace(/\*(.*?)\*/g, '$1')     // Remove italic *text*
+                                  .replace(/^[-*+]\s+/gm, '')      // Remove list markers
+                                  .replace(/^\d+\.\s+/gm, '')      // Remove numbered list markers
+                                  .replace(/\n+/g, ' ')            // Replace newlines with spaces
+                                  .trim()
+                                : '—'}
                             </div>
                           </TableCell>
                           <TableCell className="w-24">
