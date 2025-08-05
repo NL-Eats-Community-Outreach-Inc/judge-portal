@@ -110,11 +110,11 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+        return <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-green-600 dark:text-green-400" />
       case 'partial':
-        return <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        return <Clock className="h-4 w-4 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
       default:
-        return <Circle className="h-4 w-4 text-muted-foreground" />
+        return <Circle className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
     }
   }
 
@@ -260,7 +260,9 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    {getStatusIcon(status)}
+                    <div className="flex-shrink-0">
+                      {getStatusIcon(status)}
+                    </div>
                     <span className="font-medium text-sm truncate">
                       {team.presentationOrder}. {team.name}
                     </span>
