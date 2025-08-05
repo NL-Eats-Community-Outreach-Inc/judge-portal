@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
           teams.id as "teamId",
           teams.name as "teamName",
           teams.presentation_order as "presentationOrder",
+          teams.award_type as "awardType",
           scores.judge_id as "judgeId",
           users.email as "judgeEmail",
           SUM(scores.score::numeric) as judge_total,
@@ -96,13 +97,14 @@ export async function GET(request: NextRequest) {
             (teams.award_type = 'business' AND criteria.category = 'business') OR
             (teams.award_type = 'both')
           )
-        GROUP BY teams.id, teams.name, teams.presentation_order, scores.judge_id, users.email
+        GROUP BY teams.id, teams.name, teams.presentation_order, teams.award_type, scores.judge_id, users.email
       ),
       team_calculations AS (
         SELECT 
           "teamId",
           "teamName",
           "presentationOrder",
+          "awardType",
           COALESCE(SUM(judge_total), 0) as total_score,
           COALESCE(AVG(judge_total), 0) as average_score,
           COALESCE(AVG(judge_weighted_total), 0) as weighted_score,
@@ -110,12 +112,13 @@ export async function GET(request: NextRequest) {
           SUM(criteria_scored) as total_scores
         FROM judge_totals
         WHERE judge_total IS NOT NULL
-        GROUP BY "teamId", "teamName", "presentationOrder"
+        GROUP BY "teamId", "teamName", "presentationOrder", "awardType"
       )
       SELECT 
         "teamId",
         "teamName", 
         "presentationOrder",
+        "awardType",
         ROUND(total_score::numeric, 2) as "totalScore",
         ROUND(average_score::numeric, 2) as "averageScore", 
         ROUND(weighted_score::numeric, 2) as "weightedScore",
@@ -189,6 +192,7 @@ export async function GET(request: NextRequest) {
         teamId: total.teamId,
         teamName: total.teamName,
         presentationOrder: Number(total.presentationOrder),
+        awardType: total.awardType as 'technical' | 'business' | 'both',
         totalScore: Number(total.totalScore),
         averageScore: Number(total.averageScore),
         weightedScore: Number(total.weightedScore),

@@ -127,6 +127,12 @@ export async function GET(request: NextRequest) {
     // Create CSV content in matrix format
     let csvContent = ''
     
+    // Helper function to format award type for better readability
+    const formatAwardType = (type: 'technical' | 'business' | 'both') => {
+      if (type === 'both') return 'General'
+      return type.charAt(0).toUpperCase() + type.slice(1)
+    }
+
     // First header row: Team info columns, then judge names repeated for each criterion
     const headerRow1 = ['Team Name', 'Presentation Order', 'Award Type']
     allJudges.forEach(judge => {
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
       const row = [
         escapeCSV(team.name),
         team.presentationOrder,
-        team.awardType
+        formatAwardType(team.awardType)
       ]
 
       allJudges.forEach(judge => {

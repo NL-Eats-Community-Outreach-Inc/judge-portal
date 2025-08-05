@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('eventId')
     const scoreMode = searchParams.get('scoreMode') || 'total'
+    const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all'
 
     // Get event information for filename
     let eventName = 'event'
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
           teams.id as "teamId",
           teams.name as "teamName",
           teams.presentation_order as "presentationOrder",
+          teams.award_type as "awardType",
           scores.judge_id as "judgeId",
           users.email as "judgeEmail",
           SUM(scores.score::numeric) as judge_total,
@@ -68,13 +70,14 @@ export async function GET(request: NextRequest) {
             (teams.award_type = 'business' AND criteria.category = 'business') OR
             (teams.award_type = 'both')
           )
-        GROUP BY teams.id, teams.name, teams.presentation_order, scores.judge_id, users.email
+        GROUP BY teams.id, teams.name, teams.presentation_order, teams.award_type, scores.judge_id, users.email
       ),
       team_calculations AS (
         SELECT 
           "teamId",
           "teamName",
           "presentationOrder",
+          "awardType",
           COALESCE(SUM(judge_total), 0) as total_score,
           COALESCE(AVG(judge_total), 0) as average_score,
           COALESCE(AVG(judge_weighted_total), 0) as weighted_score,
@@ -82,12 +85,13 @@ export async function GET(request: NextRequest) {
           SUM(criteria_scored) as total_scores
         FROM judge_totals
         WHERE judge_total IS NOT NULL
-        GROUP BY "teamId", "teamName", "presentationOrder"
+        GROUP BY "teamId", "teamName", "presentationOrder", "awardType"
       )
       SELECT 
         "teamId",
         "teamName", 
         "presentationOrder",
+        "awardType",
         ROUND(total_score::numeric, 2) as "totalScore",
         ROUND(average_score::numeric, 2) as "averageScore", 
         ROUND(weighted_score::numeric, 2) as "weightedScore",
@@ -98,7 +102,12 @@ export async function GET(request: NextRequest) {
     `
 
     const teamTotalsResult = await db.execute(baseTeamTotalsQuery)
-    const teamTotals = teamTotalsResult as Array<Record<string, unknown>>
+    let teamTotals = teamTotalsResult as Array<Record<string, unknown>>
+
+    // Apply award type filter if not 'all'
+    if (awardTypeFilter !== 'all') {
+      teamTotals = teamTotals.filter(team => team.awardType === awardTypeFilter)
+    }
 
     // Sort by score mode in JavaScript after getting results (same data, different sort)
     teamTotals.sort((a, b) => {
@@ -118,16 +127,24 @@ export async function GET(request: NextRequest) {
     const scoreModeName = scoreMode === 'total' ? 'Total Score' : 
                          scoreMode === 'average' ? 'Average Score' : 'Weighted Score'
     
-    let csvContent = `Rank,Team Name,Presentation Order,${scoreModeName},Number of Scores,Judge Count\n`
+    let csvContent = `Rank,Team Name,Award Type,Presentation Order,${scoreModeName},Number of Scores,Judge Count\n`
     
     teamTotals.forEach((team, index) => {
       const finalScore = scoreMode === 'total' ? Number(team.totalScore) : 
                         scoreMode === 'average' ? Number(team.averageScore) : 
                         Number(team.weightedScore)
+      
+      // Format award type for better readability - use "General" instead of "Both"
+      const formatAwardType = (type: string) => {
+        if (type === 'both') return 'General'
+        return type.charAt(0).toUpperCase() + type.slice(1)
+      }
+      const awardType = formatAwardType(String(team.awardType))
                         
       const row = [
         index + 1,
         `"${team.teamName}"`,
+        awardType,
         Number(team.presentationOrder),
         finalScore,
         Number(team.totalScores),

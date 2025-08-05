@@ -45,6 +45,7 @@ interface TeamTotal {
   weightedScore: number
   totalScores: number
   judgeCount: number
+  awardType: 'technical' | 'business' | 'both'
 }
 
 interface CriteriaAverage {
@@ -65,6 +66,7 @@ export default function ResultsDashboard() {
   const [isExporting, setIsExporting] = useState(false)
   const [isExportingJudgeScores, setIsExportingJudgeScores] = useState(false)
   const [scoreMode, setScoreMode] = useState<'total' | 'average' | 'weighted'>('total')
+  const [awardTypeFilter, setAwardTypeFilter] = useState<'all' | 'technical' | 'business' | 'both'>('all')
   const { selectedEvent } = useAdminEvent()
 
   // Use useCallback to ensure stable reference for real-time sync
@@ -115,10 +117,11 @@ export default function ResultsDashboard() {
     
     setIsExporting(true)
     try {
-      // Build URL with score mode - weights come from database
+      // Build URL with score mode and award type filter
       const url = new URL(`/api/admin/results/export`, window.location.origin)
       url.searchParams.set('eventId', selectedEvent.id)
       url.searchParams.set('scoreMode', scoreMode)
+      url.searchParams.set('awardTypeFilter', awardTypeFilter)
       
       const response = await fetch(url.toString())
       
@@ -227,19 +230,24 @@ export default function ResultsDashboard() {
       }, new Set()).size
   }
 
-  // Sort teams based on selected score mode
-  const sortedTeamTotals = [...teamTotals].sort((a, b) => {
-    switch (scoreMode) {
-      case 'total':
-        return b.totalScore - a.totalScore
-      case 'average':
-        return b.averageScore - a.averageScore
-      case 'weighted':
-        return b.weightedScore - a.weightedScore
-      default:
-        return b.totalScore - a.totalScore
-    }
-  })
+  // Filter and sort teams based on selected filters
+  const sortedTeamTotals = [...teamTotals]
+    .filter(team => {
+      if (awardTypeFilter === 'all') return true
+      return team.awardType === awardTypeFilter
+    })
+    .sort((a, b) => {
+      switch (scoreMode) {
+        case 'total':
+          return b.totalScore - a.totalScore
+        case 'average':
+          return b.averageScore - a.averageScore
+        case 'weighted':
+          return b.weightedScore - a.weightedScore
+        default:
+          return b.totalScore - a.totalScore
+      }
+    })
 
   const getStatsCards = () => {
     const totalScores = scores.length
@@ -391,6 +399,42 @@ export default function ResultsDashboard() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
+                <Select value={awardTypeFilter} onValueChange={(value: 'all' | 'technical' | 'business' | 'both') => setAwardTypeFilter(value)}>
+                  <SelectTrigger className="w-48 bg-gradient-to-r from-slate-50/50 to-purple-50/30 dark:from-slate-800/30 dark:to-purple-900/20 border-slate-200 dark:border-slate-700 shadow-sm">
+                    <SelectValue>
+                      {awardTypeFilter === 'all' && 'All Teams'}
+                      {awardTypeFilter === 'technical' && 'Technical Only'}
+                      {awardTypeFilter === 'business' && 'Business Only'}
+                      {awardTypeFilter === 'both' && 'General Only'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-background/95 backdrop-blur-sm border border-border/50 shadow-lg">
+                    <SelectItem value="all" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">All Teams</span>
+                        <span className="text-xs text-muted-foreground">Show all teams regardless of type</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="technical" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Technical Only</span>
+                        <span className="text-xs text-muted-foreground">Teams competing for technical awards</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="business" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Business Only</span>
+                        <span className="text-xs text-muted-foreground">Teams competing for business awards</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="both" className="cursor-pointer hover:bg-accent/80 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="font-medium">General Only</span>
+                        <span className="text-xs text-muted-foreground">Teams competing for both award types</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <Select value={scoreMode} onValueChange={(value: 'total' | 'average' | 'weighted') => setScoreMode(value)}>
                   <SelectTrigger className="w-56 bg-gradient-to-r from-slate-50/50 to-blue-50/30 dark:from-slate-800/30 dark:to-blue-900/20 border-slate-200 dark:border-slate-700 shadow-sm">
                     <SelectValue>
