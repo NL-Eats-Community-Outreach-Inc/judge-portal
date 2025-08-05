@@ -21,19 +21,39 @@ export async function GET() {
 
     const eventId = activeEvent[0].id
 
-    // Get all teams for the current event
-    const eventTeams = await db.select({ id: teams.id })
+    // Get all teams for the current event with their award types
+    const eventTeams = await db.select({ 
+      id: teams.id, 
+      awardType: teams.awardType 
+    })
       .from(teams)
       .where(eq(teams.eventId, eventId))
-
-    // Get all criteria for the current event
-    const eventCriteria = await db.select({ id: criteria.id })
-      .from(criteria)
-      .where(eq(criteria.eventId, eventId))
 
     // Calculate completion status for each team
     const completion = await Promise.all(
       eventTeams.map(async (team) => {
+        // Get criteria count based on team's award type
+        let criteriaFilter
+        if (team.awardType === 'technical') {
+          criteriaFilter = and(
+            eq(criteria.eventId, eventId),
+            eq(criteria.category, 'technical')
+          )
+        } else if (team.awardType === 'business') {
+          criteriaFilter = and(
+            eq(criteria.eventId, eventId),
+            eq(criteria.category, 'business')
+          )
+        } else {
+          // 'both' - show all criteria
+          criteriaFilter = eq(criteria.eventId, eventId)
+        }
+
+        // Get the filtered criteria count for this team
+        const teamCriteria = await db.select({ count: count() })
+          .from(criteria)
+          .where(criteriaFilter)
+
         // Count how many scores this judge has submitted for this team in the active event
         const judgeScores = await db.select({ count: count() })
           .from(scores)
@@ -46,7 +66,7 @@ export async function GET() {
           )
 
         const completedCriteria = judgeScores[0]?.count || 0
-        const totalCriteria = eventCriteria.length
+        const totalCriteria = teamCriteria[0]?.count || 0
 
         const completed = completedCriteria === totalCriteria && totalCriteria > 0
         const partial = completedCriteria > 0 && completedCriteria < totalCriteria
