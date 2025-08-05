@@ -61,7 +61,6 @@ export default function ResultsDashboard() {
   const [scores, setScores] = useState<Score[]>([])
   const [teamTotals, setTeamTotals] = useState<TeamTotal[]>([])
   const [, setCriteriaAverages] = useState<CriteriaAverage[]>([])
-  const [criteriaCount, setCriteriaCount] = useState(0)
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isExportingJudgeScores, setIsExportingJudgeScores] = useState(false)
@@ -81,7 +80,6 @@ export default function ResultsDashboard() {
         setScores(data.scores)
         setTeamTotals(data.teamTotals)
         setCriteriaAverages(data.criteriaAverages)
-        setCriteriaCount(data.criteriaCount || 0)
         
         // Weights are now managed in database, no frontend initialization needed
       } else {
@@ -215,6 +213,20 @@ export default function ResultsDashboard() {
     }
   }
 
+  // Helper function to calculate relevant criteria count for a team based on award type
+  const getRelevantCriteriaCount = (teamId: string) => {
+    return scores
+      .filter(s => s.team.id === teamId)
+      .reduce((criteriaSet, score) => {
+        const isRelevant = score.team.awardType === 'both' ||
+          score.team.awardType === score.criterion.category
+        if (isRelevant) {
+          criteriaSet.add(score.criterion.id)
+        }
+        return criteriaSet
+      }, new Set()).size
+  }
+
   // Sort teams based on selected score mode
   const sortedTeamTotals = [...teamTotals].sort((a, b) => {
     switch (scoreMode) {
@@ -233,7 +245,13 @@ export default function ResultsDashboard() {
     const totalScores = scores.length
     const uniqueTeams = new Set(scores.map(s => s.team.id)).size
     const uniqueJudges = new Set(scores.map(s => s.judge.id)).size
-    const expectedTotalScores = uniqueTeams * uniqueJudges * criteriaCount
+    
+    // Calculate expected scores based on each team's relevant criteria count
+    const expectedTotalScores = teamTotals.reduce((sum, team) => {
+      const relevantCriteriaCount = getRelevantCriteriaCount(team.teamId)
+      return sum + (relevantCriteriaCount * team.judgeCount)
+    }, 0)
+    
     const completionRate = expectedTotalScores > 0 ? Math.round((totalScores / expectedTotalScores) * 100) : 0
 
     return (
@@ -522,11 +540,26 @@ export default function ResultsDashboard() {
                             <div className="flex-1 bg-muted/60 rounded-full h-3 shadow-inner">
                               <div 
                                 className={`${getProgressBarStyle(index + 1)} h-3 rounded-full shadow-sm transition-all duration-500`}
-                                style={{ width: `${Math.min(criteriaCount > 0 && team.judgeCount > 0 ? (team.totalScores / (team.judgeCount * criteriaCount)) * 100 : 0, 100)}%` }}
+                                style={{ 
+                                  width: `${(() => {
+                                    const relevantCriteriaCount = getRelevantCriteriaCount(team.teamId)
+                                    return Math.min(
+                                      relevantCriteriaCount > 0 && team.judgeCount > 0 
+                                        ? (team.totalScores / (team.judgeCount * relevantCriteriaCount)) * 100 
+                                        : 0, 
+                                      100
+                                    )
+                                  })()}%` 
+                                }}
                               />
                             </div>
                             <span className="text-sm font-medium text-foreground min-w-[40px]">
-                              {criteriaCount > 0 && team.judgeCount > 0 ? Math.round((team.totalScores / (team.judgeCount * criteriaCount)) * 100) : 0}%
+                              {(() => {
+                                const relevantCriteriaCount = getRelevantCriteriaCount(team.teamId)
+                                return relevantCriteriaCount > 0 && team.judgeCount > 0 
+                                  ? Math.round((team.totalScores / (team.judgeCount * relevantCriteriaCount)) * 100) 
+                                  : 0
+                              })()}%
                             </span>
                           </div>
                         </TableCell>
