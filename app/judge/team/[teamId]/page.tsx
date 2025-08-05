@@ -42,16 +42,34 @@ export default async function TeamPage({ params }: TeamPageProps) {
     notFound()
   }
 
-  // Get all criteria for this event
+  // Get criteria for this event based on team's award type
+  const teamData = team[0]
+  let criteriaFilter
+  
+  if (teamData.awardType === 'technical') {
+    criteriaFilter = and(
+      eq(criteria.eventId, eventId),
+      eq(criteria.category, 'technical')
+    )
+  } else if (teamData.awardType === 'business') {
+    criteriaFilter = and(
+      eq(criteria.eventId, eventId),
+      eq(criteria.category, 'business')
+    )
+  } else {
+    // 'both' - show all criteria
+    criteriaFilter = eq(criteria.eventId, eventId)
+  }
+  
   const eventCriteria = await db.select()
     .from(criteria)
-    .where(eq(criteria.eventId, eventId))
+    .where(criteriaFilter)
     .orderBy(asc(criteria.displayOrder))
 
   return (
     <div className="p-6">
       <TeamScoringInterface 
-        team={team[0]}
+        team={teamData}
         criteria={eventCriteria}
         judgeId={user.id}
         eventId={eventId}

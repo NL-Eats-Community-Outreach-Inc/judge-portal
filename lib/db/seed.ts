@@ -142,7 +142,9 @@ const seedDatabase = async () => {
         description: 'How innovative and creative is the solution?',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 1
+        displayOrder: 1,
+        weight: 25,
+        category: 'technical'
       },
       {
         eventId,
@@ -150,7 +152,9 @@ const seedDatabase = async () => {
         description: 'Quality of the technical execution and code',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 2
+        displayOrder: 2,
+        weight: 50,
+        category: 'technical'
       },
       {
         eventId,
@@ -158,7 +162,9 @@ const seedDatabase = async () => {
         description: 'How intuitive and user-friendly is the solution?',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 3
+        displayOrder: 3,
+        weight: 25,
+        category: 'technical'
       },
       {
         eventId,
@@ -166,7 +172,9 @@ const seedDatabase = async () => {
         description: 'Potential for real-world application and scalability',
         minScore: 1,
         maxScore: 10,
-        displayOrder: 4
+        displayOrder: 4,
+        weight: 100,
+        category: 'business'
       }
     ]).returning()
 

@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm'
 
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'active', 'completed'])
 export const userRoleEnum = pgEnum('user_role', ['admin', 'judge'])
+export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business'])
+export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both'])
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -39,6 +41,7 @@ export const teams = pgTable('teams', {
   demoUrl: text('demo_url'),
   repoUrl: text('repo_url'),
   presentationOrder: integer('presentation_order').notNull(),
+  awardType: teamAwardTypeEnum('award_type').default('both').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
     .default(sql`timezone('utc'::text, now())`)
     .notNull(),
@@ -60,6 +63,8 @@ export const criteria = pgTable('criteria', {
   minScore: integer('min_score').default(1).notNull(),
   maxScore: integer('max_score').default(10).notNull(),
   displayOrder: integer('display_order').notNull(),
+  weight: integer('weight').default(20).notNull(),
+  category: criteriaCategoryEnum('category').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
     .default(sql`timezone('utc'::text, now())`)
     .notNull(),
@@ -71,6 +76,7 @@ export const criteria = pgTable('criteria', {
   uniqueEventOrder: unique().on(table.eventId, table.displayOrder),
   uniqueEventName: unique().on(table.eventId, table.name),
   checkScoreRange: check('check_score_range', sql`${table.minScore} < ${table.maxScore}`),
+  checkWeightRange: check('check_weight_range', sql`${table.weight} >= 0 AND ${table.weight} <= 100`),
   eventOrderIdx: index('idx_criteria_event_order').on(table.eventId, table.displayOrder),
 }))
 

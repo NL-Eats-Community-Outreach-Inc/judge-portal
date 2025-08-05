@@ -16,7 +16,7 @@ export async function PUT(
     }
 
     const { teamId } = await params
-    const { name, description, demoUrl, repoUrl, presentationOrder } = await request.json()
+    const { name, description, demoUrl, repoUrl, presentationOrder, awardType } = await request.json()
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 })
@@ -34,6 +34,7 @@ export async function PUT(
         description: description?.trim() || null,
         demoUrl: demoUrl?.trim() || null,
         repoUrl: repoUrl?.trim() || null,
+        awardType: awardType || 'both',
         presentationOrder
       })
       .where(eq(teams.id, teamId))

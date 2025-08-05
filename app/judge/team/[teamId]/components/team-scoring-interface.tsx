@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle } from 'lucide-react'
+import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle, Trophy, Briefcase, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { Team, Criterion } from '@/lib/db/schema'
@@ -207,6 +207,34 @@ export function TeamScoringInterface({
         return <Check className="h-4 w-4 text-green-500" />
       case 'error':
         return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return null
+    }
+  }
+
+  const getAwardTypeBadge = (awardType: string) => {
+    switch (awardType) {
+      case 'technical':
+        return (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+            <Trophy className="h-3 w-3 mr-1.5" />
+            Competing for Technical Award
+          </Badge>
+        )
+      case 'business':
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+            <Briefcase className="h-3 w-3 mr-1.5" />
+            Competing for Business Award
+          </Badge>
+        )
+      case 'both':
+        return (
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">
+            <Target className="h-3 w-3 mr-1.5" />
+            Competing for General Award
+          </Badge>
+        )
       default:
         return null
     }
@@ -415,9 +443,12 @@ export function TeamScoringInterface({
               <h1 className="text-xl md:text-2xl font-bold text-foreground truncate min-w-0">
                 {team.name}
               </h1>
-              <Badge variant="outline" className="mt-2">
-                Presentation #{team.presentationOrder}
-              </Badge>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge variant="outline">
+                  Presentation #{team.presentationOrder}
+                </Badge>
+                {getAwardTypeBadge(team.awardType)}
+              </div>
             </div>
           </div>
           

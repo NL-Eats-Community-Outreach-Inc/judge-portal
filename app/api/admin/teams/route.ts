@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
             demoUrl: teams.demoUrl,
             repoUrl: teams.repoUrl,
             presentationOrder: teams.presentationOrder,
+            awardType: teams.awardType,
             createdAt: teams.createdAt,
             updatedAt: teams.updatedAt,
             eventId: teams.eventId
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
             demoUrl: teams.demoUrl,
             repoUrl: teams.repoUrl,
             presentationOrder: teams.presentationOrder,
+            awardType: teams.awardType,
             createdAt: teams.createdAt,
             updatedAt: teams.updatedAt,
             eventId: teams.eventId
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { eventId, name, description, demoUrl, repoUrl } = await request.json()
+    const { eventId, name, description, demoUrl, repoUrl, awardType } = await request.json()
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         demoUrl: demoUrl?.trim() || null,
         repoUrl: repoUrl?.trim() || null,
+        awardType: awardType || 'both',
         presentationOrder: nextOrder
       })
       .returning()
