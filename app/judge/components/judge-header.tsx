@@ -32,6 +32,16 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Smart email display helpers
+  const getUsername = (email: string, maxLength: number) => {
+    const username = email.split('@')[0]
+    return username.length > maxLength ? username.substring(0, maxLength - 3) + '...' : username
+  }
+
+  const getDisplayEmail = (email: string, maxLength: number) => {
+    return email.length > maxLength ? email.substring(0, maxLength - 3) + '...' : email
+  }
+
   // Enhanced fetch function for real-time sync - use callback to ensure stable reference
   const fetchEvent = useCallback(async () => {
     try {
@@ -138,7 +148,10 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-4">
                 <User className="h-4 w-4" />
-                <span className="text-sm hidden sm:inline">{user.email}</span>
+                {/* Username only for sm/md screens */}
+                <span className="text-sm hidden sm:inline lg:hidden">{getUsername(user.email || '', 15)}</span>
+                {/* Full email for lg+ screens */}
+                <span className="text-sm hidden lg:inline">{getDisplayEmail(user.email || '', 25)}</span>
                 <Badge variant="outline" className="text-xs capitalize hidden md:inline-flex">
                   {user.role}
                 </Badge>
@@ -147,7 +160,7 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem className="sm:hidden" disabled>
                 <User className="h-4 w-4 mr-2" />
-                {user.email}
+                {getDisplayEmail(user.email || '', 20)}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />

@@ -508,7 +508,7 @@ export default function ResultsDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Rank</TableHead>
-                    <TableHead className="w-[150px] max-w-[150px]">Team</TableHead>
+                    <TableHead className="w-[220px] max-w-[220px]">Team</TableHead>
                     <TableHead>Final Score</TableHead>
                     <TableHead>Total Scores</TableHead>
                     <TableHead>Judge Count</TableHead>
@@ -550,7 +550,7 @@ export default function ResultsDashboard() {
                             {getRankIcon(index + 1)}
                           </div>
                         </TableCell>
-                        <TableCell className="py-4 w-[150px] max-w-[150px]">
+                        <TableCell className="py-4 w-[220px] max-w-[220px]">
                           <div className="space-y-1">
                             <div className="font-semibold text-foreground truncate" title={team.teamName}>
                               {team.teamName}
@@ -786,7 +786,7 @@ export default function ResultsDashboard() {
                     {/* Primary header row - Judge names */}
                     <TableRow>
                       <TableHead 
-                        className="min-w-[140px] sticky left-0 bg-background border-r border-b-0"
+                        className="w-[220px] max-w-[220px] sticky left-0 bg-background border-r border-b-0"
                         rowSpan={2}
                       >
                         <div className="flex items-center h-full">
@@ -845,7 +845,7 @@ export default function ResultsDashboard() {
                       
                       return (
                         <TableRow key={team.id} className={teamIndex % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                          <TableCell className="font-medium sticky left-0 bg-background border-r py-4">
+                          <TableCell className="font-medium w-[220px] max-w-[220px] sticky left-0 bg-background border-r py-4">
                             <div className="flex flex-col">
                               <span className="font-medium truncate" title={team.name}>{team.name}</span>
                               <span className="text-xs text-muted-foreground">
