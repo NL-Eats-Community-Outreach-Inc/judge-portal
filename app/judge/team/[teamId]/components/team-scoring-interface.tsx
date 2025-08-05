@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { Team, Criterion } from '@/lib/db/schema'
 import ReactMarkdown from 'react-markdown'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface Score {
@@ -517,7 +517,8 @@ export function TeamScoringInterface({
 
   if (loading) {
     return (
-      <div className="px-4 md:px-0 py-4 md:py-0 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+      <div className="space-y-4 md:space-y-6">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="p-4 md:p-6">
             <div className="space-y-3 md:space-y-4">
@@ -528,12 +529,13 @@ export function TeamScoringInterface({
           </Card>
         ))}
       </div>
+      </div>
     )
   }
 
   return (
-    <TooltipProvider>
-      <div className="max-w-full md:max-w-3xl lg:max-w-4xl mx-auto space-y-4 md:space-y-6 px-4 md:px-6 py-4 md:py-6 min-w-0">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
+      <div className="space-y-4 md:space-y-6">
       {/* Team header */}
       <Card className="p-4 md:p-6">
         <div className="space-y-3 md:space-y-4">
@@ -662,6 +664,6 @@ export function TeamScoringInterface({
         </div>
       </Card>
       </div>
-    </TooltipProvider>
+    </div>
   )
 }

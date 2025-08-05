@@ -67,13 +67,11 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .orderBy(asc(criteria.displayOrder))
 
   return (
-    <div className="p-6">
-      <TeamScoringInterface 
-        team={teamData}
-        criteria={eventCriteria}
-        judgeId={user.id}
-        eventId={eventId}
-      />
-    </div>
+    <TeamScoringInterface 
+      team={teamData}
+      criteria={eventCriteria}
+      judgeId={user.id}
+      eventId={eventId}
+    />
   )
 }
