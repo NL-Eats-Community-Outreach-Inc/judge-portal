@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
-import { scores, teams, criteria, users, events } from '@/lib/db/schema'
+import { scores, teams, criteria, users, events, eventJudges } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('eventId')
 
     // Get all scores with team, criterion, and judge info including award types and categories
+    // Only include scores from judges assigned to the event
     const baseScoresQuery = db
       .select({
         id: scores.id,
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(teams, eq(scores.teamId, teams.id))
       .innerJoin(criteria, eq(scores.criterionId, criteria.id))
       .innerJoin(users, eq(scores.judgeId, users.id))
+      .innerJoin(eventJudges, sql`${eventJudges.judgeId} = ${users.id} AND ${eventJudges.eventId} = ${teams.eventId}`)
 
     const allScores = eventId 
       ? await baseScoresQuery
@@ -91,12 +93,14 @@ export async function GET(request: NextRequest) {
         LEFT JOIN users ON scores.judge_id = users.id
         LEFT JOIN criteria ON scores.criterion_id = criteria.id
         LEFT JOIN team_weights tw ON tw.team_id = teams.id
+        LEFT JOIN event_judges ej ON ej.judge_id = users.id AND ej.event_id = teams.event_id
         WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
           AND (
             (teams.award_type = 'technical' AND criteria.category = 'technical') OR
             (teams.award_type = 'business' AND criteria.category = 'business') OR
             (teams.award_type = 'both')
           )
+          AND ej.judge_id IS NOT NULL
         GROUP BY teams.id, teams.name, teams.presentation_order, teams.award_type, scores.judge_id, users.email
       ),
       team_calculations AS (
@@ -131,6 +135,7 @@ export async function GET(request: NextRequest) {
     const teamTotals = await db.execute(baseTeamTotalsQuery)
 
     // Get criteria averages per team (filtered by team award type vs criteria category)
+    // Only include scores from assigned judges
     const baseCriteriaAveragesQuery = db
       .select({
         teamId: scores.teamId,
@@ -143,6 +148,8 @@ export async function GET(request: NextRequest) {
       .from(scores)
       .innerJoin(teams, eq(scores.teamId, teams.id))
       .innerJoin(criteria, eq(scores.criterionId, criteria.id))
+      .innerJoin(users, eq(scores.judgeId, users.id))
+      .innerJoin(eventJudges, sql`${eventJudges.judgeId} = ${users.id} AND ${eventJudges.eventId} = ${teams.eventId}`)
 
     const criteriaAverages = eventId 
       ? await baseCriteriaAveragesQuery

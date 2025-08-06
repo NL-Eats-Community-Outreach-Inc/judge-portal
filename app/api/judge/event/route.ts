@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { authServer } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { events } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { events, eventJudges } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET() {
   try {
-    // Verify authentication
-    await authServer.requireAuth()
+    // Verify authentication and get judge info
+    const user = await authServer.requireAuth()
+    const userId = user.id
 
     // Get currently active event only
     const activeEvent = await db.select({
@@ -22,6 +23,23 @@ export async function GET() {
 
     if (!activeEvent.length) {
       return NextResponse.json({ event: null })
+    }
+
+    // Check if judge is assigned to this event
+    const assignment = await db
+      .select()
+      .from(eventJudges)
+      .where(and(
+        eq(eventJudges.eventId, activeEvent[0].id),
+        eq(eventJudges.judgeId, userId)
+      ))
+      .limit(1)
+
+    if (!assignment.length) {
+      return NextResponse.json({ 
+        error: 'You are not assigned to the current active event',
+        errorType: 'NOT_ASSIGNED'
+      }, { status: 403 })
     }
 
     return NextResponse.json({ event: activeEvent[0] })

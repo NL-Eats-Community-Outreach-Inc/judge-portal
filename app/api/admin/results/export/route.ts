@@ -64,12 +64,14 @@ export async function GET(request: NextRequest) {
         LEFT JOIN users ON scores.judge_id = users.id
         LEFT JOIN criteria ON scores.criterion_id = criteria.id
         LEFT JOIN team_weights tw ON tw.team_id = teams.id
+        LEFT JOIN event_judges ej ON ej.judge_id = users.id AND ej.event_id = teams.event_id
         WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
           AND (
             (teams.award_type = 'technical' AND criteria.category = 'technical') OR
             (teams.award_type = 'business' AND criteria.category = 'business') OR
             (teams.award_type = 'both')
           )
+          AND ej.judge_id IS NOT NULL
         GROUP BY teams.id, teams.name, teams.presentation_order, teams.award_type, scores.judge_id, users.email
       ),
       team_calculations AS (

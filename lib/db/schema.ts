@@ -80,6 +80,18 @@ export const criteria = pgTable('criteria', {
   eventOrderIdx: index('idx_criteria_event_order').on(table.eventId, table.displayOrder),
 }))
 
+export const eventJudges = pgTable('event_judges', {
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
+  judgeId: uuid('judge_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  assignedAt: timestamp('assigned_at', { withTimezone: true, mode: 'string' })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull(),
+}, (table) => ({
+  pk: unique().on(table.eventId, table.judgeId),
+  eventIdx: index('idx_event_judges_event').on(table.eventId),
+  judgeIdx: index('idx_event_judges_judge').on(table.judgeId),
+}))
+
 export const scores = pgTable('scores', {
   id: uuid('id').primaryKey().defaultRandom(),
   eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
@@ -110,5 +122,7 @@ export type Team = typeof teams.$inferSelect
 export type NewTeam = typeof teams.$inferInsert
 export type Criterion = typeof criteria.$inferSelect
 export type NewCriterion = typeof criteria.$inferInsert
+export type EventJudge = typeof eventJudges.$inferSelect
+export type NewEventJudge = typeof eventJudges.$inferInsert
 export type Score = typeof scores.$inferSelect
 export type NewScore = typeof scores.$inferInsert

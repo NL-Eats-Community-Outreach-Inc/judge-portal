@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Users, Target, Clock, AlertCircle } from 'lucide-react'
 
@@ -12,6 +13,7 @@ interface Team {
 export default function JudgePage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   // Enhanced fetch function for real-time sync using useCallback for stable reference
   const fetchTeams = useCallback(async () => {
@@ -20,13 +22,19 @@ export default function JudgePage() {
       if (response.ok) {
         const data = await response.json()
         setTeams(data.teams || [])
+      } else if (response.status === 403) {
+        const data = await response.json()
+        if (data.errorType === 'NOT_ASSIGNED') {
+          router.push('/judge/not-assigned')
+          return
+        }
       }
     } catch (error) {
       console.error('Error fetching teams:', error)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [router])
 
 
   // Initial fetch
