@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { teams, criteria, events } from '@/lib/db/schema'
+import { teams, criteria, events, eventJudges } from '@/lib/db/schema'
 import { eq, and, asc } from 'drizzle-orm'
 import { authServer } from '@/lib/auth'
 import { TeamScoringInterface } from './components/team-scoring-interface'
@@ -22,10 +22,24 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .limit(1)
 
   if (!currentEvent.length) {
-    notFound()
+    redirect('/judge')
   }
 
   const eventId = currentEvent[0].id
+
+  // Check if judge is assigned to this event
+  const assignment = await db
+    .select()
+    .from(eventJudges)
+    .where(and(
+      eq(eventJudges.eventId, eventId),
+      eq(eventJudges.judgeId, user.id)
+    ))
+    .limit(1)
+
+  if (!assignment.length) {
+    redirect('/judge')
+  }
 
   // Get team details
   const team = await db.select()

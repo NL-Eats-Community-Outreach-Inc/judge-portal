@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,13 +39,7 @@ export default function JudgeAssignmentDialog({
   const [assignedJudges, setAssignedJudges] = useState<AssignedJudge[]>([])
   const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([])
 
-  useEffect(() => {
-    if (isOpen && eventId) {
-      fetchJudgeAssignments()
-    }
-  }, [isOpen, eventId])
-
-  const fetchJudgeAssignments = async () => {
+  const fetchJudgeAssignments = useCallback(async () => {
     if (!eventId) return
     
     setLoading(true)
@@ -67,7 +61,13 @@ export default function JudgeAssignmentDialog({
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
+
+  useEffect(() => {
+    if (isOpen && eventId) {
+      fetchJudgeAssignments()
+    }
+  }, [isOpen, eventId, fetchJudgeAssignments])
 
   const handleSave = async () => {
     if (!eventId) return
@@ -130,7 +130,7 @@ export default function JudgeAssignmentDialog({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8" tabIndex={0} autoFocus>
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
@@ -186,6 +186,7 @@ export default function JudgeAssignmentDialog({
                 onClick={handleSave}
                 disabled={saving}
                 className="flex-1"
+                autoFocus
               >
                 {saving ? (
                   <>

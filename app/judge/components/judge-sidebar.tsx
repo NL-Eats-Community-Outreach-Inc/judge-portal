@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, Clock } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, UserX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   Sheet,
@@ -12,20 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-
-// Type definitions for our data
-interface Team {
-  id: string
-  name: string
-  description: string | null
-  presentationOrder: number
-}
-
-interface ScoreCompletion {
-  teamId: string
-  completed: boolean
-  partial: boolean
-}
+import { useJudgeAssignmentContext } from './judge-assignment-provider'
 
 interface JudgeSidebarProps {
   isMobile?: boolean
@@ -36,68 +23,36 @@ interface JudgeSidebarProps {
 export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: JudgeSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [teams, setTeams] = useState<Team[]>([])
-  const [scoreCompletion, setScoreCompletion] = useState<ScoreCompletion[]>([])
-  const [loading, setLoading] = useState(true)
+  const { status, teams, scoreCompletion, refreshScoreCompletion } = useJudgeAssignmentContext()
 
   // Extract current team ID from pathname
   const currentTeamId = pathname?.split('/').pop()
 
-  // Enhanced fetch functions for real-time sync - use useCallback for stable references
-  const fetchTeams = useCallback(async () => {
-    try {
-      const response = await fetch('/api/judge/teams')
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data.teams || [])
-        
-        // If no teams and we're currently on a team page, redirect to judge main page
-        if ((!data.teams || data.teams.length === 0) && pathname?.includes('/judge/team/')) {
-          router.push('/judge')
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
-    }
-  }, [pathname, router])
-
-  const fetchScoreCompletion = useCallback(async () => {
-    try {
-      const response = await fetch('/api/judge/completion')
-      if (response.ok) {
-        const data = await response.json()
-        setScoreCompletion(data.completion || [])
-      }
-    } catch (error) {
-      console.error('Error fetching score completion:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-
-  // Initial fetch
+  // Redirect if on team page but no teams available
   useEffect(() => {
-    fetchTeams()
-    fetchScoreCompletion()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (status === 'no-event' && pathname?.includes('/judge/team/')) {
+      router.push('/judge')
+    }
+  }, [status, pathname, router])
 
   // Refresh completion status when pathname changes (when switching teams) 
   useEffect(() => {
-    if (!loading) {
-      fetchScoreCompletion()
+    if (status === 'assigned') {
+      refreshScoreCompletion()
     }
-  }, [pathname, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, status, refreshScoreCompletion])
 
   // Keep the existing custom event listener for backward compatibility with the scoring interface
   useEffect(() => {
     const handleScoreUpdate = () => {
-      fetchScoreCompletion()
+      if (status === 'assigned') {
+        refreshScoreCompletion()
+      }
     }
 
     window.addEventListener('scoreUpdated', handleScoreUpdate)
     return () => window.removeEventListener('scoreUpdated', handleScoreUpdate)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status, refreshScoreCompletion])
 
   const getCompletionStatus = (teamId: string) => {
     const status = scoreCompletion.find(s => s.teamId === teamId)
@@ -179,8 +134,36 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
     </aside>
   )
 
-  // Handle loading state
-  if (loading) {
+  // Create not-assigned content
+  const notAssignedContent = (
+    <aside className={cn(
+      "bg-muted/30 border-r border-border flex flex-col h-full",
+      !isMobile && "w-64 lg:w-80"
+    )}>
+      <div className="p-4 border-b border-border">
+        <h2 className="font-semibold text-foreground">Teams</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Not assigned to event
+        </p>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 mx-auto bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+            <UserX className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Not Assigned</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              You&apos;re not assigned to the active event. Contact an administrator for access.
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
+
+  // Handle different states
+  if (status === 'loading') {
     if (isMobile) {
       return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
@@ -196,8 +179,23 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
     return loadingContent
   }
 
-  // Handle "NO EVENT" state
-  if (teams.length === 0) {
+  if (status === 'not-assigned') {
+    if (isMobile) {
+      return (
+        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Teams Navigation</SheetTitle>
+            </SheetHeader>
+            {notAssignedContent}
+          </SheetContent>
+        </Sheet>
+      )
+    }
+    return notAssignedContent
+  }
+
+  if (status === 'no-event' || teams.length === 0) {
     if (isMobile) {
       return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>

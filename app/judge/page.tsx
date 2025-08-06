@@ -1,49 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
-import { Users, Target, Clock, AlertCircle } from 'lucide-react'
-
-interface Team {
-  id: string
-  name: string
-}
+import { Button } from '@/components/ui/button'
+import { Users, Target, Clock, AlertCircle, UserX, Shield, Mail } from 'lucide-react'
+import { useJudgeAssignmentContext } from './components/judge-assignment-provider'
 
 export default function JudgePage() {
-  const [teams, setTeams] = useState<Team[]>([])
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
-
-  // Enhanced fetch function for real-time sync using useCallback for stable reference
-  const fetchTeams = useCallback(async () => {
-    try {
-      const response = await fetch('/api/judge/teams')
-      if (response.ok) {
-        const data = await response.json()
-        setTeams(data.teams || [])
-      } else if (response.status === 403) {
-        const data = await response.json()
-        if (data.errorType === 'NOT_ASSIGNED') {
-          router.push('/judge/not-assigned')
-          return
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [router])
-
-
-  // Initial fetch
-  useEffect(() => {
-    fetchTeams()
-  }, [fetchTeams])
+  const { status, teams, refresh } = useJudgeAssignmentContext()
 
   // Show loading state
-  if (loading) {
+  if (status === 'loading') {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
         <div className="space-y-4 md:space-y-6">
@@ -61,8 +27,57 @@ export default function JudgePage() {
     )
   }
 
+  // Show "NOT ASSIGNED" page when judge is not assigned to event
+  if (status === 'not-assigned') {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
+        <div className="text-center space-y-4 md:space-y-6">
+          <div className="w-20 h-20 md:w-24 md:h-24 mx-auto bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+            <UserX className="h-10 w-10 md:h-12 md:w-12 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="space-y-2 md:space-y-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              Not Assigned to Event
+            </h1>
+            <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
+              You are not currently assigned to judge the active event. 
+              Please contact an administrator to request access.
+            </p>
+          </div>
+          <div className="space-y-4 md:space-y-6">
+            <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
+              <div className="space-y-3 md:space-y-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-left">
+                    <h3 className="font-semibold text-foreground text-sm md:text-base">What this means</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                      Only judges assigned to an event can access the scoring interface for that event.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-left">
+                    <h3 className="font-semibold text-foreground text-sm md:text-base">Next steps</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                      Contact the event administrator to request access to the current judging event.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+            <Button onClick={refresh} className="mx-auto">
+              Check Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Show "NO EVENT" page when there are no teams
-  if (teams.length === 0) {
+  if (status === 'no-event' || teams.length === 0) {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
         <div className="text-center space-y-4 md:space-y-6">
