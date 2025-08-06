@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromSession } from '@/lib/auth/server'
 import { db } from '@/lib/db'
-import { scores, teams, criteria, users, events } from '@/lib/db/schema'
+import { scores, teams, criteria, users, events, eventJudges } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
 
     // Get all scores with judge, team, and criterion details
     // Filter scores by team award type vs criteria category (same filtering as main results API)
+    // Only include scores from assigned judges
     const allScores = await db
       .select({
         score: scores.score,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(teams, eq(scores.teamId, teams.id))
       .innerJoin(criteria, eq(scores.criterionId, criteria.id))
       .innerJoin(users, eq(scores.judgeId, users.id))
+      .innerJoin(eventJudges, sql`${eventJudges.judgeId} = ${users.id} AND ${eventJudges.eventId} = ${teams.eventId}`)
       .where(sql`${teams.eventId} = ${eventId} AND (
         (${teams.awardType} = 'technical' AND ${criteria.category} = 'technical') OR
         (${teams.awardType} = 'business' AND ${criteria.category} = 'business') OR
@@ -64,11 +66,8 @@ export async function GET(request: NextRequest) {
         email: users.email
       })
       .from(users)
-      .where(sql`${users.id} IN (
-        SELECT DISTINCT judge_id FROM ${scores} 
-        INNER JOIN ${teams} ON ${scores.teamId} = ${teams.id}
-        WHERE ${teams.eventId} = ${eventId}
-      )`)
+      .innerJoin(eventJudges, sql`${eventJudges.judgeId} = ${users.id}`)
+      .where(eq(eventJudges.eventId, eventId))
       .orderBy(users.email)
 
     const allCriteria = await db

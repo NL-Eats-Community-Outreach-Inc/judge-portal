@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
@@ -9,18 +8,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Calendar, Menu } from 'lucide-react'
+import { LogOut, User, Calendar, Menu, UserX } from 'lucide-react'
 import { authClient } from '@/lib/auth/client'
 import { useRouter } from 'next/navigation'
 import type { UserWithRole } from '@/lib/auth'
 import { ThemeSwitcher } from '@/components/theme-switcher'
-
-interface Event {
-  id: string
-  name: string
-  description: string | null
-  status: 'setup' | 'active' | 'completed'
-}
+import { useJudgeAssignmentContext } from './judge-assignment-provider'
 
 interface JudgeHeaderProps {
   user: UserWithRole
@@ -29,8 +22,7 @@ interface JudgeHeaderProps {
 
 export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   const router = useRouter()
-  const [event, setEvent] = useState<Event | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { status, event } = useJudgeAssignmentContext()
 
   // Smart email display helpers
   const getUsername = (email: string, maxLength: number) => {
@@ -41,27 +33,6 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   const getDisplayEmail = (email: string, maxLength: number) => {
     return email.length > maxLength ? email.substring(0, maxLength - 3) + '...' : email
   }
-
-  // Enhanced fetch function for real-time sync - use callback to ensure stable reference
-  const fetchEvent = useCallback(async () => {
-    try {
-      const response = await fetch('/api/judge/event')
-      if (response.ok) {
-        const data = await response.json()
-        setEvent(data.event)
-      }
-    } catch (error) {
-      console.error('Error fetching event:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-
-  // Initial fetch
-  useEffect(() => {
-    fetchEvent()
-  }, [fetchEvent])
 
   const handleSignOut = async () => {
     await authClient.signOut()
@@ -99,42 +70,51 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
 
           {/* Event info */}
           <div className="flex-1 min-w-0 overflow-hidden">
-            {loading ? (
+            {status === 'loading' ? (
               <div className="space-y-1">
                 <div className="h-4 w-32 md:w-48 bg-muted animate-pulse rounded" />
                 <div className="h-3 w-24 md:w-32 bg-muted animate-pulse rounded" />
               </div>
+            ) : status === 'not-assigned' ? (
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                <UserX className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">Not Assigned to Event</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                      Contact administrator for event access
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                    Not Assigned
+                  </Badge>
+                </div>
+              </div>
             ) : event ? (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">{event.name}</h1>
-                    <div className="shrink-0">
-                      {getStatusBadge(event.status)}
-                    </div>
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">{event.name}</h1>
                   </div>
-                  {/* Hide description on mobile */}
-                  {/* {event.description && (
-                    <p className="text-sm text-muted-foreground truncate max-w-md hidden md:block">
-                      {event.description}
-                    </p>
-                  )} */}
+                  <div className="shrink-0">
+                    {getStatusBadge(event.status)}
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">No Active Event</h1>
-                    <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
-                      Inactive
-                    </Badge>
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">No Active Event</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                      No event is currently active for judging
+                    </p>
                   </div>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
-                    No event is currently active for judging
-                  </p>
+                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                    Inactive
+                  </Badge>
                 </div>
               </div>
             )}

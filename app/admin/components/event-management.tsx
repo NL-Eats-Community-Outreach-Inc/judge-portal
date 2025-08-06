@@ -11,9 +11,10 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar, RefreshCw } from 'lucide-react'
+import { Save, Loader2, CheckCircle, Plus, Edit2, Trash2, Calendar, RefreshCw, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAdminEvent } from '../contexts/admin-event-context'
+import JudgeAssignmentDialog from '@/components/judge-assignment-dialog'
 
 interface Event {
   id: string
@@ -31,6 +32,15 @@ export default function EventManagement() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null)
+  const [judgeAssignmentDialog, setJudgeAssignmentDialog] = useState<{
+    isOpen: boolean
+    eventId: string | null
+    eventName: string
+  }>({
+    isOpen: false,
+    eventId: null,
+    eventName: ''
+  })
   const [formData, setFormData] = useState<{
     name: string
     description: string
@@ -151,6 +161,22 @@ export default function EventManagement() {
         description: error instanceof Error ? error.message : 'Failed to delete event'
       })
     }
+  }
+
+  const openJudgeAssignmentDialog = (event: Event) => {
+    setJudgeAssignmentDialog({
+      isOpen: true,
+      eventId: event.id,
+      eventName: event.name
+    })
+  }
+
+  const closeJudgeAssignmentDialog = () => {
+    setJudgeAssignmentDialog({
+      isOpen: false,
+      eventId: null,
+      eventName: ''
+    })
   }
 
   const getStatusBadge = (status: string) => {
@@ -390,6 +416,14 @@ export default function EventManagement() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => openJudgeAssignmentDialog(event)}
+                            title="Manage Judge Assignments"
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => openEditDialog(event)}
                           >
                             <Edit2 className="h-4 w-4" />
@@ -453,6 +487,18 @@ export default function EventManagement() {
         </div>
       </div>
     )}
+
+    {/* Judge Assignment Dialog */}
+    <JudgeAssignmentDialog
+      eventId={judgeAssignmentDialog.eventId}
+      eventName={judgeAssignmentDialog.eventName}
+      isOpen={judgeAssignmentDialog.isOpen}
+      onOpenChange={closeJudgeAssignmentDialog}
+      onAssignmentsUpdated={() => {
+        // Could refresh events if needed
+        toast.success('Judge assignments updated')
+      }}
+    />
     </TooltipProvider>
   )
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authServer } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { scores, criteria, teams, events } from '@/lib/db/schema'
+import { scores, criteria, teams, events, eventJudges } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -28,6 +28,23 @@ export async function GET(request: NextRequest) {
         { error: 'No active event' },
         { status: 400 }
       )
+    }
+
+    // Check if judge is assigned to this event
+    const assignment = await db
+      .select()
+      .from(eventJudges)
+      .where(and(
+        eq(eventJudges.eventId, activeEvent[0].id),
+        eq(eventJudges.judgeId, user.id)
+      ))
+      .limit(1)
+
+    if (!assignment.length) {
+      return NextResponse.json({ 
+        error: 'You are not assigned to the current active event',
+        errorType: 'NOT_ASSIGNED'
+      }, { status: 403 })
     }
 
     // Get all scores for this judge and team in the active event
@@ -100,6 +117,23 @@ export async function POST(request: NextRequest) {
         { error: 'No active event' },
         { status: 400 }
       )
+    }
+
+    // Check if judge is assigned to this event
+    const assignment = await db
+      .select()
+      .from(eventJudges)
+      .where(and(
+        eq(eventJudges.eventId, activeEvent[0].id),
+        eq(eventJudges.judgeId, user.id)
+      ))
+      .limit(1)
+
+    if (!assignment.length) {
+      return NextResponse.json({ 
+        error: 'You are not assigned to the current active event',
+        errorType: 'NOT_ASSIGNED'
+      }, { status: 403 })
     }
 
     // Verify the team belongs to the active event
