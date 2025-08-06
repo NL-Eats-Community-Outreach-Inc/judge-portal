@@ -78,43 +78,43 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
             ) : status === 'not-assigned' ? (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <UserX className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">Not Assigned to Event</h1>
-                    <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
-                      Not Assigned
-                    </Badge>
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">Not Assigned to Event</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                      Contact administrator for event access
+                    </p>
                   </div>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
-                    Contact administrator for event access
-                  </p>
+                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                    Not Assigned
+                  </Badge>
                 </div>
               </div>
             ) : event ? (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">{event.name}</h1>
-                    <div className="shrink-0">
-                      {getStatusBadge(event.status)}
-                    </div>
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">{event.name}</h1>
+                  </div>
+                  <div className="shrink-0">
+                    {getStatusBadge(event.status)}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate min-w-0 flex-1">No Active Event</h1>
-                    <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
-                      Inactive
-                    </Badge>
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">No Active Event</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                      No event is currently active for judging
+                    </p>
                   </div>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
-                    No event is currently active for judging
-                  </p>
+                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                    Inactive
+                  </Badge>
                 </div>
               </div>
             )}

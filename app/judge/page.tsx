@@ -93,16 +93,21 @@ export default function JudgePage() {
               Please contact an administrator to activate an event.
             </p>
           </div>
-          <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
-            <div className="space-y-2 md:space-y-3">
-              <h3 className="font-semibold text-foreground text-sm md:text-base">What happens next?</h3>
-              <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
-                <li>• An administrator needs to activate an event</li>
-                <li>• Teams and criteria must be configured</li>
-                <li>• You&apos;ll see teams appear in the sidebar once ready</li>
-              </ul>
-            </div>
-          </Card>
+          <div className="space-y-4 md:space-y-6">
+            <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
+              <div className="space-y-2 md:space-y-3">
+                <h3 className="font-semibold text-foreground text-sm md:text-base">What happens next?</h3>
+                <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
+                  <li>• An administrator needs to activate an event</li>
+                  <li>• Teams and criteria must be configured</li>
+                  <li>• You&apos;ll see teams appear in the sidebar once ready</li>
+                </ul>
+              </div>
+            </Card>
+            <Button onClick={refresh} className="mx-auto">
+              Check Again
+            </Button>
+          </div>
         </div>
       </div>
     )
