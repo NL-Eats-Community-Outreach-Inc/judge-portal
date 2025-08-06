@@ -96,7 +96,7 @@ export default function EventSelector() {
               variant="outline"
               className={`mr-2 ${getStatusColor(selectedEvent.status)}`}
             >
-              {selectedEvent.status}
+              {selectedEvent.status.charAt(0).toUpperCase() + selectedEvent.status.slice(1)}
             </Badge>
           )}
         </div>

@@ -346,33 +346,35 @@ export default function ResultsDashboard() {
             : 'bg-gradient-to-r from-gray-50/50 to-slate-50/30 dark:from-gray-800/30 dark:to-gray-900/20 border-gray-200 dark:border-gray-700'
         } shadow-sm`}>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm ${
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 ${
                   selectedEvent.status === 'active'
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600'
                     : 'bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-600 dark:to-gray-700'
                 }`}>
                   <Trophy className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <CardTitle className={
+                <div className="min-w-0 flex-1 pr-2">
+                  <CardTitle className={`${
                     selectedEvent.status === 'active'
                       ? 'text-green-900 dark:text-green-100'
                       : 'text-gray-900 dark:text-gray-100'
-                  }>
+                  } break-words`}>
                     {selectedEvent.name}
                   </CardTitle>
-                  <CardDescription className={
+                  <CardDescription className={`${
                     selectedEvent.status === 'active'
                       ? 'text-green-700 dark:text-green-300'
                       : 'text-gray-700 dark:text-gray-300'
-                  }>
+                  } break-words`}>
                     {selectedEvent.description || 'No description'}
                   </CardDescription>
                 </div>
               </div>
-              {getStatusBadge(selectedEvent.status)}
+              <div className="flex-shrink-0">
+                {getStatusBadge(selectedEvent.status)}
+              </div>
             </div>
           </CardHeader>
         </Card>

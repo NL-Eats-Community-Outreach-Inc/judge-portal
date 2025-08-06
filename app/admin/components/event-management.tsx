@@ -304,10 +304,10 @@ export default function EventManagement() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                   <CheckCircle className="h-5 w-5 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <CardTitle className="text-green-900 dark:text-green-100">Active Event</CardTitle>
                   <CardDescription className="text-green-700 dark:text-green-300">
                     {activeEvent.name}
@@ -389,9 +389,9 @@ export default function EventManagement() {
               {events.map((event) => (
                 <Card key={event.id} className="border-border/50">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           event.status === 'active' 
                             ? 'bg-green-100 dark:bg-green-900/30' 
                             : 'bg-muted'
@@ -402,15 +402,15 @@ export default function EventManagement() {
                               : 'text-muted-foreground'
                           }`} />
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-foreground">{event.name}</h4>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-foreground truncate">{event.name}</h4>
+                          <p className="text-sm text-muted-foreground truncate">
                             Created {new Date(event.createdAt).toLocaleDateString()}
                             {event.description && ` • ${event.description}`}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-shrink-0">
                         {getStatusBadge(event.status)}
                         <div className="flex gap-2">
                           <Button
