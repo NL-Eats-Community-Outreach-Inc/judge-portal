@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, Clock, UserX } from 'lucide-react'
+import { CheckCircle2, Circle, Clock, UserX, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   Sheet,
@@ -113,7 +113,21 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
       !isMobile && "w-64 lg:w-80"
     )}>
       <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-foreground">Teams</h2>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-1.5 rounded-md hover:bg-muted/60 transition-colors"
+            onClick={() => {
+              router.push('/judge')
+              if (isMobile && onClose) {
+                onClose()
+              }
+            }}
+            aria-label="Back to Teams Overview"
+          >
+            <Home className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
+          <h2 className="font-semibold text-foreground">Teams</h2>
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           No active event
         </p>
@@ -141,7 +155,21 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
       !isMobile && "w-64 lg:w-80"
     )}>
       <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-foreground">Teams</h2>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-1.5 rounded-md hover:bg-muted/60 transition-colors"
+            onClick={() => {
+              router.push('/judge')
+              if (isMobile && onClose) {
+                onClose()
+              }
+            }}
+            aria-label="Back to Teams Overview"
+          >
+            <Home className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
+          <h2 className="font-semibold text-foreground">Teams</h2>
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           Not assigned to event
         </p>
@@ -219,17 +247,21 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <h2 
-            className="font-semibold text-foreground cursor-pointer hover:text-primary transition-colors" 
-            onClick={() => {
-              router.push('/judge')
-              if (isMobile && onClose) {
-                onClose()
-              }
-            }}
-          >
-            Teams
-          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              className="p-1.5 rounded-md hover:bg-muted/60 transition-colors"
+              onClick={() => {
+                router.push('/judge')
+                if (isMobile && onClose) {
+                  onClose()
+                }
+              }}
+              aria-label="Back to Teams Overview"
+            >
+              <Home className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </button>
+            <h2 className="font-semibold text-foreground">Teams</h2>
+          </div>
           <Badge variant="secondary" className="text-xs">
             {teams.length} teams
           </Badge>

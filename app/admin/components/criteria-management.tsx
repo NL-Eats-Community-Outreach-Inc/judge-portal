@@ -528,17 +528,17 @@ export default function CriteriaManagement() {
       
       <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Target className="h-5 w-5 text-primary" />
-              <div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <Target className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1">
                 <CardTitle>Scoring Criteria</CardTitle>
-                <CardDescription>
+                <CardDescription className="truncate pr-4">
                   Define and manage judging criteria and score ranges for {selectedEvent.name}
                 </CardDescription>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Button 
                 variant="outline" 
                 onClick={async () => {

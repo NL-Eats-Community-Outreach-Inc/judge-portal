@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(users, eq(users.id, eventJudges.judgeId))
       .where(eq(eventJudges.eventId, eventId))
 
-    // Get all judges (for selection)
+    // Get all judges (for selection) - sorted alphabetically
     const allJudges = await db
       .select({
         id: users.id,
@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       })
       .from(users)
       .where(eq(users.role, 'judge'))
+      .orderBy(users.email)
 
     return NextResponse.json({
       assigned: assignedJudges,
