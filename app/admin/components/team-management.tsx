@@ -422,17 +422,17 @@ export default function TeamManagement() {
       
       <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-5 w-5 text-primary" />
-              <div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <Trophy className="h-5 w-5 text-primary flex-shrink-0" />
+              <div className="min-w-0 flex-1">
                 <CardTitle>Team Management</CardTitle>
-                <CardDescription>
+                <CardDescription className="truncate pr-4">
                   Create, edit, and organize competing teams for {selectedEvent.name}
                 </CardDescription>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Select value={awardTypeFilter} onValueChange={(value: 'all' | 'technical' | 'business' | 'both') => setAwardTypeFilter(value)}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by award type" />

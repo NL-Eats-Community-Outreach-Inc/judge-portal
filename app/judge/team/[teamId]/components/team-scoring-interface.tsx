@@ -594,7 +594,7 @@ export function TeamScoringInterface({
             <Card key={criterion.id} className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                  <div className="max-w-md min-w-0 sm:pr-4">
+                  <div className="flex-1 min-w-0 sm:pr-4">
                     <h3 className="font-semibold text-foreground text-sm md:text-base">
                       {criterion.name}
                     </h3>

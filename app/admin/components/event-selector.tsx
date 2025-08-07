@@ -79,12 +79,14 @@ export default function EventSelector() {
                   </span>
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-w-sm">
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    <div className="flex items-center gap-2 max-w-full">
-                      {getStatusIcon(event.status)}
-                      <span className="truncate">{event.name}</span>
+                    <div className="flex items-center gap-2 w-full max-w-[280px]">
+                      <div className="flex-shrink-0">
+                        {getStatusIcon(event.status)}
+                      </div>
+                      <span className="truncate flex-1">{event.name}</span>
                     </div>
                   </SelectItem>
                 ))}

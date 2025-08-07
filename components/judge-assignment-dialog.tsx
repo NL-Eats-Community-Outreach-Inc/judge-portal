@@ -26,6 +26,11 @@ interface JudgeAssignmentDialogProps {
   onAssignmentsUpdated: () => void
 }
 
+const truncateEventName = (name: string, maxLength: number = 50) => {
+  if (name.length <= maxLength) return name
+  return name.slice(0, maxLength) + '...'
+}
+
 export default function JudgeAssignmentDialog({
   eventId,
   eventName,
@@ -125,7 +130,7 @@ export default function JudgeAssignmentDialog({
             Judge Assignments
           </DialogTitle>
           <DialogDescription>
-            Assign judges to &quot;{eventName}&quot;. Only assigned judges can score this event.
+            Assign judges to &quot;{truncateEventName(eventName)}&quot;. Only assigned judges can score this event.
           </DialogDescription>
         </DialogHeader>
 
@@ -144,7 +149,7 @@ export default function JudgeAssignmentDialog({
             </div>
 
             {/* Judge List */}
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-80 overflow-y-auto">
               {judges.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No judges found in the system
