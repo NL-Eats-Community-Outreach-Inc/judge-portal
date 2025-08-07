@@ -173,9 +173,10 @@ export async function GET(request: NextRequest) {
           .groupBy(scores.teamId, teams.name, scores.criterionId, criteria.name, teams.presentationOrder, criteria.displayOrder)
           .orderBy(teams.presentationOrder, criteria.displayOrder)
 
-    // Get event information and criteria count if eventId is provided
+    // Get event information and all criteria if eventId is provided
     let eventInfo = null
     let criteriaCount = 0
+    let allCriteria: Array<{ id: string; name: string; category: 'technical' | 'business'; displayOrder: number }> = []
     if (eventId) {
       const eventResult = await db.select()
         .from(events)
@@ -183,17 +184,31 @@ export async function GET(request: NextRequest) {
         .limit(1)
       eventInfo = eventResult[0] || null
 
-      // Get criteria count for this event
-      const criteriaCountResult = await db
-        .select({ count: sql<number>`COUNT(*)` })
+      // Get all criteria for this event (not just scored ones)
+      const allCriteriaResult = await db
+        .select({
+          id: criteria.id,
+          name: criteria.name,
+          category: criteria.category,
+          displayOrder: criteria.displayOrder
+        })
         .from(criteria)
         .where(eq(criteria.eventId, eventId))
-      criteriaCount = Number(criteriaCountResult[0]?.count || 0)
+        .orderBy(criteria.displayOrder)
+      
+      allCriteria = allCriteriaResult.map(c => ({
+        id: c.id,
+        name: c.name,
+        category: c.category as 'technical' | 'business',
+        displayOrder: c.displayOrder
+      }))
+      criteriaCount = allCriteria.length
     }
 
     return NextResponse.json({ 
       event: eventInfo,
       criteriaCount,
+      allCriteria,
       scores: allScores,
       teamTotals: (teamTotals as Array<Record<string, unknown>>).map((total: Record<string, unknown>) => ({
         teamId: total.teamId,

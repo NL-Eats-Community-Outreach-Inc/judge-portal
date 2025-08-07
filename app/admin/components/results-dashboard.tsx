@@ -57,10 +57,17 @@ interface CriteriaAverage {
   judgeCount: number
 }
 
+interface Criterion {
+  id: string
+  name: string
+  category: 'technical' | 'business'
+  displayOrder: number
+}
 
 export default function ResultsDashboard() {
   const [scores, setScores] = useState<Score[]>([])
   const [teamTotals, setTeamTotals] = useState<TeamTotal[]>([])
+  const [allCriteria, setAllCriteria] = useState<Criterion[]>([])
   const [, setCriteriaAverages] = useState<CriteriaAverage[]>([])
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -81,6 +88,7 @@ export default function ResultsDashboard() {
       if (response.ok) {
         setScores(data.scores)
         setTeamTotals(data.teamTotals)
+        setAllCriteria(data.allCriteria || [])
         setCriteriaAverages(data.criteriaAverages)
         
         // Weights are now managed in database, no frontend initialization needed
@@ -218,16 +226,15 @@ export default function ResultsDashboard() {
 
   // Helper function to calculate relevant criteria count for a team based on award type
   const getRelevantCriteriaCount = (teamId: string) => {
-    return scores
-      .filter(s => s.team.id === teamId)
-      .reduce((criteriaSet, score) => {
-        const isRelevant = score.team.awardType === 'both' ||
-          score.team.awardType === score.criterion.category
-        if (isRelevant) {
-          criteriaSet.add(score.criterion.id)
-        }
-        return criteriaSet
-      }, new Set()).size
+    // Find the team's award type
+    const team = teamTotals.find(t => t.teamId === teamId)
+    if (!team) return 0
+    
+    // Use ALL criteria from the event (from API), not just scored ones
+    return allCriteria.filter(criterion => {
+      if (team.awardType === 'both') return true
+      return criterion.category === team.awardType
+    }).length
   }
 
   // Filter and sort teams based on selected filters
