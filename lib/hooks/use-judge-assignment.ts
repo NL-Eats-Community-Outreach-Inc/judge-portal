@@ -30,6 +30,7 @@ interface JudgeAssignmentState {
   teams: Team[]
   scoreCompletion: ScoreCompletion[]
   error: string | null
+  isFullyComplete: boolean
 }
 
 export function useJudgeAssignment() {
@@ -38,7 +39,8 @@ export function useJudgeAssignment() {
     event: null,
     teams: [],
     scoreCompletion: [],
-    error: null
+    error: null,
+    isFullyComplete: false
   })
 
   // Fetch event data
@@ -124,12 +126,19 @@ export function useJudgeAssignment() {
       completion = await fetchScoreCompletion()
     }
 
+    // Check if fully complete - all teams are completed
+    const isFullyComplete = status === 'assigned' && 
+      teamsResult.teams.length > 0 && 
+      completion.length > 0 &&
+      completion.every((c: ScoreCompletion) => c.completed)
+
     setState({
       status,
       event: eventResult.event,
       teams: teamsResult.teams,
       scoreCompletion: completion,
-      error: null
+      error: null,
+      isFullyComplete
     })
   }, [fetchEvent, fetchTeams, fetchScoreCompletion])
 
@@ -137,12 +146,19 @@ export function useJudgeAssignment() {
   const refreshScoreCompletion = useCallback(async () => {
     if (state.status === 'assigned') {
       const completion = await fetchScoreCompletion()
+      
+      // Check if fully complete after refresh
+      const isFullyComplete = state.teams.length > 0 && 
+        completion.length > 0 &&
+        completion.every((c: ScoreCompletion) => c.completed)
+      
       setState(prev => ({
         ...prev,
-        scoreCompletion: completion
+        scoreCompletion: completion,
+        isFullyComplete
       }))
     }
-  }, [state.status, fetchScoreCompletion])
+  }, [state.status, state.teams.length, fetchScoreCompletion])
 
   // Initial load
   useEffect(() => {

@@ -29,6 +29,7 @@ interface JudgeAssignmentContextType {
   teams: Team[]
   scoreCompletion: ScoreCompletion[]
   error: string | null
+  isFullyComplete: boolean
   refresh: () => Promise<void>
   refreshScoreCompletion: () => Promise<void>
 }
