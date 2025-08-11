@@ -15,6 +15,8 @@ import type { Team, Criterion } from '@/lib/db/schema'
 import ReactMarkdown from 'react-markdown'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CompletionConfetti } from '@/components/completion-confetti'
+import { useJudgeAssignmentContext } from '@/app/judge/components/judge-assignment-provider'
 
 interface Score {
   id?: string
@@ -43,6 +45,10 @@ export function TeamScoringInterface({
   const [loading, setLoading] = useState(true)
   const [lastSavedState, setLastSavedState] = useState<Record<string, { score: number | null; comment: string }>>({})
   const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [previousCompletionState, setPreviousCompletionState] = useState(false)
+  
+  const { isFullyComplete, event } = useJudgeAssignmentContext()
 
   // Detect touch device
   useEffect(() => {
@@ -210,6 +216,20 @@ export function TeamScoringInterface({
       }
     })
   }, [debouncedComments, saveScore, scores])
+
+  // Check for full event completion and trigger confetti
+  useEffect(() => {
+    if (isFullyComplete && !previousCompletionState && event) {
+      const confettiKey = `judgeportal-event-${event.id}-completed`
+      const hasShownConfetti = localStorage.getItem(confettiKey)
+      
+      if (!hasShownConfetti) {
+        setShowConfetti(true)
+        localStorage.setItem(confettiKey, 'true')
+      }
+    }
+    setPreviousCompletionState(isFullyComplete)
+  }, [isFullyComplete, previousCompletionState, event])
 
   const getSaveStatusIcon = (criterionId: string) => {
     const status = saveStatus[criterionId] || 'idle'
@@ -664,6 +684,12 @@ export function TeamScoringInterface({
         </div>
       </Card>
       </div>
+      
+      {/* Confetti for full event completion */}
+      <CompletionConfetti 
+        show={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
     </div>
   )
 }
