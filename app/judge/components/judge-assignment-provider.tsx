@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, ReactNode } from 'react'
+import { createContext, useContext, ReactNode, useState } from 'react'
 import { useJudgeAssignment, AssignmentStatus } from '@/lib/hooks/use-judge-assignment'
 
 interface Event {
@@ -30,6 +30,8 @@ interface JudgeAssignmentContextType {
   scoreCompletion: ScoreCompletion[]
   error: string | null
   isFullyComplete: boolean
+  hasShownCompletionConfetti: boolean
+  setHasShownCompletionConfetti: (shown: boolean) => void
   refresh: () => Promise<void>
   refreshScoreCompletion: () => Promise<void>
 }
@@ -38,9 +40,14 @@ const JudgeAssignmentContext = createContext<JudgeAssignmentContextType | undefi
 
 export function JudgeAssignmentProvider({ children }: { children: ReactNode }) {
   const assignmentData = useJudgeAssignment()
+  const [hasShownCompletionConfetti, setHasShownCompletionConfetti] = useState(false)
 
   return (
-    <JudgeAssignmentContext.Provider value={assignmentData}>
+    <JudgeAssignmentContext.Provider value={{
+      ...assignmentData,
+      hasShownCompletionConfetti,
+      setHasShownCompletionConfetti
+    }}>
       {children}
     </JudgeAssignmentContext.Provider>
   )

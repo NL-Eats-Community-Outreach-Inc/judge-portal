@@ -48,7 +48,7 @@ export function TeamScoringInterface({
   const [showConfetti, setShowConfetti] = useState(false)
   const [previousCompletionState, setPreviousCompletionState] = useState(false)
   
-  const { isFullyComplete, event } = useJudgeAssignmentContext()
+  const { isFullyComplete, event, hasShownCompletionConfetti, setHasShownCompletionConfetti } = useJudgeAssignmentContext()
 
   // Detect touch device
   useEffect(() => {
@@ -220,16 +220,14 @@ export function TeamScoringInterface({
   // Check for full event completion and trigger confetti
   useEffect(() => {
     if (isFullyComplete && !previousCompletionState && event) {
-      const confettiKey = `judgeportal-event-${event.id}-completed`
-      const hasShownConfetti = localStorage.getItem(confettiKey)
-      
-      if (!hasShownConfetti) {
+      // Show confetti if it hasn't been shown in this session
+      if (!hasShownCompletionConfetti) {
         setShowConfetti(true)
-        localStorage.setItem(confettiKey, 'true')
+        setHasShownCompletionConfetti(true)
       }
     }
     setPreviousCompletionState(isFullyComplete)
-  }, [isFullyComplete, previousCompletionState, event])
+  }, [isFullyComplete, previousCompletionState, event, hasShownCompletionConfetti, setHasShownCompletionConfetti])
 
   const getSaveStatusIcon = (criterionId: string) => {
     const status = saveStatus[criterionId] || 'idle'

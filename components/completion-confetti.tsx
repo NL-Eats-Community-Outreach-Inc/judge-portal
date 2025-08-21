@@ -37,18 +37,14 @@ export function CompletionConfetti({ show, onComplete }: CompletionConfettiProps
           particleCount: 100,
           width: 1000,
           duration: 3500,
-          force: 0.4,
-          stageHeight: window.innerHeight,
-          stageWidth: window.innerWidth
+          force: 0.4
         }
       case 'tablet':
         return {
           particleCount: 150,
           width: 1200,
           duration: 4000,
-          force: 0.5,
-          stageHeight: window.innerHeight,
-          stageWidth: window.innerWidth
+          force: 0.5
         }
       case 'desktop':
       default:
@@ -56,9 +52,7 @@ export function CompletionConfetti({ show, onComplete }: CompletionConfettiProps
           particleCount: 200,
           width: 1400,
           duration: 4500,
-          force: 0.6,
-          stageHeight: window.innerHeight,
-          stageWidth: window.innerWidth
+          force: 0.6
         }
     }
   }
