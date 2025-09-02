@@ -267,9 +267,9 @@ export default function UserManagement() {
                           >
                             <SelectTrigger className="w-32">
                               {updatingRoles.has(user.id) ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
                                   <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span>Updating...</span>
+                                  <span className="text-xs">•••</span>
                                 </div>
                               ) : (
                                 <SelectValue />

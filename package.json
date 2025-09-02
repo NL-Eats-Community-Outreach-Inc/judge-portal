@@ -8,8 +8,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx lib/db/migrate.ts",
-    "db:seed": "tsx lib/db/seed.ts"
+    "db:setup": "tsx scripts/consolidated-setup.ts",
+    "db:setup:seed": "tsx scripts/consolidated-setup.ts --seed",
+    "db:seed": "tsx scripts/consolidated-seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
