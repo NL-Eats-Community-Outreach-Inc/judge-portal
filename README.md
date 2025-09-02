@@ -44,50 +44,89 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 - **Type Safety**: TypeScript with strict mode
 - **Development**: React 19, Turbopack development server
 
-## 📋 Prerequisites
+## 🚀 Quick Start
 
-- Node.js 18+ 
-- npm or yarn
-- Supabase account and project
+### Prerequisites
 
-## 🚀 Getting Started
+- **Node.js 18+** ([Download here](https://nodejs.org/))
+- **Supabase account** ([Sign up free](https://supabase.com))
 
-1. **Clone the repository**
+### Setup Instructions
+
+1. **Clone and Install**
    ```bash
    git clone https://github.com/yourusername/judgeportal.git
    cd judgeportal
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+2. **Set Up Supabase Project**
+   - Go to [app.supabase.com](https://app.supabase.com)
+   - Click "New Project" and wait ~2 minutes for setup
+   - **Configure Authentication Settings**:
+     - Go to Authentication → Settings → User Signups
+     - Turn OFF "Confirm email" (required for development)
+   - Go to Settings → API and copy your credentials
+
+3. **Configure Environment Variables**
    
-   Create a `.env` file in the root directory:
+   Create a `.env.local` file in the root directory:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
+   DATABASE_URL=your-database-url
    ```
 
-4. **Set up the database**
+4. **Set up the Database**
+
    ```bash
-   # Push the schema to your Supabase database
-   npm run db:push
-   
-   # (Optional) Seed with test data
-   npm run db:seed
+   npm run db:setup
    ```
+   
+   This will:
+   - ✅ Create all database tables and relationships
+   - ✅ Set up Row Level Security policies  
+   - ✅ Add database functions and triggers
+   - ✅ Create proper indexes for performance
 
-5. **Run the development server**
+5. **Start Development Server**
    ```bash
    npm run dev
    ```
 
-6. **Open the application**
+6. **Open the Application**
    
    Open [http://localhost:3000](http://localhost:3000) in your browser
+
+### Create Your First Admin
+
+1. **Sign up** at `/auth/sign-up`
+2. **Promote to admin**:
+   - Go to Supabase Dashboard
+   - Table Editor → `users` table
+   - Find your user, edit, change `role` to `admin`
+3. **Log back in** - you'll now see the Admin Panel!
+
+### Test Accounts
+
+- **Admin**: `admin@example.com` / `admin123`
+- **Judge 1**: `judge1@example.com` / `judge123`  
+- **Judge 2**: `judge2@example.com` / `judge123`
+- **Judge 3**: `judge3@example.com` / `judge123`
+
+### Troubleshooting
+
+**"Missing environment variables"**
+- Check `.env.local` exists (not `.env`)
+- Ensure all 4 variables are set correctly
+
+**"Tables don't exist"**  
+- Run `npm run db:setup` again
+- If automated setup fails, copy `supabase/migrations/consolidated_setup.sql` to Supabase Dashboard > SQL Editor and run manually
+
+**"Permission denied"**
+- Make sure you promoted your user to admin role in the `users` table
 
 ## 📱 Usage
 
@@ -161,19 +200,22 @@ The system uses six main tables:
 
 ```bash
 # Development
-npm run dev          # Start development server with Turbopack
+npm run dev              # Start development server with Turbopack
+npm run db:studio        # Open Drizzle Studio for database management
 
-# Database
-npm run db:push      # Push schema changes to database
-npm run db:studio    # Open Drizzle Studio for database management
-npm run db:generate  # Generate migrations
-npm run db:migrate   # Run database migrations
-npm run db:seed      # Seed database with test data
+# Database Setup (Consolidated Approach)
+npm run db:setup         # Complete database setup (schema + migrations)
+npm run db:setup:seed    # Complete setup with realistic test data
+npm run db:seed          # Add test data to existing database
+
+# Database Management (Advanced)
+npm run db:push          # Push schema changes to database
+npm run db:generate      # Generate migrations (rarely needed with consolidated approach)
 
 # Production
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Run ESLint
 ```
 
 ## 🏆 Key Features Implemented
@@ -191,4 +233,4 @@ npm run lint         # Run ESLint
 
 ---
 
-Built with ❤️ for hackathon organizers and judges at NL Eats.
+Built with ❤️ for hackathon organizers and judges by NL Eats Community Outreach Inc.
