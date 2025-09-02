@@ -64,7 +64,7 @@ A comprehensive real-time judging system for hackathons and competitive events. 
    - Go to [app.supabase.com](https://app.supabase.com)
    - Click "New Project" and wait ~2 minutes for setup
    - **Configure Authentication Settings**:
-     - Go to Authentication → Settings → User Signups
+     - Go to Authentication → Configuration → Sign In / Providers
      - Turn OFF "Confirm email" (required for development)
    - Go to Settings → API and copy your credentials
 
