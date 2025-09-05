@@ -47,55 +47,70 @@ export async function GET() {
       .from(teams)
       .where(eq(teams.eventId, eventId))
 
-    // Calculate completion status for each team
-    const completion = await Promise.all(
-      eventTeams.map(async (team) => {
-        // Get criteria count based on team's award type
-        let criteriaFilter
-        if (team.awardType === 'technical') {
-          criteriaFilter = and(
-            eq(criteria.eventId, eventId),
-            eq(criteria.category, 'technical')
-          )
-        } else if (team.awardType === 'business') {
-          criteriaFilter = and(
-            eq(criteria.eventId, eventId),
-            eq(criteria.category, 'business')
-          )
-        } else {
-          // 'both' - show all criteria
-          criteriaFilter = eq(criteria.eventId, eventId)
-        }
-
-        // Get the filtered criteria count for this team
-        const teamCriteria = await db.select({ count: count() })
-          .from(criteria)
-          .where(criteriaFilter)
-
-        // Count how many scores this judge has submitted for this team in the active event
-        const judgeScores = await db.select({ count: count() })
-          .from(scores)
-          .where(
-            and(
-              eq(scores.judgeId, userId),
-              eq(scores.teamId, team.id),
-              eq(scores.eventId, eventId)
-            )
-          )
-
-        const completedCriteria = judgeScores[0]?.count || 0
-        const totalCriteria = teamCriteria[0]?.count || 0
-
-        const completed = completedCriteria === totalCriteria && totalCriteria > 0
-        const partial = completedCriteria > 0 && completedCriteria < totalCriteria
-
-        return {
-          teamId: team.id,
-          completed,
-          partial
-        }
+    // Get criteria counts by category in a single query
+    const criteriaCounts = await db
+      .select({
+        category: criteria.category,
+        count: count()
       })
-    )
+      .from(criteria)
+      .where(eq(criteria.eventId, eventId))
+      .groupBy(criteria.category)
+
+    // Create a map for quick lookup
+    const criteriaCountMap: Record<string, number> = {}
+    let totalCriteriaCount = 0
+    
+    for (const row of criteriaCounts) {
+      criteriaCountMap[row.category || 'null'] = row.count
+      totalCriteriaCount += row.count
+    }
+
+    // Get all judge scores for this event grouped by team in a single query
+    const judgeScoreCounts = await db
+      .select({
+        teamId: scores.teamId,
+        count: count()
+      })
+      .from(scores)
+      .where(
+        and(
+          eq(scores.judgeId, userId),
+          eq(scores.eventId, eventId)
+        )
+      )
+      .groupBy(scores.teamId)
+
+    // Create a map for quick lookup
+    const scoreCountMap: Record<string, number> = {}
+    for (const row of judgeScoreCounts) {
+      scoreCountMap[row.teamId] = row.count
+    }
+
+    // Calculate completion status for each team using the pre-fetched data
+    const completion = eventTeams.map((team) => {
+      // Calculate total criteria for this team based on award type
+      let totalCriteria: number
+      if (team.awardType === 'technical') {
+        totalCriteria = criteriaCountMap['technical'] || 0
+      } else if (team.awardType === 'business') {
+        totalCriteria = criteriaCountMap['business'] || 0
+      } else {
+        // 'both' - show all criteria
+        totalCriteria = totalCriteriaCount
+      }
+
+      const completedCriteria = scoreCountMap[team.id] || 0
+
+      const completed = completedCriteria === totalCriteria && totalCriteria > 0
+      const partial = completedCriteria > 0 && completedCriteria < totalCriteria
+
+      return {
+        teamId: team.id,
+        completed,
+        partial
+      }
+    })
 
     return NextResponse.json({ completion })
   } catch (error) {
