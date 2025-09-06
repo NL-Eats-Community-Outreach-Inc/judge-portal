@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -166,7 +166,17 @@ export function TeamScoringInterface({
     }
   }, [team.id, lastSavedState])
 
+  // Debounced score saves to prevent excessive API calls during slider dragging
+  const debouncedScoreSaves = useRef<Record<string, NodeJS.Timeout>>({})
+  const scoresRef = useRef<Score[]>([])
+  
+  // Keep scoresRef in sync with scores state
+  useEffect(() => {
+    scoresRef.current = scores
+  }, [scores])
+
   const handleScoreChange = (criterionId: string, newScore: number) => {
+    // Update UI immediately
     setScores(prev => prev.map(s => 
       s.criterionId === criterionId 
         ? { ...s, score: newScore }
@@ -182,12 +192,29 @@ export function TeamScoringInterface({
       return prev
     })
 
-    // Auto-save score immediately
-    const currentScore = scores.find(s => s.criterionId === criterionId)
-    if (currentScore) {
-      saveScore(criterionId, newScore, currentScore.comment)
+    // Cancel previous save for this criterion
+    if (debouncedScoreSaves.current[criterionId]) {
+      clearTimeout(debouncedScoreSaves.current[criterionId])
     }
+
+    // Debounce the save by 1000ms to handle slider dragging and prevent excessive API calls
+    debouncedScoreSaves.current[criterionId] = setTimeout(() => {
+      // Get the current score AND comment from ref to avoid stale closure
+      const currentScore = scoresRef.current.find(s => s.criterionId === criterionId)
+      if (currentScore) {
+        saveScore(criterionId, currentScore.score, currentScore.comment)
+      }
+      delete debouncedScoreSaves.current[criterionId]
+    }, 1000)
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      const timeouts = debouncedScoreSaves.current
+      Object.values(timeouts).forEach(timeout => clearTimeout(timeout))
+    }
+  }, [])
 
   const handleCommentChange = (criterionId: string, newComment: string) => {
     setScores(prev => prev.map(s => 
@@ -207,15 +234,22 @@ export function TeamScoringInterface({
   )
 
   useEffect(() => {
-    // Only save comments that have actually changed
+    // Only save comments that have actually changed from last saved state
     Object.entries(debouncedComments).forEach(([criterionId, comment]) => {
       const currentScore = scores.find(s => s.criterionId === criterionId)
-      // Only save if score exists or comment is not empty
-      if (currentScore && (currentScore.score !== null || comment)) {
-        saveScore(criterionId, currentScore.score, comment)
+      const lastSaved = lastSavedState[criterionId]
+      
+      // Only save if:
+      // 1. Score exists (required for saving comments)
+      // 2. Comment has actually changed from what was last saved
+      if (currentScore && currentScore.score !== null) {
+        const commentChanged = !lastSaved || lastSaved.comment !== comment
+        if (commentChanged && comment) {
+          saveScore(criterionId, currentScore.score, comment)
+        }
       }
     })
-  }, [debouncedComments, saveScore, scores])
+  }, [debouncedComments, saveScore, scores, lastSavedState])
 
   // Check for full event completion and trigger confetti
   useEffect(() => {

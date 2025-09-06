@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -45,17 +45,35 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
   //   }
   // }, [pathname, status, refreshScoreCompletion])
 
-  // Keep the existing custom event listener for backward compatibility with the scoring interface
-  useEffect(() => {
-    const handleScoreUpdate = () => {
+  // PERFORMANCE OPTIMIZATION: Debounce completion refresh calls to prevent excessive API requests
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const debouncedRefreshCompletion = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current)
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
       if (status === 'assigned') {
         refreshScoreCompletion()
       }
+    }, 1000) // Wait 1 second after last score update before refreshing completion
+  }, [status, refreshScoreCompletion])
+
+  // Keep the existing custom event listener but with debounced refresh
+  useEffect(() => {
+    const handleScoreUpdate = () => {
+      debouncedRefreshCompletion()
     }
 
     window.addEventListener('scoreUpdated', handleScoreUpdate)
-    return () => window.removeEventListener('scoreUpdated', handleScoreUpdate)
-  }, [status, refreshScoreCompletion])
+    return () => {
+      window.removeEventListener('scoreUpdated', handleScoreUpdate)
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+    }
+  }, [debouncedRefreshCompletion])
 
   const getCompletionStatus = (teamId: string) => {
     const status = scoreCompletion.find(s => s.teamId === teamId)
