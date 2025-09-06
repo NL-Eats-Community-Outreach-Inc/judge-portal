@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { ExternalLink, Check, AlertCircle, Loader2, Plus, Minus, AlertTriangle, Trophy, Briefcase, Target, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useDebounce } from '@/lib/hooks/use-debounce'
 import type { Team, Criterion } from '@/lib/db/schema'
 import ReactMarkdown from 'react-markdown'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -166,16 +165,43 @@ export function TeamScoringInterface({
     }
   }, [team.id, lastSavedState])
 
-  // Debounced score saves to prevent excessive API calls during slider dragging
-  const debouncedScoreSaves = useRef<Record<string, NodeJS.Timeout>>({})
-  const scoresRef = useRef<Score[]>([])
-  
-  // Keep scoresRef in sync with scores state
-  useEffect(() => {
-    scoresRef.current = scores
-  }, [scores])
+  // Unified save system - one debounced save per criterion handling both score and comment
+  const pendingSaves = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const pendingData = useRef<Map<string, { score: number | null, comment: string, timestamp: number }>>(new Map())
+
+  const scheduleSave = useCallback((criterionId: string, score: number | null, comment: string) => {
+    // Store the latest data with timestamp to prevent race conditions
+    const timestamp = Date.now()
+    pendingData.current.set(criterionId, { score, comment, timestamp })
+    
+    // Clear existing timeout
+    const existingTimeout = pendingSaves.current.get(criterionId)
+    if (existingTimeout) {
+      clearTimeout(existingTimeout)
+    }
+    
+    // Schedule new save
+    const timeout = setTimeout(() => {
+      const data = pendingData.current.get(criterionId)
+      if (data && data.timestamp === timestamp) {
+        // Only save if this is still the latest data (prevents race conditions)
+        saveScore(criterionId, data.score, data.comment)
+      }
+      pendingSaves.current.delete(criterionId)
+      pendingData.current.delete(criterionId)
+    }, 500)
+    
+    pendingSaves.current.set(criterionId, timeout)
+  }, [saveScore])
 
   const handleScoreChange = (criterionId: string, newScore: number) => {
+    // Capture current comment before state update
+    const currentScore = scores.find(s => s.criterionId === criterionId)
+    const currentComment = currentScore?.comment || ''
+    
+    // Schedule save with captured data
+    scheduleSave(criterionId, newScore, currentComment)
+    
     // Update UI immediately
     setScores(prev => prev.map(s => 
       s.criterionId === criterionId 
@@ -184,72 +210,44 @@ export function TeamScoringInterface({
     ))
 
     // Clear validation warning when score is set
-    setSaveStatus(prev => {
-      const current = prev[criterionId]
-      if (current === 'validation-warning') {
-        return { ...prev, [criterionId]: 'idle' }
-      }
-      return prev
-    })
-
-    // Cancel previous save for this criterion
-    if (debouncedScoreSaves.current[criterionId]) {
-      clearTimeout(debouncedScoreSaves.current[criterionId])
-    }
-
-    // Debounce the save by 1000ms to handle slider dragging and prevent excessive API calls
-    debouncedScoreSaves.current[criterionId] = setTimeout(() => {
-      // Get the current score AND comment from ref to avoid stale closure
-      const currentScore = scoresRef.current.find(s => s.criterionId === criterionId)
-      if (currentScore) {
-        saveScore(criterionId, currentScore.score, currentScore.comment)
-      }
-      delete debouncedScoreSaves.current[criterionId]
-    }, 1000)
+    setSaveStatus(prev => ({
+      ...prev,
+      [criterionId]: prev[criterionId] === 'validation-warning' ? 'idle' : prev[criterionId]
+    }))
   }
 
-  // Cleanup on unmount
+  // Force save on component unmount to prevent data loss
   useEffect(() => {
     return () => {
-      const timeouts = debouncedScoreSaves.current
-      Object.values(timeouts).forEach(timeout => clearTimeout(timeout))
+      // Clear timeouts and force save any pending data
+      pendingSaves.current.forEach((timeout, criterionId) => {
+        clearTimeout(timeout)
+        const pendingItem = pendingData.current.get(criterionId)
+        if (pendingItem) {
+          // Force save all pending data (saveScore handles validation internally)
+          saveScore(criterionId, pendingItem.score, pendingItem.comment || '')
+        }
+      })
+      pendingSaves.current.clear()
+      pendingData.current.clear()
     }
-  }, [])
+  }, [saveScore])
 
   const handleCommentChange = (criterionId: string, newComment: string) => {
+    // Capture current score before state update
+    const currentScore = scores.find(s => s.criterionId === criterionId)
+    const currentScoreValue = currentScore?.score ?? null
+    
+    // Schedule save with captured data
+    scheduleSave(criterionId, currentScoreValue, newComment)
+    
+    // Update UI immediately
     setScores(prev => prev.map(s => 
       s.criterionId === criterionId 
         ? { ...s, comment: newComment }
         : s
     ))
   }
-
-  // Debounced comment saving - simplified approach
-  const debouncedComments = useDebounce(
-    scores.reduce((acc, score) => {
-      acc[score.criterionId] = score.comment
-      return acc
-    }, {} as Record<string, string>),
-    1000
-  )
-
-  useEffect(() => {
-    // Only save comments that have actually changed from last saved state
-    Object.entries(debouncedComments).forEach(([criterionId, comment]) => {
-      const currentScore = scores.find(s => s.criterionId === criterionId)
-      const lastSaved = lastSavedState[criterionId]
-      
-      // Only save if:
-      // 1. Score exists (required for saving comments)
-      // 2. Comment has actually changed from what was last saved
-      if (currentScore && currentScore.score !== null) {
-        const commentChanged = !lastSaved || lastSaved.comment !== comment
-        if (commentChanged && comment) {
-          saveScore(criterionId, currentScore.score, comment)
-        }
-      }
-    })
-  }, [debouncedComments, saveScore, scores, lastSavedState])
 
   // Check for full event completion and trigger confetti
   useEffect(() => {
