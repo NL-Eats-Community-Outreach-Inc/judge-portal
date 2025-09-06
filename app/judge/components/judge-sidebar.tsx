@@ -35,12 +35,15 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
     }
   }, [status, pathname, router])
 
-  // Refresh completion status when pathname changes (when switching teams) 
-  useEffect(() => {
-    if (status === 'assigned') {
-      refreshScoreCompletion()
-    }
-  }, [pathname, status, refreshScoreCompletion])
+  // PERFORMANCE FIX: Commented out to prevent duplicate API calls
+  // The completion status is already refreshed via the 'scoreUpdated' event (lines 46-55)
+  // which fires after each score save. We don't need to refresh on pathname changes
+  // since the completion status only changes when scores are actually saved.
+  // useEffect(() => {
+  //   if (status === 'assigned') {
+  //     refreshScoreCompletion()
+  //   }
+  // }, [pathname, status, refreshScoreCompletion])
 
   // Keep the existing custom event listener for backward compatibility with the scoring interface
   useEffect(() => {
