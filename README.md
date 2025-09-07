@@ -220,8 +220,49 @@ npm run db:generate      # Generate migrations (rarely needed with consolidated 
 # Production
 npm run build            # Build for production
 npm run start            # Start production server
-npm run lint             # Run ESLint
+npm run lint             # Run ESLint (also runs in GitHub Actions CI)
 ```
+
+## 🔧 GitHub Actions & CI/CD
+
+### Automated Code Quality
+
+The project includes GitHub Actions workflows for automated code quality checks:
+
+- **ESLint Workflow** - Runs on all pushes and pull requests
+- **Workflow Location** - `.github/workflows/lint.yml`
+- **Purpose** - Catch code quality issues before they reach production
+
+### Setting Up Branch Protection (Recommended)
+
+To enforce code quality standards, set up branch protection rules:
+
+1. **Go to Repository Settings**
+   - Navigate to your GitHub repository
+   - Click "Settings" → "Branches"
+
+2. **Add Branch Protection Rule**
+   - Click "Add rule"
+   - Branch name pattern: `main`
+   - ✅ Check "Require status checks to pass before merging"
+   - ✅ Check "Require branches to be up to date before merging"
+   - Select "Lint" from the status checks list
+
+3. **Save Changes**
+   - This prevents merging PRs with lint errors
+   - Ensures main branch always has clean code
+   - Works alongside Vercel deployment automation
+
+### Workflow Details
+
+The ESLint workflow:
+- Triggers on **all pushes** to **any branch**
+- Triggers on **all pull requests**
+- Uses Node.js 20 without caching
+- Fails if any lint errors are found
+- Provides clear feedback in PR checks
+
+This setup ensures code quality while maintaining fast development velocity.
 
 ## 🏆 Key Features Implemented
 
