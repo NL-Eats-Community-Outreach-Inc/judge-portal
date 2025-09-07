@@ -1,20 +1,51 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAdminEvent } from '../contexts/admin-event-context'
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAdminEvent } from '../contexts/admin-event-context';
 import {
   DndContext,
   closestCenter,
@@ -23,67 +54,62 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core'
+} from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import {
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Criterion {
-  id: string
-  name: string
-  description: string | null
-  minScore: number
-  maxScore: number
-  displayOrder: number
-  weight: number
-  category: 'technical' | 'business'
-  createdAt: string
-  updatedAt: string
-  eventId: string
+  id: string;
+  name: string;
+  description: string | null;
+  minScore: number;
+  maxScore: number;
+  displayOrder: number;
+  weight: number;
+  category: 'technical' | 'business';
+  createdAt: string;
+  updatedAt: string;
+  eventId: string;
 }
 
 interface CriterionFormData {
-  name: string
-  description: string
-  minScore: number
-  maxScore: number
-  weight: number
-  category: 'technical' | 'business'
+  name: string;
+  description: string;
+  minScore: number;
+  maxScore: number;
+  weight: number;
+  category: 'technical' | 'business';
 }
 
 // Sortable Row Component
-function SortableRow({ criterion, children, isDragDisabled }: { criterion: Criterion; children: React.ReactNode; isDragDisabled?: boolean }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
+function SortableRow({
+  criterion,
+  children,
+  isDragDisabled,
+}: {
+  criterion: Criterion;
+  children: React.ReactNode;
+  isDragDisabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: criterion.id,
-    disabled: isDragDisabled
-  })
+    disabled: isDragDisabled,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  }
+  };
 
   return (
-    <TableRow
-      ref={setNodeRef}
-      style={style}
-      className={isDragging ? 'z-50' : ''}
-    >
+    <TableRow ref={setNodeRef} style={style} className={isDragging ? 'z-50' : ''}>
       <TableCell>
         <div className="flex items-center gap-2">
           {isDragDisabled ? (
@@ -98,11 +124,7 @@ function SortableRow({ criterion, children, isDragDisabled }: { criterion: Crite
               </TooltipContent>
             </Tooltip>
           ) : (
-            <div
-              {...attributes}
-              {...listeners}
-              className="cursor-move p-1 rounded hover:bg-muted"
-            >
+            <div {...attributes} {...listeners} className="cursor-move p-1 rounded hover:bg-muted">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
@@ -111,33 +133,36 @@ function SortableRow({ criterion, children, isDragDisabled }: { criterion: Crite
       </TableCell>
       {children}
     </TableRow>
-  )
+  );
 }
 
 export default function CriteriaManagement() {
-  const [criteria, setCriteria] = useState<Criterion[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingCriterion, setEditingCriterion] = useState<Criterion | null>(null)
+  const [criteria, setCriteria] = useState<Criterion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCriterion, setEditingCriterion] = useState<Criterion | null>(null);
   const [formData, setFormData] = useState<CriterionFormData>({
     name: '',
     description: '',
     minScore: 1,
     maxScore: 10,
     weight: 20,
-    category: 'technical'
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [deletingCriteria, setDeletingCriteria] = useState(new Set<string>())
-  const [criterionToDelete, setCriterionToDelete] = useState<Criterion | null>(null)
-  const { selectedEvent } = useAdminEvent()
+    category: 'technical',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingCriteria, setDeletingCriteria] = useState(new Set<string>());
+  const [criterionToDelete, setCriterionToDelete] = useState<Criterion | null>(null);
+  const { selectedEvent } = useAdminEvent();
 
   // Calculate weight totals by category
-  const weightTotals = criteria.reduce((acc, criterion) => {
-    acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
-    return acc
-  }, {} as Record<string, number>)
+  const weightTotals = criteria.reduce(
+    (acc, criterion) => {
+      acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -145,289 +170,317 @@ export default function CriteriaManagement() {
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
-  )
+  );
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
+    const { active, over } = event;
 
     if (!active || !over || active.id === over.id) {
-      return
+      return;
     }
 
-    const oldIndex = criteria.findIndex((criterion) => criterion.id === active.id)
-    const newIndex = criteria.findIndex((criterion) => criterion.id === over.id)
+    const oldIndex = criteria.findIndex((criterion) => criterion.id === active.id);
+    const newIndex = criteria.findIndex((criterion) => criterion.id === over.id);
 
     if (oldIndex === -1 || newIndex === -1) {
-      return
+      return;
     }
 
     // Optimistic update
-    const newCriteria = arrayMove(criteria, oldIndex, newIndex)
+    const newCriteria = arrayMove(criteria, oldIndex, newIndex);
     // Update display orders
     const updatedCriteria = newCriteria.map((criterion, index) => ({
       ...criterion,
-      displayOrder: index + 1
-    }))
-    
-    setCriteria(updatedCriteria)
+      displayOrder: index + 1,
+    }));
+
+    setCriteria(updatedCriteria);
 
     // Send to backend
     try {
       const response = await fetch('/api/admin/criteria/reorder', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           eventId: selectedEvent?.id,
-          criteriaOrders: updatedCriteria.map(criterion => ({
+          criteriaOrders: updatedCriteria.map((criterion) => ({
             id: criterion.id,
-            displayOrder: criterion.displayOrder
-          }))
-        })
-      })
+            displayOrder: criterion.displayOrder,
+          })),
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to update criteria order')
+        throw new Error('Failed to update criteria order');
       }
 
       toast.success('Success', {
-        description: 'Criteria order updated successfully'
-      })
+        description: 'Criteria order updated successfully',
+      });
     } catch (error) {
-      console.error('Error updating criteria order:', error)
+      console.error('Error updating criteria order:', error);
       // Revert on error
-      setCriteria(criteria)
+      setCriteria(criteria);
       toast.error('Error', {
-        description: 'Failed to update criteria order'
-      })
+        description: 'Failed to update criteria order',
+      });
     }
-  }
+  };
 
   // Use useCallback to ensure stable reference for real-time sync
   const fetchCriteria = useCallback(async () => {
     if (!selectedEvent) {
-      setCriteria([])
-      setIsLoading(false)
-      return
+      setCriteria([]);
+      setIsLoading(false);
+      return;
     }
 
     try {
-      const response = await fetch(`/api/admin/criteria?eventId=${selectedEvent.id}`)
-      const data = await response.json()
-      
+      const response = await fetch(`/api/admin/criteria?eventId=${selectedEvent.id}`);
+      const data = await response.json();
+
       if (response.ok) {
-        setCriteria(data.criteria)
+        setCriteria(data.criteria);
       } else {
-        throw new Error(data.error)
+        throw new Error(data.error);
       }
     } catch (error) {
-      console.error('Error fetching criteria:', error)
+      console.error('Error fetching criteria:', error);
       toast.error('Error', {
-        description: 'Failed to load criteria'
-      })
+        description: 'Failed to load criteria',
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [selectedEvent])
+  }, [selectedEvent]);
 
   useEffect(() => {
     if (selectedEvent) {
-      fetchCriteria()
+      fetchCriteria();
     }
-  }, [selectedEvent, fetchCriteria])
-
+  }, [selectedEvent, fetchCriteria]);
 
   const openDialog = (criterion?: Criterion) => {
     if (criterion) {
-      setEditingCriterion(criterion)
+      setEditingCriterion(criterion);
       setFormData({
         name: criterion.name,
         description: criterion.description || '',
         minScore: criterion.minScore,
         maxScore: criterion.maxScore,
         weight: criterion.weight,
-        category: criterion.category
-      })
+        category: criterion.category,
+      });
     } else {
-      setEditingCriterion(null)
+      setEditingCriterion(null);
       setFormData({
         name: '',
         description: '',
         minScore: 1,
         maxScore: 10,
         weight: 20,
-        category: 'technical'
-      })
+        category: 'technical',
+      });
     }
-    setIsDialogOpen(true)
-  }
+    setIsDialogOpen(true);
+  };
 
   const closeDialog = () => {
-    setIsDialogOpen(false)
-    setEditingCriterion(null)
+    setIsDialogOpen(false);
+    setEditingCriterion(null);
     setFormData({
       name: '',
       description: '',
       minScore: 1,
       maxScore: 10,
       weight: 20,
-      category: 'technical'
-    })
-  }
+      category: 'technical',
+    });
+  };
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast.error('Validation Error', {
-        description: 'Criterion name is required'
-      })
-      return
+        description: 'Criterion name is required',
+      });
+      return;
     }
 
     if (formData.minScore >= formData.maxScore) {
       toast.error('Validation Error', {
-        description: 'Min score must be less than max score'
-      })
-      return
+        description: 'Min score must be less than max score',
+      });
+      return;
     }
 
     if (!selectedEvent) {
       toast.error('Error', {
-        description: 'No event selected'
-      })
-      return
+        description: 'No event selected',
+      });
+      return;
     }
 
     // Smart weight validation - warn about non-100% totals, prevent >100%
-    const simulatedCriteria = editingCriterion 
-      ? criteria.map(c => c.id === editingCriterion.id ? { ...c, weight: formData.weight, category: formData.category } : c)
-      : [...criteria, { ...formData, id: 'temp', category: formData.category, weight: formData.weight, displayOrder: criteria.length + 1, eventId: selectedEvent?.id || '', name: formData.name, description: formData.description, minScore: formData.minScore, maxScore: formData.maxScore, createdAt: '', updatedAt: '' }]
-    
-    const newWeightTotals = simulatedCriteria.reduce((acc, criterion) => {
-      acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
-      return acc
-    }, {} as Record<string, number>)
+    const simulatedCriteria = editingCriterion
+      ? criteria.map((c) =>
+          c.id === editingCriterion.id
+            ? { ...c, weight: formData.weight, category: formData.category }
+            : c
+        )
+      : [
+          ...criteria,
+          {
+            ...formData,
+            id: 'temp',
+            category: formData.category,
+            weight: formData.weight,
+            displayOrder: criteria.length + 1,
+            eventId: selectedEvent?.id || '',
+            name: formData.name,
+            description: formData.description,
+            minScore: formData.minScore,
+            maxScore: formData.maxScore,
+            createdAt: '',
+            updatedAt: '',
+          },
+        ];
 
-    const technicalTotal = newWeightTotals.technical || 0
-    const businessTotal = newWeightTotals.business || 0
-    
+    const newWeightTotals = simulatedCriteria.reduce(
+      (acc, criterion) => {
+        acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    const technicalTotal = newWeightTotals.technical || 0;
+    const businessTotal = newWeightTotals.business || 0;
+
     // Only block if would exceed 100% (let backend handle final validation)
     if (technicalTotal > 100) {
       toast.error('Weight Validation Error', {
-        description: `Technical criteria weights would total ${technicalTotal}% (maximum 100%)`
-      })
-      return
+        description: `Technical criteria weights would total ${technicalTotal}% (maximum 100%)`,
+      });
+      return;
     }
-    
+
     if (businessTotal > 100) {
       toast.error('Weight Validation Error', {
-        description: `Business criteria weights would total ${businessTotal}% (maximum 100%)`
-      })
-      return
+        description: `Business criteria weights would total ${businessTotal}% (maximum 100%)`,
+      });
+      return;
     }
 
     // Soft warning for non-100% totals (but allow the operation)
     if (technicalTotal > 0 && technicalTotal !== 100) {
       toast.warning('Weight Notice', {
-        description: `Technical weights will total ${technicalTotal}%. Consider adjusting to 100% for optimal scoring.`
-      })
-    }
-    
-    if (businessTotal > 0 && businessTotal !== 100) {
-      toast.warning('Weight Notice', {
-        description: `Business weights will total ${businessTotal}%. Consider adjusting to 100% for optimal scoring.`
-      })
+        description: `Technical weights will total ${technicalTotal}%. Consider adjusting to 100% for optimal scoring.`,
+      });
     }
 
-    setIsSubmitting(true)
+    if (businessTotal > 0 && businessTotal !== 100) {
+      toast.warning('Weight Notice', {
+        description: `Business weights will total ${businessTotal}%. Consider adjusting to 100% for optimal scoring.`,
+      });
+    }
+
+    setIsSubmitting(true);
     try {
-      const url = editingCriterion ? `/api/admin/criteria/${editingCriterion.id}` : '/api/admin/criteria'
-      const method = editingCriterion ? 'PUT' : 'POST'
-      
-      const requestBody = editingCriterion 
+      const url = editingCriterion
+        ? `/api/admin/criteria/${editingCriterion.id}`
+        : '/api/admin/criteria';
+      const method = editingCriterion ? 'PUT' : 'POST';
+
+      const requestBody = editingCriterion
         ? { ...formData, displayOrder: editingCriterion.displayOrder }
-        : { ...formData, eventId: selectedEvent.id }
-      
+        : { ...formData, eventId: selectedEvent.id };
+
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
-      })
+        body: JSON.stringify(requestBody),
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save criterion')
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save criterion');
       }
 
-      const data = await response.json()
-      
+      const data = await response.json();
+
       if (editingCriterion) {
-        setCriteria(prev => prev.map(criterion => 
-          criterion.id === editingCriterion.id ? data.criterion : criterion
-        ))
+        setCriteria((prev) =>
+          prev.map((criterion) =>
+            criterion.id === editingCriterion.id ? data.criterion : criterion
+          )
+        );
         toast.success('Success', {
-          description: 'Criterion updated successfully'
-        })
+          description: 'Criterion updated successfully',
+        });
       } else {
-        setCriteria(prev => [...prev, data.criterion].sort((a, b) => a.displayOrder - b.displayOrder))
+        setCriteria((prev) =>
+          [...prev, data.criterion].sort((a, b) => a.displayOrder - b.displayOrder)
+        );
         toast.success('Success', {
-          description: 'Criterion created successfully'
-        })
+          description: 'Criterion created successfully',
+        });
       }
-      
-      closeDialog()
+
+      closeDialog();
     } catch (error) {
-      console.error('Error saving criterion:', error)
+      console.error('Error saving criterion:', error);
       toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to save criterion'
-      })
+        description: error instanceof Error ? error.message : 'Failed to save criterion',
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!criterionToDelete) return
+    if (!criterionToDelete) return;
 
-    setDeletingCriteria(prev => new Set(prev).add(criterionToDelete.id))
-    
+    setDeletingCriteria((prev) => new Set(prev).add(criterionToDelete.id));
+
     try {
       const response = await fetch(`/api/admin/criteria/${criterionToDelete.id}`, {
-        method: 'DELETE'
-      })
+        method: 'DELETE',
+      });
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete criterion')
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete criterion');
       }
 
-      setCriteria(prev => {
-        const filtered = prev.filter(criterion => criterion.id !== criterionToDelete.id)
+      setCriteria((prev) => {
+        const filtered = prev.filter((criterion) => criterion.id !== criterionToDelete.id);
         // Recalculate display order
         return filtered.map((criterion, index) => ({
           ...criterion,
-          displayOrder: index + 1
-        }))
-      })
+          displayOrder: index + 1,
+        }));
+      });
       toast.success('Success', {
-        description: 'Criterion deleted successfully'
-      })
-      setCriterionToDelete(null)
+        description: 'Criterion deleted successfully',
+      });
+      setCriterionToDelete(null);
     } catch (error) {
-      console.error('Error deleting criterion:', error)
+      console.error('Error deleting criterion:', error);
       toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete criterion'
-      })
+        description: error instanceof Error ? error.message : 'Failed to delete criterion',
+      });
     } finally {
-      setDeletingCriteria(prev => {
-        const next = new Set(prev)
-        next.delete(criterionToDelete.id)
-        return next
-      })
+      setDeletingCriteria((prev) => {
+        const next = new Set(prev);
+        next.delete(criterionToDelete.id);
+        return next;
+      });
     }
-  }
+  };
 
   const getStatsCard = () => (
     <Card className="mb-6">
@@ -441,7 +494,7 @@ export default function CriteriaManagement() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 
   if (!selectedEvent) {
     return (
@@ -449,10 +502,12 @@ export default function CriteriaManagement() {
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground text-center">No event selected</p>
-          <p className="text-sm text-muted-foreground text-center">Select an event above to manage criteria</p>
+          <p className="text-sm text-muted-foreground text-center">
+            Select an event above to manage criteria
+          </p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (isLoading) {
@@ -462,14 +517,14 @@ export default function CriteriaManagement() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
     <TooltipProvider>
       <div className="space-y-6">
         {getStatsCard()}
-        
+
         {/* Weight Summary Card */}
         {criteria.length > 0 && (
           <Card>
@@ -479,25 +534,29 @@ export default function CriteriaManagement() {
                 <div className="flex gap-4">
                   <div className="flex items-center gap-2">
                     <Badge variant="default">Technical</Badge>
-                    <span className={`text-sm font-medium ${
-                      (weightTotals.technical || 0) === 100 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : (weightTotals.technical || 0) > 100
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-amber-600 dark:text-amber-400'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium ${
+                        (weightTotals.technical || 0) === 100
+                          ? 'text-green-600 dark:text-green-400'
+                          : (weightTotals.technical || 0) > 100
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
                       {weightTotals.technical || 0}%
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">Business</Badge>
-                    <span className={`text-sm font-medium ${
-                      (weightTotals.business || 0) === 100 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : (weightTotals.business || 0) > 100
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-amber-600 dark:text-amber-400'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium ${
+                        (weightTotals.business || 0) === 100
+                          ? 'text-green-600 dark:text-green-400'
+                          : (weightTotals.business || 0) > 100
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
                       {weightTotals.business || 0}%
                     </span>
                   </div>
@@ -505,395 +564,499 @@ export default function CriteriaManagement() {
               </div>
               <div className="mt-2">
                 {(() => {
-                  const techTotal = weightTotals.technical || 0
-                  const bizTotal = weightTotals.business || 0
-                  const bothPerfect = techTotal === 100 && bizTotal === 100
-                  const anyOver = techTotal > 100 || bizTotal > 100
-                  const anyUnder = (techTotal > 0 && techTotal < 100) || (bizTotal > 0 && bizTotal < 100)
-                  
+                  const techTotal = weightTotals.technical || 0;
+                  const bizTotal = weightTotals.business || 0;
+                  const bothPerfect = techTotal === 100 && bizTotal === 100;
+                  const anyOver = techTotal > 100 || bizTotal > 100;
+                  const anyUnder =
+                    (techTotal > 0 && techTotal < 100) || (bizTotal > 0 && bizTotal < 100);
+
                   if (bothPerfect) {
-                    return <p className="text-xs text-green-600 dark:text-green-400">✓ Perfect weight distribution!</p>
+                    return (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        ✓ Perfect weight distribution!
+                      </p>
+                    );
                   } else if (anyOver) {
-                    return <p className="text-xs text-red-600 dark:text-red-400">⚠ Some categories exceed 100% - adjust weights</p>
+                    return (
+                      <p className="text-xs text-red-600 dark:text-red-400">
+                        ⚠ Some categories exceed 100% - adjust weights
+                      </p>
+                    );
                   } else if (anyUnder) {
-                    return <p className="text-xs text-amber-600 dark:text-amber-400">Consider adjusting weights to total 100% per category</p>
+                    return (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Consider adjusting weights to total 100% per category
+                      </p>
+                    );
                   } else {
-                    return <p className="text-xs text-muted-foreground">Weights are used for final score calculation</p>
+                    return (
+                      <p className="text-xs text-muted-foreground">
+                        Weights are used for final score calculation
+                      </p>
+                    );
                   }
                 })()}
               </div>
             </CardContent>
           </Card>
         )}
-      
-      <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <Target className="h-5 w-5 text-primary flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <CardTitle>Scoring Criteria</CardTitle>
-                <CardDescription className="truncate pr-4">
-                  Define and manage judging criteria and score ranges for {selectedEvent.name}
-                </CardDescription>
+
+        <Card
+          className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
+        >
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Target className="h-5 w-5 text-primary flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <CardTitle>Scoring Criteria</CardTitle>
+                  <CardDescription className="truncate pr-4">
+                    Define and manage judging criteria and score ranges for {selectedEvent.name}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setIsRefreshing(true);
+                    try {
+                      await fetchCriteria();
+                    } finally {
+                      setIsRefreshing(false);
+                    }
+                  }}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-2"
+                >
+                  {isRefreshing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Refresh
+                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <DialogTrigger asChild>
+                          <Button
+                            onClick={() => openDialog()}
+                            className="flex items-center gap-2"
+                            disabled={
+                              selectedEvent?.status === 'active' ||
+                              selectedEvent?.status === 'completed'
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Criterion
+                          </Button>
+                        </DialogTrigger>
+                      </div>
+                    </TooltipTrigger>
+                    {(selectedEvent?.status === 'active' ||
+                      selectedEvent?.status === 'completed') && (
+                      <TooltipContent>
+                        <p>Cannot modify criteria for {selectedEvent?.status} events</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingCriterion ? 'Edit Criterion' : 'Create New Criterion'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingCriterion
+                          ? 'Update criterion information'
+                          : 'Add a new scoring criterion'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="criterion-name">Criterion Name *</Label>
+                        <Input
+                          id="criterion-name"
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, name: e.target.value }))
+                          }
+                          placeholder="e.g., Innovation, Technical Implementation"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="criterion-description">Description</Label>
+                        <Textarea
+                          id="criterion-description"
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, description: e.target.value }))
+                          }
+                          placeholder="Describe what this criterion evaluates"
+                          rows={3}
+                          className="resize-none"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Supports markdown formatting: **bold**, *italic*, line breaks, and lists
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="min-score">Min Score</Label>
+                          <Input
+                            id="min-score"
+                            type="number"
+                            min="0"
+                            value={formData.minScore}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                minScore: parseInt(e.target.value) || 0,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="max-score">Max Score</Label>
+                          <Input
+                            id="max-score"
+                            type="number"
+                            min="1"
+                            value={formData.maxScore}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                maxScore: parseInt(e.target.value) || 1,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="weight">Weight (%)</Label>
+                          <Input
+                            id="weight"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={formData.weight}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                weight: parseInt(e.target.value) || 0,
+                              }))
+                            }
+                            placeholder="e.g., 25"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Select
+                            value={formData.category}
+                            onValueChange={(value: 'technical' | 'business') =>
+                              setFormData((prev) => ({ ...prev, category: value }))
+                            }
+                          >
+                            <SelectTrigger id="category">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="technical">Technical</SelectItem>
+                              <SelectItem value="business">Business</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Weight Preview */}
+                      <div className="grid gap-2 p-3 bg-muted/30 rounded-lg">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Weight Preview
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          {(() => {
+                            // Calculate what totals would be after this change
+                            const simulatedCriteria = editingCriterion
+                              ? criteria.map((c) =>
+                                  c.id === editingCriterion.id
+                                    ? { ...c, weight: formData.weight, category: formData.category }
+                                    : c
+                                )
+                              : [
+                                  ...criteria,
+                                  {
+                                    ...formData,
+                                    id: 'temp',
+                                    category: formData.category,
+                                    weight: formData.weight,
+                                    displayOrder: criteria.length + 1,
+                                    eventId: selectedEvent?.id || '',
+                                    name: formData.name,
+                                    description: formData.description,
+                                    minScore: formData.minScore,
+                                    maxScore: formData.maxScore,
+                                    createdAt: '',
+                                    updatedAt: '',
+                                  },
+                                ];
+
+                            const previewTotals = simulatedCriteria.reduce(
+                              (acc, criterion) => {
+                                acc[criterion.category] =
+                                  (acc[criterion.category] || 0) + criterion.weight;
+                                return acc;
+                              },
+                              {} as Record<string, number>
+                            );
+
+                            const techTotal = previewTotals.technical || 0;
+                            const bizTotal = previewTotals.business || 0;
+
+                            return (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground">Technical:</span>
+                                  <span
+                                    className={`font-medium ${
+                                      techTotal === 100
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : techTotal > 100
+                                          ? 'text-red-600 dark:text-red-400'
+                                          : 'text-amber-600 dark:text-amber-400'
+                                    }`}
+                                  >
+                                    {techTotal}%
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground">Business:</span>
+                                  <span
+                                    className={`font-medium ${
+                                      bizTotal === 100
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : bizTotal > 100
+                                          ? 'text-red-600 dark:text-red-400'
+                                          : 'text-amber-600 dark:text-amber-400'
+                                    }`}
+                                  >
+                                    {bizTotal}%
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={closeDialog}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {editingCriterion ? 'Update Criterion' : 'Create Criterion'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Button 
-                variant="outline" 
-                onClick={async () => {
-                  setIsRefreshing(true)
-                  try {
-                    await fetchCriteria()
-                  } finally {
-                    setIsRefreshing(false)
-                  }
-                }}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-              >
-                {isRefreshing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Refresh
-              </Button>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <DialogTrigger asChild>
-                        <Button 
-                          onClick={() => openDialog()} 
-                          className="flex items-center gap-2"
-                          disabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Criterion
-                        </Button>
-                      </DialogTrigger>
-                    </div>
-                  </TooltipTrigger>
-                  {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
-                    <TooltipContent>
-                      <p>Cannot modify criteria for {selectedEvent?.status} events</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingCriterion ? 'Edit Criterion' : 'Create New Criterion'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {editingCriterion ? 'Update criterion information' : 'Add a new scoring criterion'}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="criterion-name">Criterion Name *</Label>
-                      <Input
-                        id="criterion-name"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="e.g., Innovation, Technical Implementation"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="criterion-description">Description</Label>
-                      <Textarea
-                        id="criterion-description"
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Describe what this criterion evaluates"
-                        rows={3}
-                        className="resize-none"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Supports markdown formatting: **bold**, *italic*, line breaks, and lists
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="min-score">Min Score</Label>
-                        <Input
-                          id="min-score"
-                          type="number"
-                          min="0"
-                          value={formData.minScore}
-                          onChange={(e) => setFormData(prev => ({ ...prev, minScore: parseInt(e.target.value) || 0 }))}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="max-score">Max Score</Label>
-                        <Input
-                          id="max-score"
-                          type="number"
-                          min="1"
-                          value={formData.maxScore}
-                          onChange={(e) => setFormData(prev => ({ ...prev, maxScore: parseInt(e.target.value) || 1 }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="weight">Weight (%)</Label>
-                        <Input
-                          id="weight"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={formData.weight}
-                          onChange={(e) => setFormData(prev => ({ ...prev, weight: parseInt(e.target.value) || 0 }))}
-                          placeholder="e.g., 25"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                          value={formData.category}
-                          onValueChange={(value: 'technical' | 'business') => setFormData(prev => ({ ...prev, category: value }))}
-                        >
-                          <SelectTrigger id="category">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="technical">Technical</SelectItem>
-                            <SelectItem value="business">Business</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    {/* Weight Preview */}
-                    <div className="grid gap-2 p-3 bg-muted/30 rounded-lg">
-                      <Label className="text-xs font-medium text-muted-foreground">Weight Preview</Label>
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        {(() => {
-                          // Calculate what totals would be after this change
-                          const simulatedCriteria = editingCriterion 
-                            ? criteria.map(c => c.id === editingCriterion.id ? { ...c, weight: formData.weight, category: formData.category } : c)
-                            : [...criteria, { ...formData, id: 'temp', category: formData.category, weight: formData.weight, displayOrder: criteria.length + 1, eventId: selectedEvent?.id || '', name: formData.name, description: formData.description, minScore: formData.minScore, maxScore: formData.maxScore, createdAt: '', updatedAt: '' }]
-                          
-                          const previewTotals = simulatedCriteria.reduce((acc, criterion) => {
-                            acc[criterion.category] = (acc[criterion.category] || 0) + criterion.weight
-                            return acc
-                          }, {} as Record<string, number>)
-
-                          const techTotal = previewTotals.technical || 0
-                          const bizTotal = previewTotals.business || 0
-
-                          return (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Technical:</span>
-                                <span className={`font-medium ${
-                                  techTotal === 100 
-                                    ? 'text-green-600 dark:text-green-400' 
-                                    : techTotal > 100
-                                      ? 'text-red-600 dark:text-red-400'
-                                      : 'text-amber-600 dark:text-amber-400'
-                                }`}>
-                                  {techTotal}%
-                                </span>
+          </CardHeader>
+          <CardContent>
+            {criteria.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p>No scoring criteria yet</p>
+                <p className="text-sm">Create your first criterion to get started</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table className="table-fixed">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24">Order</TableHead>
+                        <TableHead className="w-40">Criterion Name</TableHead>
+                        <TableHead className="w-48">Description</TableHead>
+                        <TableHead className="w-24">Category</TableHead>
+                        <TableHead className="w-24">Weight</TableHead>
+                        <TableHead className="w-28">Score Range</TableHead>
+                        <TableHead className="w-28">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <SortableContext
+                        items={criteria.map((criterion) => criterion.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {criteria.map((criterion) => (
+                          <SortableRow
+                            key={criterion.id}
+                            criterion={criterion}
+                            isDragDisabled={
+                              selectedEvent?.status === 'active' ||
+                              selectedEvent?.status === 'completed'
+                            }
+                          >
+                            <TableCell className="font-medium w-40">
+                              <div className="truncate" title={criterion.name}>
+                                {criterion.name}
                               </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Business:</span>
-                                <span className={`font-medium ${
-                                  bizTotal === 100 
-                                    ? 'text-green-600 dark:text-green-400' 
-                                    : bizTotal > 100
-                                      ? 'text-red-600 dark:text-red-400'
-                                      : 'text-amber-600 dark:text-amber-400'
-                                }`}>
-                                  {bizTotal}%
-                                </span>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground w-48">
+                              <div className="truncate" title={criterion.description || ''}>
+                                {criterion.description
+                                  ? criterion.description
+                                      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
+                                      .replace(/\*(.*?)\*/g, '$1') // Remove italic *text*
+                                      .replace(/^[-*+]\s+/gm, '') // Remove list markers
+                                      .replace(/^\d+\.\s+/gm, '') // Remove numbered list markers
+                                      .replace(/\n+/g, ' ') // Replace newlines with spaces
+                                      .trim()
+                                  : '—'}
                               </div>
-                            </>
-                          )
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={closeDialog}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      {editingCriterion ? 'Update Criterion' : 'Create Criterion'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {criteria.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p>No scoring criteria yet</p>
-              <p className="text-sm">Create your first criterion to get started</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <DndContext 
-                sensors={sensors} 
-                collisionDetection={closestCenter} 
-                onDragEnd={handleDragEnd}
-              >
-                <Table className="table-fixed">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-24">Order</TableHead>
-                      <TableHead className="w-40">Criterion Name</TableHead>
-                      <TableHead className="w-48">Description</TableHead>
-                      <TableHead className="w-24">Category</TableHead>
-                      <TableHead className="w-24">Weight</TableHead>
-                      <TableHead className="w-28">Score Range</TableHead>
-                      <TableHead className="w-28">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <SortableContext 
-                      items={criteria.map(criterion => criterion.id)} 
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {criteria.map((criterion) => (
-                        <SortableRow key={criterion.id} criterion={criterion} isDragDisabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}>
-                          <TableCell className="font-medium w-40">
-                            <div className="truncate" title={criterion.name}>
-                              {criterion.name}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground w-48">
-                            <div className="truncate" title={criterion.description || ''}>
-                              {criterion.description ? 
-                                criterion.description
-                                  .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold **text**
-                                  .replace(/\*(.*?)\*/g, '$1')     // Remove italic *text*
-                                  .replace(/^[-*+]\s+/gm, '')      // Remove list markers
-                                  .replace(/^\d+\.\s+/gm, '')      // Remove numbered list markers
-                                  .replace(/\n+/g, ' ')            // Replace newlines with spaces
-                                  .trim()
-                                : '—'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-24">
-                            <Badge variant={criterion.category === 'technical' ? 'default' : 'secondary'}>
-                              {criterion.category.charAt(0).toUpperCase() + criterion.category.slice(1)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="w-24">
-                            <Badge 
-                              variant="outline"
-                              className={
-                                weightTotals[criterion.category] === 100 
-                                  ? 'border-green-500/50 text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20'
-                                  : weightTotals[criterion.category] > 100
-                                    ? 'border-red-500/50 text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20'
-                                    : 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20'
-                              }
-                            >
-                              {criterion.weight}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="w-28">
-                            <Badge variant="secondary">
-                              {criterion.minScore} - {criterion.maxScore}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="w-28">
-                            <div className="flex gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => openDialog(criterion)}
-                                      className="h-8 w-8 p-0"
-                                      disabled={selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TooltipTrigger>
-                                {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
-                                  <TooltipContent>
-                                    <p>Cannot edit criteria for {selectedEvent?.status} events</p>
-                                  </TooltipContent>
-                                )}
-                              </Tooltip>
-                              <AlertDialog>
+                            </TableCell>
+                            <TableCell className="w-24">
+                              <Badge
+                                variant={
+                                  criterion.category === 'technical' ? 'default' : 'secondary'
+                                }
+                              >
+                                {criterion.category.charAt(0).toUpperCase() +
+                                  criterion.category.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="w-24">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  weightTotals[criterion.category] === 100
+                                    ? 'border-green-500/50 text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20'
+                                    : weightTotals[criterion.category] > 100
+                                      ? 'border-red-500/50 text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20'
+                                      : 'border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20'
+                                }
+                              >
+                                {criterion.weight}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="w-28">
+                              <Badge variant="secondary">
+                                {criterion.minScore} - {criterion.maxScore}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="w-28">
+                              <div className="flex gap-2">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => setCriterionToDelete(criterion)}
-                                          disabled={deletingCriteria.has(criterion.id) || selectedEvent?.status === 'active' || selectedEvent?.status === 'completed'}
-                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 disabled:text-muted-foreground"
-                                        >
-                                          {deletingCriteria.has(criterion.id) ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Trash2 className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </AlertDialogTrigger>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openDialog(criterion)}
+                                        className="h-8 w-8 p-0"
+                                        disabled={
+                                          selectedEvent?.status === 'active' ||
+                                          selectedEvent?.status === 'completed'
+                                        }
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
                                     </div>
                                   </TooltipTrigger>
-                                  {(selectedEvent?.status === 'active' || selectedEvent?.status === 'completed') && (
+                                  {(selectedEvent?.status === 'active' ||
+                                    selectedEvent?.status === 'completed') && (
                                     <TooltipContent>
-                                      <p>Cannot delete criteria for {selectedEvent?.status} events</p>
+                                      <p>Cannot edit criteria for {selectedEvent?.status} events</p>
                                     </TooltipContent>
                                   )}
                                 </Tooltip>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the criterion &quot;{criterion.name}&quot; and all associated scores.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setCriterionToDelete(null)}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                      Delete Criterion
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </SortableRow>
-                      ))}
-                    </SortableContext>
-                  </TableBody>
-                </Table>
-              </DndContext>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-
-    {/* Subtle loading overlay */}
-    {isRefreshing && (
-      <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
-        <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm font-medium text-foreground">Refreshing criteria...</span>
-        </div>
+                                <AlertDialog>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <AlertDialogTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setCriterionToDelete(criterion)}
+                                            disabled={
+                                              deletingCriteria.has(criterion.id) ||
+                                              selectedEvent?.status === 'active' ||
+                                              selectedEvent?.status === 'completed'
+                                            }
+                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 disabled:text-muted-foreground"
+                                          >
+                                            {deletingCriteria.has(criterion.id) ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {(selectedEvent?.status === 'active' ||
+                                      selectedEvent?.status === 'completed') && (
+                                      <TooltipContent>
+                                        <p>
+                                          Cannot delete criteria for {selectedEvent?.status} events
+                                        </p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete
+                                        the criterion &quot;{criterion.name}&quot; and all
+                                        associated scores.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel onClick={() => setCriterionToDelete(null)}>
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={handleDelete}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete Criterion
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </SortableRow>
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </DndContext>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    )}
+
+      {/* Subtle loading overlay */}
+      {isRefreshing && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing criteria...</span>
+          </div>
+        </div>
+      )}
     </TooltipProvider>
-  )
+  );
 }

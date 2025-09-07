@@ -1,10 +1,10 @@
-import { EnvVarWarning } from "@/components/env-var-warning";
-import { AuthButton } from "@/components/auth-button";
-import { JudgeHero } from "@/components/judge-hero";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { hasEnvVars } from "@/lib/utils";
-import Link from "next/link";
-import { Gavel } from "lucide-react";
+import { EnvVarWarning } from '@/components/env-var-warning';
+import { AuthButton } from '@/components/auth-button';
+import { JudgeHero } from '@/components/judge-hero';
+import { ThemeSwitcher } from '@/components/theme-switcher';
+import { hasEnvVars } from '@/lib/utils';
+import Link from 'next/link';
+import { Gavel } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -16,7 +16,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
                 <Gavel className="w-5 h-5 text-white" />
               </div>
-              <Link href={"/"} className="font-semibold text-lg">
+              <Link href={'/'} className="font-semibold text-lg">
                 Judge Portal
               </Link>
             </div>
@@ -26,7 +26,7 @@ export default function Home() {
             </div>
           </div>
         </nav>
-        
+
         <div className="flex-1 flex flex-col items-center">
           <JudgeHero />
         </div>

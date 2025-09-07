@@ -1,19 +1,19 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { JudgeSidebar } from './judge-sidebar'
-import { JudgeHeader } from './judge-header'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { JudgeAssignmentProvider } from './judge-assignment-provider'
-import type { UserWithRole } from '@/lib/auth'
+import { useState } from 'react';
+import { JudgeSidebar } from './judge-sidebar';
+import { JudgeHeader } from './judge-header';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { JudgeAssignmentProvider } from './judge-assignment-provider';
+import type { UserWithRole } from '@/lib/auth';
 
 interface JudgeLayoutClientProps {
-  user: UserWithRole
-  children: React.ReactNode
+  user: UserWithRole;
+  children: React.ReactNode;
 }
 
 export function JudgeLayoutClient({ user, children }: JudgeLayoutClientProps) {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
     <JudgeAssignmentProvider>
@@ -23,30 +23,25 @@ export function JudgeLayoutClient({ user, children }: JudgeLayoutClientProps) {
           <div className="hidden md:block fixed left-0 top-0 h-full z-40">
             <JudgeSidebar />
           </div>
-          
+
           {/* Mobile sidebar - only visible on mobile */}
           <div className="md:hidden">
-            <JudgeSidebar 
+            <JudgeSidebar
               isMobile={true}
               isOpen={isMobileSidebarOpen}
               onClose={() => setIsMobileSidebarOpen(false)}
             />
           </div>
-          
+
           {/* Main content area */}
           <div className="md:ml-64 lg:ml-80">
             <div className="sticky top-0 z-30 bg-background">
-              <JudgeHeader 
-                user={user}
-                onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
-              />
+              <JudgeHeader user={user} onMobileMenuToggle={() => setIsMobileSidebarOpen(true)} />
             </div>
-            <main>
-              {children}
-            </main>
+            <main>{children}</main>
           </div>
         </div>
       </TooltipProvider>
     </JudgeAssignmentProvider>
-  )
+  );
 }

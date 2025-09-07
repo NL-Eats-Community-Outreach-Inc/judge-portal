@@ -1,6 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { hasEnvVars } from "../utils";
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+import { hasEnvVars } from '../utils';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -24,18 +24,16 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
-    },
+    }
   );
 
   // Do not run code between createServerClient and
@@ -53,26 +51,27 @@ export async function updateSession(request: NextRequest) {
   // Handle unauthenticated users
   if (!user) {
     // Allow access to auth pages and root
-    if (pathname === "/" || pathname.startsWith("/auth")) {
+    if (pathname === '/' || pathname.startsWith('/auth')) {
       return supabaseResponse;
     }
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
+    url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
 
   // Handle authenticated users - get their role
   try {
     console.log('Middleware: Looking for user with ID:', user.sub);
-    
+
     let userRole;
     let selectError = null;
-    
+
     // Use database function to check user role (bypasses RLS)
     try {
-      const { data: roleData, error: dbError } = await supabase
-        .rpc('check_user_role', { user_id: user.sub });
+      const { data: roleData, error: dbError } = await supabase.rpc('check_user_role', {
+        user_id: user.sub,
+      });
 
       if (dbError) {
         throw dbError;
@@ -89,7 +88,7 @@ export async function updateSession(request: NextRequest) {
     if (!userRole && !selectError) {
       console.log('Middleware: User not found in database, redirecting to signup');
       const url = request.nextUrl.clone();
-      url.pathname = "/auth/sign-up";
+      url.pathname = '/auth/sign-up';
       return NextResponse.redirect(url);
     }
 
@@ -97,7 +96,7 @@ export async function updateSession(request: NextRequest) {
     if (selectError) {
       console.error('Middleware: Database error:', selectError);
       const url = request.nextUrl.clone();
-      url.pathname = "/auth/login";
+      url.pathname = '/auth/login';
       return NextResponse.redirect(url);
     }
 
@@ -106,7 +105,7 @@ export async function updateSession(request: NextRequest) {
     console.log('Middleware: User role:', role, 'Path:', pathname);
 
     // Root path - redirect based on role
-    if (pathname === "/") {
+    if (pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = role === 'admin' ? '/admin' : '/judge';
       console.log('Middleware: Redirecting from root to:', url.pathname);
@@ -114,11 +113,11 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Admin routes - only admins can access
-    if (pathname.startsWith("/admin")) {
+    if (pathname.startsWith('/admin')) {
       if (role !== 'admin') {
         console.log('Middleware: Non-admin trying to access admin route, redirecting to judge');
         const url = request.nextUrl.clone();
-        url.pathname = "/judge";
+        url.pathname = '/judge';
         return NextResponse.redirect(url);
       }
       console.log('Middleware: Admin access granted to admin route');
@@ -126,9 +125,11 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Judge routes - only judges can access
-    if (pathname.startsWith("/judge")) {
+    if (pathname.startsWith('/judge')) {
       if (role !== 'judge') {
-        console.log('Middleware: Non-judge trying to access judge route, redirecting based on role');
+        console.log(
+          'Middleware: Non-judge trying to access judge route, redirecting based on role'
+        );
         const url = request.nextUrl.clone();
         url.pathname = role === 'admin' ? '/admin' : '/';
         return NextResponse.redirect(url);
@@ -139,12 +140,11 @@ export async function updateSession(request: NextRequest) {
 
     // All other authenticated routes
     console.log('Middleware: Allowing access to other authenticated route');
-
   } catch (error) {
     console.error('Error in middleware:', error);
     // On error, redirect to login
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
+    url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
 

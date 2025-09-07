@@ -1,56 +1,56 @@
-'use client'
+'use client';
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { LogOut, User, Calendar, Menu, UserX } from 'lucide-react'
-import { authClient } from '@/lib/auth/client'
-import { useRouter } from 'next/navigation'
-import type { UserWithRole } from '@/lib/auth'
-import { ThemeSwitcher } from '@/components/theme-switcher'
-import { useJudgeAssignmentContext } from './judge-assignment-provider'
+} from '@/components/ui/dropdown-menu';
+import { LogOut, User, Calendar, Menu, UserX } from 'lucide-react';
+import { authClient } from '@/lib/auth/client';
+import { useRouter } from 'next/navigation';
+import type { UserWithRole } from '@/lib/auth';
+import { ThemeSwitcher } from '@/components/theme-switcher';
+import { useJudgeAssignmentContext } from './judge-assignment-provider';
 
 interface JudgeHeaderProps {
-  user: UserWithRole
-  onMobileMenuToggle?: () => void
+  user: UserWithRole;
+  onMobileMenuToggle?: () => void;
 }
 
 export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
-  const router = useRouter()
-  const { status, event } = useJudgeAssignmentContext()
+  const router = useRouter();
+  const { status, event } = useJudgeAssignmentContext();
 
   // Smart email display helpers
   const getUsername = (email: string, maxLength: number) => {
-    const username = email.split('@')[0]
-    return username.length > maxLength ? username.substring(0, maxLength - 3) + '...' : username
-  }
+    const username = email.split('@')[0];
+    return username.length > maxLength ? username.substring(0, maxLength - 3) + '...' : username;
+  };
 
   const getDisplayEmail = (email: string, maxLength: number) => {
-    return email.length > maxLength ? email.substring(0, maxLength - 3) + '...' : email
-  }
+    return email.length > maxLength ? email.substring(0, maxLength - 3) + '...' : email;
+  };
 
   const handleSignOut = async () => {
-    await authClient.signOut()
-    router.push('/')
-  }
+    await authClient.signOut();
+    router.push('/');
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
       case 'setup':
-        return <Badge variant="secondary">Setup</Badge>
+        return <Badge variant="secondary">Setup</Badge>;
       case 'completed':
-        return <Badge variant="outline">Completed</Badge>
+        return <Badge variant="outline">Completed</Badge>;
       default:
-        return <Badge variant="secondary">Unknown</Badge>
+        return <Badge variant="secondary">Unknown</Badge>;
     }
-  }
+  };
 
   return (
     <header className="bg-background border-b border-border shrink-0">
@@ -80,12 +80,17 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 <UserX className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">Not Assigned to Event</h1>
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
+                      Not Assigned to Event
+                    </h1>
                     <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
                       Contact administrator for event access
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                  <Badge
+                    variant="outline"
+                    className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0"
+                  >
                     Not Assigned
                   </Badge>
                 </div>
@@ -95,11 +100,11 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">{event.name}</h1>
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
+                      {event.name}
+                    </h1>
                   </div>
-                  <div className="shrink-0">
-                    {getStatusBadge(event.status)}
-                  </div>
+                  <div className="shrink-0">{getStatusBadge(event.status)}</div>
                 </div>
               </div>
             ) : (
@@ -107,12 +112,17 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">No Active Event</h1>
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
+                      No Active Event
+                    </h1>
                     <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
                       No event is currently active for judging
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0">
+                  <Badge
+                    variant="outline"
+                    className="text-amber-600 border-amber-600 dark:text-amber-400 dark:border-amber-400 text-xs shrink-0"
+                  >
                     Inactive
                   </Badge>
                 </div>
@@ -129,9 +139,13 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
               <Button variant="ghost" className="flex items-center gap-2 px-2 md:px-4">
                 <User className="h-4 w-4" />
                 {/* Username only for sm/md screens */}
-                <span className="text-sm hidden sm:inline lg:hidden">{getUsername(user.email || '', 15)}</span>
+                <span className="text-sm hidden sm:inline lg:hidden">
+                  {getUsername(user.email || '', 15)}
+                </span>
                 {/* Full email for lg+ screens */}
-                <span className="text-sm hidden lg:inline">{getDisplayEmail(user.email || '', 25)}</span>
+                <span className="text-sm hidden lg:inline">
+                  {getDisplayEmail(user.email || '', 25)}
+                </span>
                 <Badge variant="outline" className="text-xs capitalize hidden md:inline-flex">
                   {user.role}
                 </Badge>
@@ -151,5 +165,5 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
         </div>
       </div>
     </header>
-  )
+  );
 }

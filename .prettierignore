@@ -114,6 +114,9 @@ rollup.config.*
 schema.prisma
 *.schema
 
+# SCRIPTS AND UTILITIES - CRITICAL (custom database scripts, utilities)
+/scripts/**
+
 # DATA FILES (can have specific formatting requirements)
 *.json
 *.xml

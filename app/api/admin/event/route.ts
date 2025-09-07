@@ -1,50 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromSession } from '@/lib/auth/server'
-import { db } from '@/lib/db'
-import { events } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromSession } from '@/lib/auth/server';
+import { db } from '@/lib/db';
+import { events } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    const user = await getUserFromSession()
+    const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get all events, ordered by created date (newest first)
-    const allEvents = await db.select().from(events).orderBy(desc(events.createdAt))
-    
-    return NextResponse.json({ events: allEvents })
+    const allEvents = await db.select().from(events).orderBy(desc(events.createdAt));
+
+    return NextResponse.json({ events: allEvents });
   } catch (error) {
-    console.error('Error fetching events:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error fetching events:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession()
+    const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, status } = await request.json()
+    const { name, description, status } = await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Event name is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
     }
 
-    const eventStatus = status || 'setup'
+    const eventStatus = status || 'setup';
 
     // If setting event to active, ensure no other event is active
     if (eventStatus === 'active') {
-      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'))
+      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'));
       if (activeEvents.length > 0) {
-        return NextResponse.json({ 
-          error: 'Another event is already active. Please deactivate it first.' 
-        }, { status: 400 })
+        return NextResponse.json(
+          {
+            error: 'Another event is already active. Please deactivate it first.',
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -54,13 +57,13 @@ export async function POST(request: NextRequest) {
       .values({
         name: name.trim(),
         description: description?.trim() || null,
-        status: eventStatus
+        status: eventStatus,
       })
-      .returning()
+      .returning();
 
-    return NextResponse.json({ event })
+    return NextResponse.json({ event });
   } catch (error) {
-    console.error('Error creating event:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error creating event:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
