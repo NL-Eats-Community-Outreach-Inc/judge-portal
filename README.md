@@ -220,8 +220,57 @@ npm run db:generate      # Generate migrations (rarely needed with consolidated 
 # Production
 npm run build            # Build for production
 npm run start            # Start production server
+
+# Code Quality & Formatting
 npm run lint             # Run ESLint
+npm run format           # Format code with Prettier
+npm run format:check     # Check if code is properly formatted
 ```
+
+## 🔧 GitHub Actions & CI/CD
+
+### Automated Code Quality & Formatting
+
+The project includes GitHub Actions workflows for automated code quality and formatting checks:
+
+- **Lint & Format Workflow** - Runs on all pushes and pull requests
+- **Workflow Location** - `.github/workflows/lint-and-format.yml`
+- **Checks Performed**:
+  - ESLint code quality analysis
+  - Prettier code formatting validation
+- **Purpose** - Ensure code quality and consistent formatting before merging
+
+### Setting Up Branch Protection (Recommended)
+
+To enforce code quality standards, set up branch protection rules:
+
+1. **Go to Repository Settings**
+   - Navigate to your GitHub repository
+   - Click "Settings" → "Branches"
+
+2. **Add Branch Protection Rule**
+   - Click "Add rule"
+   - Branch name pattern: `main`
+   - ✅ Check "Require status checks to pass before merging"
+   - ✅ Check "Require branches to be up to date before merging"
+   - Select "lint" from the status checks list
+
+3. **Save Changes**
+   - This prevents merging PRs with lint or formatting errors
+   - Ensures main branch always has clean, consistent code
+   - Works alongside Vercel deployment automation
+
+### Workflow Details
+
+The Lint & Format workflow:
+- Triggers on **all pushes** to **any branch**
+- Triggers on **all pull requests**
+- Uses Node.js 20 with npm ci for consistent installs
+- **ESLint Check** - Fails if any code quality issues are found
+- **Prettier Check** - Fails if code is not properly formatted
+- Provides clear feedback in PR checks and status badges
+
+This setup ensures both code quality and consistent formatting while maintaining fast development velocity.
 
 ## 🏆 Key Features Implemented
 
