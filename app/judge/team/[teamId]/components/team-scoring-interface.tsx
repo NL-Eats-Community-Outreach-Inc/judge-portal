@@ -216,22 +216,17 @@ export function TeamScoringInterface({
     }))
   }
 
-  // Force save on component unmount to prevent data loss
+  // Clean up timeouts on component unmount
   useEffect(() => {
     return () => {
-      // Clear timeouts and force save any pending data
-      pendingSaves.current.forEach((timeout, criterionId) => {
+      // Clear pending timeouts to prevent memory leaks
+      pendingSaves.current.forEach((timeout) => {
         clearTimeout(timeout)
-        const pendingItem = pendingData.current.get(criterionId)
-        if (pendingItem) {
-          // Force save all pending data (saveScore handles validation internally)
-          saveScore(criterionId, pendingItem.score, pendingItem.comment || '')
-        }
       })
       pendingSaves.current.clear()
       pendingData.current.clear()
     }
-  }, [saveScore])
+  }, [])
 
   const handleCommentChange = (criterionId: string, newComment: string) => {
     // Capture current score before state update
