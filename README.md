@@ -227,6 +227,30 @@ npm run format           # Format code with Prettier
 npm run format:check     # Check if code is properly formatted
 ```
 
+### Prettier Formatting
+
+The project uses Prettier for consistent code formatting. Here are the most common formatting commands:
+
+```bash
+# Format all files in the project (recommended)
+npm run format
+
+# Check formatting without making changes
+npm run format:check
+
+# Format a single file
+npx prettier --write path/to/file.tsx
+
+# Check formatting for a single file (without changing it)
+npx prettier --check path/to/file.tsx
+
+# Format multiple specific files
+npx prettier --write file1.tsx file2.tsx
+
+# Format all files in a specific directory
+npx prettier --write "app/admin/**/*.tsx"
+```
+
 ## 🔧 GitHub Actions & CI/CD
 
 ### Automated Code Quality & Formatting
