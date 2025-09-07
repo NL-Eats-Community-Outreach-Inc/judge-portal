@@ -1,30 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromSession } from '@/lib/auth/server'
-import { db } from '@/lib/db'
-import { events } from '@/lib/db/schema'
-import { sql, eq } from 'drizzle-orm'
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromSession } from '@/lib/auth/server';
+import { db } from '@/lib/db';
+import { events } from '@/lib/db/schema';
+import { sql, eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession()
+    const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url)
-    const eventId = searchParams.get('eventId')
-    const scoreMode = searchParams.get('scoreMode') || 'total'
-    const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all'
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
+    const scoreMode = searchParams.get('scoreMode') || 'total';
+    const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all';
 
     // Get event information for filename
-    let eventName = 'event'
+    let eventName = 'event';
     if (eventId) {
-      const eventResult = await db.select({ name: events.name })
+      const eventResult = await db
+        .select({ name: events.name })
         .from(events)
         .where(eq(events.id, eventId))
-        .limit(1)
-      eventName = eventResult[0]?.name || 'event'
+        .limit(1);
+      eventName = eventResult[0]?.name || 'event';
     }
 
     // Use the EXACT same SQL calculation logic as the main results API
@@ -101,48 +102,55 @@ export async function GET(request: NextRequest) {
         judge_count as "judgeCount"
       FROM team_calculations
       ORDER BY total_score DESC
-    `
+    `;
 
-    const teamTotalsResult = await db.execute(baseTeamTotalsQuery)
-    let teamTotals = teamTotalsResult as Array<Record<string, unknown>>
+    const teamTotalsResult = await db.execute(baseTeamTotalsQuery);
+    let teamTotals = teamTotalsResult as Array<Record<string, unknown>>;
 
     // Apply award type filter if not 'all'
     if (awardTypeFilter !== 'all') {
-      teamTotals = teamTotals.filter(team => team.awardType === awardTypeFilter)
+      teamTotals = teamTotals.filter((team) => team.awardType === awardTypeFilter);
     }
 
     // Sort by score mode in JavaScript after getting results (same data, different sort)
     teamTotals.sort((a, b) => {
       switch (scoreMode) {
         case 'total':
-          return Number(b.totalScore) - Number(a.totalScore)
+          return Number(b.totalScore) - Number(a.totalScore);
         case 'average':
-          return Number(b.averageScore) - Number(a.averageScore)
+          return Number(b.averageScore) - Number(a.averageScore);
         case 'weighted':
-          return Number(b.weightedScore) - Number(a.weightedScore)
+          return Number(b.weightedScore) - Number(a.weightedScore);
         default:
-          return Number(b.totalScore) - Number(a.totalScore)
+          return Number(b.totalScore) - Number(a.totalScore);
       }
-    })
+    });
 
     // Create CSV content based on score mode
-    const scoreModeName = scoreMode === 'total' ? 'Total Score' : 
-                         scoreMode === 'average' ? 'Average Score' : 'Weighted Score'
-    
-    let csvContent = `Rank,Team Name,Award Type,Presentation Order,${scoreModeName},Number of Scores,Judge Count\n`
-    
+    const scoreModeName =
+      scoreMode === 'total'
+        ? 'Total Score'
+        : scoreMode === 'average'
+          ? 'Average Score'
+          : 'Weighted Score';
+
+    let csvContent = `Rank,Team Name,Award Type,Presentation Order,${scoreModeName},Number of Scores,Judge Count\n`;
+
     teamTotals.forEach((team, index) => {
-      const finalScore = scoreMode === 'total' ? Number(team.totalScore) : 
-                        scoreMode === 'average' ? Number(team.averageScore) : 
-                        Number(team.weightedScore)
-      
+      const finalScore =
+        scoreMode === 'total'
+          ? Number(team.totalScore)
+          : scoreMode === 'average'
+            ? Number(team.averageScore)
+            : Number(team.weightedScore);
+
       // Format award type for better readability - use "General" instead of "Both"
       const formatAwardType = (type: string) => {
-        if (type === 'both') return 'General'
-        return type.charAt(0).toUpperCase() + type.slice(1)
-      }
-      const awardType = formatAwardType(String(team.awardType))
-                        
+        if (type === 'both') return 'General';
+        return type.charAt(0).toUpperCase() + type.slice(1);
+      };
+      const awardType = formatAwardType(String(team.awardType));
+
       const row = [
         index + 1,
         `"${team.teamName}"`,
@@ -150,22 +158,25 @@ export async function GET(request: NextRequest) {
         Number(team.presentationOrder),
         finalScore,
         Number(team.totalScores),
-        Number(team.judgeCount)
-      ].join(',')
-      csvContent += row + '\n'
-    })
+        Number(team.judgeCount),
+      ].join(',');
+      csvContent += row + '\n';
+    });
 
     // Set response headers for CSV download with proper event name
-    const headers = new Headers()
-    headers.set('Content-Type', 'text/csv')
-    
-    // Sanitize event name for filename (remove special characters)
-    const sanitizedEventName = eventName.replace(/[^a-zA-Z0-9-_]/g, '-')
-    headers.set('Content-Disposition', `attachment; filename="judging-results-${sanitizedEventName}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv"`)
+    const headers = new Headers();
+    headers.set('Content-Type', 'text/csv');
 
-    return new NextResponse(csvContent, { headers })
+    // Sanitize event name for filename (remove special characters)
+    const sanitizedEventName = eventName.replace(/[^a-zA-Z0-9-_]/g, '-');
+    headers.set(
+      'Content-Disposition',
+      `attachment; filename="judging-results-${sanitizedEventName}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv"`
+    );
+
+    return new NextResponse(csvContent, { headers });
   } catch (error) {
-    console.error('Error exporting results:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error exporting results:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

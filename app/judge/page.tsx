@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Users, Target, Clock, AlertCircle, UserX, Shield, Mail } from 'lucide-react'
-import { useJudgeAssignmentContext } from './components/judge-assignment-provider'
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users, Target, Clock, AlertCircle, UserX, Shield, Mail } from 'lucide-react';
+import { useJudgeAssignmentContext } from './components/judge-assignment-provider';
 
 export default function JudgePage() {
-  const { status, teams, refresh } = useJudgeAssignmentContext()
+  const { status, teams, refresh } = useJudgeAssignmentContext();
 
   // Show loading state
   if (status === 'loading') {
@@ -24,7 +24,7 @@ export default function JudgePage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Show "NOT ASSIGNED" page when judge is not assigned to event
@@ -40,8 +40,8 @@ export default function JudgePage() {
               Not Assigned to Event
             </h1>
             <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
-              You are not currently assigned to judge the active event. 
-              Please contact an administrator to request access.
+              You are not currently assigned to judge the active event. Please contact an
+              administrator to request access.
             </p>
           </div>
           <div className="space-y-4 md:space-y-6">
@@ -50,18 +50,24 @@ export default function JudgePage() {
                 <div className="flex items-start gap-3">
                   <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="text-left">
-                    <h3 className="font-semibold text-foreground text-sm md:text-base">What this means</h3>
+                    <h3 className="font-semibold text-foreground text-sm md:text-base">
+                      What this means
+                    </h3>
                     <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      Only judges assigned to an event can access the scoring interface for that event.
+                      Only judges assigned to an event can access the scoring interface for that
+                      event.
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="text-left">
-                    <h3 className="font-semibold text-foreground text-sm md:text-base">Next steps</h3>
+                    <h3 className="font-semibold text-foreground text-sm md:text-base">
+                      Next steps
+                    </h3>
                     <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      Contact the event administrator to request access to the current judging event.
+                      Contact the event administrator to request access to the current judging
+                      event.
                     </p>
                   </div>
                 </div>
@@ -73,7 +79,7 @@ export default function JudgePage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Show "NO EVENT" page when there are no teams
@@ -85,18 +91,18 @@ export default function JudgePage() {
             <AlertCircle className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
           </div>
           <div className="space-y-2 md:space-y-3">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              No Active Event
-            </h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">No Active Event</h1>
             <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
-              There is currently no active event available for judging. 
-              Please contact an administrator to activate an event.
+              There is currently no active event available for judging. Please contact an
+              administrator to activate an event.
             </p>
           </div>
           <div className="space-y-4 md:space-y-6">
             <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
               <div className="space-y-2 md:space-y-3">
-                <h3 className="font-semibold text-foreground text-sm md:text-base">What happens next?</h3>
+                <h3 className="font-semibold text-foreground text-sm md:text-base">
+                  What happens next?
+                </h3>
                 <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
                   <li>• An administrator needs to activate an event</li>
                   <li>• Teams and criteria must be configured</li>
@@ -110,7 +116,7 @@ export default function JudgePage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Show normal welcome page when teams exist
@@ -123,8 +129,8 @@ export default function JudgePage() {
             Welcome to Judge Portal
           </h1>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-2 md:px-0">
-            Select a team from the sidebar to start judging. Your scores will be 
-            automatically saved as you work.
+            Select a team from the sidebar to start judging. Your scores will be automatically saved
+            as you work.
           </p>
         </div>
 
@@ -132,12 +138,14 @@ export default function JudgePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <Card className="p-4 md:p-6 text-center">
             <Users className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">{teams.length} Teams</h3>
+            <h3 className="font-semibold text-foreground text-sm md:text-base">
+              {teams.length} Teams
+            </h3>
             <p className="text-xs md:text-sm text-muted-foreground">
               {teams.length === 1 ? 'Team' : 'Teams'} ready for judging
             </p>
           </Card>
-          
+
           <Card className="p-4 md:p-6 text-center">
             <Target className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
             <h3 className="font-semibold text-foreground text-sm md:text-base">Criteria</h3>
@@ -145,7 +153,7 @@ export default function JudgePage() {
               Score across multiple criteria
             </p>
           </Card>
-          
+
           <Card className="p-4 md:p-6 text-center">
             <Clock className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
             <h3 className="font-semibold text-foreground text-sm md:text-base">Auto-save</h3>
@@ -204,5 +212,5 @@ export default function JudgePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

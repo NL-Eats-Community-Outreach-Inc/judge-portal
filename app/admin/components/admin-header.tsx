@@ -1,33 +1,36 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { 
+import { useState, useEffect, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import type { UserWithRole } from '@/lib/auth'
-import { ThemeSwitcher } from '@/components/theme-switcher'
+} from '@/components/ui/dropdown-menu';
+import { LogOut, User, Settings } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import type { UserWithRole } from '@/lib/auth';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 export function AdminHeader() {
-  const router = useRouter()
-  const [user, setUser] = useState<UserWithRole | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const router = useRouter();
+  const [user, setUser] = useState<UserWithRole | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
   const fetchUser = useCallback(async () => {
     try {
-      const { data: { user: authUser }, error } = await supabase.auth.getUser()
-      
+      const {
+        data: { user: authUser },
+        error,
+      } = await supabase.auth.getUser();
+
       if (error || !authUser) {
-        setUser(null)
-        return
+        setUser(null);
+        return;
       }
 
       // Get user role from the database
@@ -35,28 +38,28 @@ export function AdminHeader() {
         .from('users')
         .select('role')
         .eq('id', authUser.id)
-        .single()
+        .single();
 
       setUser({
         ...authUser,
-        role: userRecord?.role || 'admin'
-      } as UserWithRole)
+        role: userRecord?.role || 'admin',
+      } as UserWithRole);
     } catch (error) {
-      console.error('Error fetching user:', error)
-      setUser(null)
+      console.error('Error fetching user:', error);
+      setUser(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [supabase])
+  }, [supabase]);
 
   useEffect(() => {
-    fetchUser()
-  }, [fetchUser])
+    fetchUser();
+  }, [fetchUser]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
   return (
     <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
@@ -71,7 +74,7 @@ export function AdminHeader() {
               <p className="text-sm text-muted-foreground">Manage your judging events</p>
             </div>
           </div>
-          
+
           {/* User menu */}
           <div className="flex items-center gap-3">
             <ThemeSwitcher />
@@ -96,11 +99,7 @@ export function AdminHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button 
-                variant="outline" 
-                onClick={handleSignOut}
-                className="flex items-center gap-2"
-              >
+              <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
                 <LogOut className="h-4 w-4" />
                 Sign Out
               </Button>
@@ -109,5 +108,5 @@ export function AdminHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }

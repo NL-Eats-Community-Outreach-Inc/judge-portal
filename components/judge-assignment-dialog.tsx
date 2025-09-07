@@ -1,125 +1,129 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, Users, CheckCircle } from 'lucide-react'
-import { toast } from 'sonner'
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2, Users, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Judge {
-  id: string
-  email: string
+  id: string;
+  email: string;
 }
 
 interface AssignedJudge {
-  judgeId: string
-  email: string
-  assignedAt: string
+  judgeId: string;
+  email: string;
+  assignedAt: string;
 }
 
 interface JudgeAssignmentDialogProps {
-  eventId: string | null
-  eventName: string
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  onAssignmentsUpdated: () => void
+  eventId: string | null;
+  eventName: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAssignmentsUpdated: () => void;
 }
 
 const truncateEventName = (name: string, maxLength: number = 50) => {
-  if (name.length <= maxLength) return name
-  return name.slice(0, maxLength) + '...'
-}
+  if (name.length <= maxLength) return name;
+  return name.slice(0, maxLength) + '...';
+};
 
 export default function JudgeAssignmentDialog({
   eventId,
   eventName,
   isOpen,
   onOpenChange,
-  onAssignmentsUpdated
+  onAssignmentsUpdated,
 }: JudgeAssignmentDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [judges, setJudges] = useState<Judge[]>([])
-  const [assignedJudges, setAssignedJudges] = useState<AssignedJudge[]>([])
-  const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([])
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [judges, setJudges] = useState<Judge[]>([]);
+  const [assignedJudges, setAssignedJudges] = useState<AssignedJudge[]>([]);
+  const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([]);
 
   const fetchJudgeAssignments = useCallback(async () => {
-    if (!eventId) return
-    
-    setLoading(true)
+    if (!eventId) return;
+
+    setLoading(true);
     try {
-      const response = await fetch(`/api/admin/event-judges?eventId=${eventId}`)
+      const response = await fetch(`/api/admin/event-judges?eventId=${eventId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch judge assignments')
+        throw new Error('Failed to fetch judge assignments');
       }
-      
-      const data = await response.json()
-      setJudges(data.available)
-      setAssignedJudges(data.assigned)
-      setSelectedJudgeIds(data.assigned.map((j: AssignedJudge) => j.judgeId))
+
+      const data = await response.json();
+      setJudges(data.available);
+      setAssignedJudges(data.assigned);
+      setSelectedJudgeIds(data.assigned.map((j: AssignedJudge) => j.judgeId));
     } catch (error) {
-      console.error('Error fetching judge assignments:', error)
+      console.error('Error fetching judge assignments:', error);
       toast.error('Error', {
-        description: 'Failed to load judge assignments'
-      })
+        description: 'Failed to load judge assignments',
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [eventId])
+  }, [eventId]);
 
   useEffect(() => {
     if (isOpen && eventId) {
-      fetchJudgeAssignments()
+      fetchJudgeAssignments();
     }
-  }, [isOpen, eventId, fetchJudgeAssignments])
+  }, [isOpen, eventId, fetchJudgeAssignments]);
 
   const handleSave = async () => {
-    if (!eventId) return
-    
-    setSaving(true)
+    if (!eventId) return;
+
+    setSaving(true);
     try {
       const response = await fetch('/api/admin/event-judges', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           eventId,
-          judgeIds: selectedJudgeIds
-        })
-      })
+          judgeIds: selectedJudgeIds,
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to update judge assignments')
+        throw new Error('Failed to update judge assignments');
       }
 
       toast.success('Success', {
-        description: 'Judge assignments updated successfully'
-      })
-      
-      onAssignmentsUpdated()
-      onOpenChange(false)
+        description: 'Judge assignments updated successfully',
+      });
+
+      onAssignmentsUpdated();
+      onOpenChange(false);
     } catch (error) {
-      console.error('Error updating judge assignments:', error)
+      console.error('Error updating judge assignments:', error);
       toast.error('Error', {
-        description: 'Failed to update judge assignments'
-      })
+        description: 'Failed to update judge assignments',
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleJudgeToggle = (judgeId: string, checked: boolean) => {
-    setSelectedJudgeIds(prev => 
-      checked 
-        ? [...prev, judgeId]
-        : prev.filter(id => id !== judgeId)
-    )
-  }
+    setSelectedJudgeIds((prev) =>
+      checked ? [...prev, judgeId] : prev.filter((id) => id !== judgeId)
+    );
+  };
 
-  const assignedCount = selectedJudgeIds.length
-  const totalJudges = judges.length
+  const assignedCount = selectedJudgeIds.length;
+  const totalJudges = judges.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -130,7 +134,8 @@ export default function JudgeAssignmentDialog({
             Judge Assignments
           </DialogTitle>
           <DialogDescription>
-            Assign judges to &quot;{truncateEventName(eventName)}&quot;. Only assigned judges can score this event.
+            Assign judges to &quot;{truncateEventName(eventName)}&quot;. Only assigned judges can
+            score this event.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,43 +161,41 @@ export default function JudgeAssignmentDialog({
                 </p>
               ) : (
                 judges.map((judge) => {
-                  const isSelected = selectedJudgeIds.includes(judge.id)
-                  const wasAssigned = assignedJudges.some(aj => aj.judgeId === judge.id)
-                  
+                  const isSelected = selectedJudgeIds.includes(judge.id);
+                  const wasAssigned = assignedJudges.some((aj) => aj.judgeId === judge.id);
+
                   return (
-                    <div key={judge.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div
+                      key={judge.id}
+                      className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
                       <Checkbox
                         id={judge.id}
                         checked={isSelected}
-                        onCheckedChange={(checked) => handleJudgeToggle(judge.id, checked as boolean)}
+                        onCheckedChange={(checked) =>
+                          handleJudgeToggle(judge.id, checked as boolean)
+                        }
                       />
                       <div className="flex-1 min-w-0">
-                        <label 
+                        <label
                           htmlFor={judge.id}
                           className="text-sm font-medium cursor-pointer truncate block"
                         >
                           {judge.email}
                         </label>
                         {wasAssigned && (
-                          <p className="text-xs text-muted-foreground">
-                            Previously assigned
-                          </p>
+                          <p className="text-xs text-muted-foreground">Previously assigned</p>
                         )}
                       </div>
                     </div>
-                  )
+                  );
                 })
               )}
             </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
-              <Button 
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1"
-                autoFocus
-              >
+              <Button onClick={handleSave} disabled={saving} className="flex-1" autoFocus>
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -202,11 +205,7 @@ export default function JudgeAssignmentDialog({
                   'Save Assignments'
                 )}
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-                disabled={saving}
-              >
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                 Cancel
               </Button>
             </div>
@@ -214,5 +213,5 @@ export default function JudgeAssignmentDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

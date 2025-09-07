@@ -72,9 +72,10 @@
     animation: colorWave 4s ease-in-out infinite;
     will-change: color;
   }
-  
+
   @keyframes colorWave {
-    0%, 100% {
+    0%,
+    100% {
       color: hsl(var(--foreground));
     }
     25% {
@@ -87,9 +88,10 @@
       color: hsl(340 75% 55%);
     }
   }
-  
+
   @keyframes colorWaveDark {
-    0%, 100% {
+    0%,
+    100% {
       color: hsl(var(--foreground));
     }
     25% {
@@ -102,11 +104,11 @@
       color: hsl(340 80% 70%);
     }
   }
-  
+
   .dark .animated-char {
     animation: colorWaveDark 4s ease-in-out infinite;
   }
-  
+
   /* Feature card hover effects */
   .feature-card {
     @apply relative overflow-hidden;
@@ -114,7 +116,7 @@
     transform-style: preserve-3d;
     perspective: 1000px;
   }
-  
+
   .feature-card::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-500;
@@ -126,7 +128,7 @@
     );
     z-index: 1;
   }
-  
+
   .dark .feature-card::before {
     background: linear-gradient(
       135deg,
@@ -136,33 +138,33 @@
     );
     z-index: 1;
   }
-  
+
   .feature-card:hover::before {
     @apply opacity-100;
   }
-  
+
   .feature-card:hover {
     transform: translateY(-4px) rotateX(-2deg) scale(1.02);
-    box-shadow: 
+    box-shadow:
       0 20px 25px -5px rgb(0 0 0 / 0.05),
       0 10px 10px -5px rgb(0 0 0 / 0.02);
   }
-  
+
   .dark .feature-card:hover {
-    box-shadow: 
+    box-shadow:
       0 20px 25px -5px rgb(0 0 0 / 0.3),
       0 10px 10px -5px rgb(0 0 0 / 0.2);
   }
-  
+
   /* Icon hover effects */
   .feature-icon {
     @apply transition-all duration-500 ease-out;
   }
-  
+
   .feature-card:hover .feature-icon {
     transform: scale(1.1) rotate(10deg);
   }
-  
+
   /* Border glow effect */
   .feature-card::after {
     content: '';
@@ -176,14 +178,14 @@
       transparent
     );
     background-size: 200% 100%;
-    mask-image: 
+    mask-image:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
     mask-composite: exclude;
     -webkit-mask-composite: xor;
     padding: 1px;
   }
-  
+
   .dark .feature-card::after {
     background: linear-gradient(
       90deg,
@@ -194,24 +196,19 @@
       transparent
     );
   }
-  
+
   .feature-card:hover::after {
     @apply opacity-100;
   }
-  
+
   /* Shimmer effect */
   .feature-card .shimmer {
     @apply absolute inset-0 opacity-0 transition-opacity duration-700 pointer-events-none;
-    background: linear-gradient(
-      105deg,
-      transparent 40%,
-      hsl(0 0% 100% / 0.3) 50%,
-      transparent 60%
-    );
+    background: linear-gradient(105deg, transparent 40%, hsl(0 0% 100% / 0.3) 50%, transparent 60%);
     background-size: 200% 100%;
     z-index: 10;
   }
-  
+
   .dark .feature-card .shimmer {
     background: linear-gradient(
       105deg,
@@ -221,18 +218,18 @@
     );
     background-size: 200% 100%;
   }
-  
+
   .feature-card:hover .shimmer {
     @apply opacity-100;
     animation: shimmerEffect 1.5s ease-in-out infinite;
     animation-delay: 0.2s;
   }
-  
+
   .dark .feature-card:hover .shimmer {
     animation: shimmerEffect 1.2s ease-in-out infinite;
     animation-delay: 0.1s;
   }
-  
+
   @keyframes shimmerEffect {
     0% {
       background-position: 200% 0;
@@ -241,25 +238,25 @@
       background-position: -200% 0;
     }
   }
-  
+
   /* Content animation */
   .feature-content {
     @apply transition-all duration-500 ease-out;
     z-index: 20;
     position: relative;
   }
-  
+
   .feature-card:hover .feature-content {
     transform: translateY(-2px);
   }
-  
+
   /* Glass morphism effect */
   .feature-card:hover {
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     background-color: hsl(0 0% 100% / 0.9);
   }
-  
+
   .dark .feature-card:hover {
     background-color: hsl(0 0% 10% / 0.8);
   }
@@ -271,7 +268,7 @@
     height: 100vh; /* Fallback for older browsers */
     height: 100dvh; /* Dynamic viewport height for modern browsers */
   }
-  
+
   .min-h-screen-safe {
     min-height: 100vh; /* Fallback for older browsers */
     min-height: 100dvh; /* Dynamic viewport height for modern browsers */
