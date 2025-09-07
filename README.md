@@ -119,7 +119,6 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 - **Admin**: `admin@example.com` / `admin123`
 - **Judge 1**: `judge1@example.com` / `judge123`  
 - **Judge 2**: `judge2@example.com` / `judge123`
-- **Judge 3**: `judge3@example.com` / `judge123`
 
 ### Troubleshooting
 
