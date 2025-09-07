@@ -373,16 +373,10 @@ export default function EventManagement() {
         </CardHeader>
         <CardContent>
           {events.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium text-foreground mb-2">No events yet</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Create your first judging event to get started
-              </p>
-              <Button onClick={openCreateDialog} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create First Event
-              </Button>
+            <div className="text-center py-12 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <p>No events yet</p>
+              <p className="text-sm">Create your first judging event to get started</p>
             </div>
           ) : (
             <div className="space-y-4">

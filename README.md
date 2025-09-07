@@ -66,6 +66,12 @@ A comprehensive real-time judging system for hackathons and competitive events. 
    - **Configure Authentication Settings**:
      - Go to Authentication → Configuration → Sign In / Providers
      - Turn OFF "Confirm email" (required for development)
+   - **Configure Redirect URLs (Important for Password Reset)**:
+     - Go to Authentication → Configuration → URL Configuration
+     - In the "Redirect URLs" section, add the following URLs:
+       - `http://localhost:3000/auth/update-password` (for local development)
+       - `https://your-production-domain.com/auth/update-password` (for production)
+     - Click "Save Changes"
    - Go to Settings → API and copy your credentials
 
 3. **Configure Environment Variables**
