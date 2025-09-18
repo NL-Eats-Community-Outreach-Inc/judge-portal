@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -6,7 +6,7 @@ import { events } from '@/lib/db/schema';
 import { or, eq } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Verify user is authenticated and is a participant
     const user = await getUserFromSession();

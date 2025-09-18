@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { teams, teamMembers, events, users } from '@/lib/db/schema';
+import { teams, teamMembers, events } from '@/lib/db/schema';
 import { eq, and, or, count } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 

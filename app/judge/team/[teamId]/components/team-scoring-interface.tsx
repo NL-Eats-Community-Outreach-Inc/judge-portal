@@ -245,11 +245,14 @@ export function TeamScoringInterface({
   useEffect(() => {
     return () => {
       // Clear pending timeouts to prevent memory leaks
-      pendingSaves.current.forEach((timeout) => {
+      const currentPendingSaves = pendingSaves.current;
+      const currentPendingData = pendingData.current;
+
+      currentPendingSaves.forEach((timeout) => {
         clearTimeout(timeout);
       });
-      pendingSaves.current.clear();
-      pendingData.current.clear();
+      currentPendingSaves.clear();
+      currentPendingData.clear();
     };
   }, []);
 

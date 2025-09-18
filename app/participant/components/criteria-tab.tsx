@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,15 +14,7 @@ export function CriteriaTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { selectedEvent } = useParticipantEvent();
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchCriteria();
-    } else {
-      setCriteria([]);
-    }
-  }, [selectedEvent]);
-
-  const fetchCriteria = async () => {
+  const fetchCriteria = useCallback(async () => {
     if (!selectedEvent) return;
 
     setLoading(true);
@@ -37,7 +29,15 @@ export function CriteriaTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchCriteria();
+    } else {
+      setCriteria([]);
+    }
+  }, [selectedEvent, fetchCriteria]);
 
   const groupedCriteria = criteria.reduce(
     (acc, criterion) => {

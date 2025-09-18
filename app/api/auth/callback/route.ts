@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
               role: selectedRole,
             });
             console.log('✅ Created user record for:', data.user.email, 'with role:', selectedRole);
-          } catch (insertError: any) {
+          } catch (insertError: unknown) {
             // Handle duplicate key errors gracefully
             if (
-              insertError.message?.includes('duplicate key') ||
-              insertError.message?.includes('already exists')
+              (insertError as Error).message?.includes('duplicate key') ||
+              (insertError as Error).message?.includes('already exists')
             ) {
               console.log('⚠️ User record already exists, continuing...');
             } else {

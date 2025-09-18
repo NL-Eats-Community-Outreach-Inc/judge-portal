@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,14 @@ interface TeamWithMembers extends Team {
   userIsMember: boolean;
 }
 
+type TeamFormData = {
+  name: string;
+  description: string;
+  demoUrl: string;
+  repoUrl: string;
+  awardType: 'technical' | 'business' | 'both';
+};
+
 export function TeamsTab() {
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [userTeam, setUserTeam] = useState<TeamWithMembers | null>(null);
@@ -65,16 +73,7 @@ export function TeamsTab() {
     awardType: 'both' as 'technical' | 'business' | 'both',
   });
 
-  useEffect(() => {
-    if (selectedEvent) {
-      fetchTeams();
-    } else {
-      setTeams([]);
-      setUserTeam(null);
-    }
-  }, [selectedEvent]);
-
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     if (!selectedEvent) return;
 
     setLoading(true);
@@ -91,7 +90,16 @@ export function TeamsTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchTeams();
+    } else {
+      setTeams([]);
+      setUserTeam(null);
+    }
+  }, [selectedEvent, fetchTeams]);
 
   const handleCreateTeam = async () => {
     if (!selectedEvent) return;
@@ -121,7 +129,7 @@ export function TeamsTab() {
         const error = await response.json();
         toast.error(error.message || 'Failed to create team');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to create team');
     }
   };
@@ -139,7 +147,7 @@ export function TeamsTab() {
         const error = await response.json();
         toast.error(error.message || 'Failed to join team');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to join team');
     }
   };
@@ -159,7 +167,7 @@ export function TeamsTab() {
         const error = await response.json();
         toast.error(error.message || 'Failed to leave team');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to leave team');
     }
   };
@@ -182,7 +190,7 @@ export function TeamsTab() {
         const error = await response.json();
         toast.error(error.message || 'Failed to update team');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update team');
     }
   };
@@ -202,7 +210,7 @@ export function TeamsTab() {
         const error = await response.json();
         toast.error(error.message || 'Failed to delete team');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete team');
     }
   };
@@ -516,8 +524,8 @@ function CreateTeamDialog({
   setTeamForm,
   onSubmit,
 }: {
-  teamForm: any;
-  setTeamForm: any;
+  teamForm: TeamFormData;
+  setTeamForm: (form: TeamFormData) => void;
   onSubmit: () => void;
 }) {
   return (
@@ -551,7 +559,9 @@ function CreateTeamDialog({
           <Label htmlFor="awardType">Award Type</Label>
           <Select
             value={teamForm.awardType}
-            onValueChange={(value) => setTeamForm({ ...teamForm, awardType: value })}
+            onValueChange={(value) =>
+              setTeamForm({ ...teamForm, awardType: value as 'technical' | 'business' | 'both' })
+            }
           >
             <SelectTrigger>
               <SelectValue />
@@ -596,8 +606,8 @@ function EditTeamDialog({
   setTeamForm,
   onSubmit,
 }: {
-  teamForm: any;
-  setTeamForm: any;
+  teamForm: TeamFormData;
+  setTeamForm: (form: TeamFormData) => void;
   onSubmit: () => void;
 }) {
   return (
@@ -629,7 +639,9 @@ function EditTeamDialog({
           <Label htmlFor="edit-awardType">Award Type</Label>
           <Select
             value={teamForm.awardType}
-            onValueChange={(value) => setTeamForm({ ...teamForm, awardType: value })}
+            onValueChange={(value) =>
+              setTeamForm({ ...teamForm, awardType: value as 'technical' | 'business' | 'both' })
+            }
           >
             <SelectTrigger>
               <SelectValue />
