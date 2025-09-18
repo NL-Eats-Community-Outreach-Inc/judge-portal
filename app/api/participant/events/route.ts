@@ -3,7 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { events } from '@/lib/db/schema';
-import { or, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 
 export async function GET() {
@@ -18,11 +18,11 @@ export async function GET() {
     const client = postgres(process.env.DATABASE_URL!, { prepare: false });
     const db = drizzle(client, { schema });
 
-    // Get events that are in setup or active status (available for participants)
+    // Get events that are in setup status only (available for participants)
     const availableEvents = await db
       .select()
       .from(events)
-      .where(or(eq(events.status, 'setup'), eq(events.status, 'active')))
+      .where(eq(events.status, 'setup'))
       .orderBy(events.createdAt);
 
     await client.end();

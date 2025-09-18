@@ -34,6 +34,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import {
   Save,
   Loader2,
@@ -82,14 +84,14 @@ export default function EventManagement() {
     description: string;
     status: 'setup' | 'active' | 'completed';
     registrationOpen: boolean;
-    registrationCloseAt: string;
+    registrationCloseAt: Date | undefined;
     maxTeamSize: number;
   }>({
     name: '',
     description: '',
     status: 'setup',
     registrationOpen: false,
-    registrationCloseAt: '',
+    registrationCloseAt: undefined,
     maxTeamSize: 5,
   });
 
@@ -99,7 +101,7 @@ export default function EventManagement() {
       description: '',
       status: 'setup',
       registrationOpen: false,
-      registrationCloseAt: '',
+      registrationCloseAt: undefined,
       maxTeamSize: 5,
     });
     setEditingEvent(null);
@@ -117,7 +119,9 @@ export default function EventManagement() {
       description: event.description || '',
       status: event.status,
       registrationOpen: event.registrationOpen,
-      registrationCloseAt: event.registrationCloseAt || '',
+      registrationCloseAt: event.registrationCloseAt
+        ? new Date(event.registrationCloseAt)
+        : undefined,
       maxTeamSize: event.maxTeamSize,
     });
     setIsDialogOpen(true);
@@ -132,7 +136,7 @@ export default function EventManagement() {
     }
 
     // Validate registration settings
-    if (formData.registrationCloseAt && new Date(formData.registrationCloseAt) <= new Date()) {
+    if (formData.registrationCloseAt && formData.registrationCloseAt <= new Date()) {
       toast.error('Validation Error', {
         description: 'Registration close date must be in the future',
       });
@@ -148,6 +152,11 @@ export default function EventManagement() {
 
     setIsSaving(true);
     try {
+      const requestData = {
+        ...formData,
+        registrationCloseAt: formData.registrationCloseAt?.toISOString() || null,
+      };
+
       let response;
       if (editingEvent) {
         // Update existing event
@@ -156,7 +165,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(requestData),
         });
       } else {
         // Create new event
@@ -165,7 +174,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(requestData),
         });
       }
 
@@ -346,31 +355,33 @@ export default function EventManagement() {
 
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="registration-open"
                         checked={formData.registrationOpen}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, registrationOpen: e.target.checked }))
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, registrationOpen: checked as boolean }))
                         }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
                       />
-                      <Label htmlFor="registration-open">Registration Open</Label>
+                      <Label
+                        htmlFor="registration-open"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Registration Open
+                      </Label>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground ml-6">
                       Allow participants to create and join teams
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="registration-close">Registration Close Date (Optional)</Label>
-                    <Input
-                      id="registration-close"
-                      type="datetime-local"
+                    <DateTimePicker
                       value={formData.registrationCloseAt}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, registrationCloseAt: e.target.value }))
+                      onChange={(date) =>
+                        setFormData((prev) => ({ ...prev, registrationCloseAt: date }))
                       }
+                      placeholder="Select date and time"
                     />
                     <p className="text-xs text-muted-foreground">
                       Leave empty to keep registration open indefinitely

@@ -110,15 +110,7 @@ A comprehensive real-time judging system for hackathons and competitive events. 
    - ✅ Add database functions and triggers
    - ✅ Create proper indexes for performance
 
-   **Step 2: Add participant enum value manually**
-   - Go to your Supabase Dashboard
-   - Navigate to SQL Editor
-   - Run this command:
-   ```sql
-   ALTER TYPE user_role ADD VALUE 'participant';
-   ```
-
-   **Step 3: Run participant feature setup**
+   **Step 2: Run participant feature setup**
    ```bash
    npm run db:participant-setup
    ```

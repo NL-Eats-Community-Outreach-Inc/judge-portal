@@ -3,7 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { teams, teamMembers, events } from '@/lib/db/schema';
-import { eq, and, or, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 
 export async function GET(
@@ -23,13 +23,11 @@ export async function GET(
     const client = postgres(process.env.DATABASE_URL!, { prepare: false });
     const db = drizzle(client, { schema });
 
-    // Verify event exists and is accessible (setup or active)
+    // Verify event exists and is accessible (setup only)
     const event = await db
       .select()
       .from(events)
-      .where(
-        and(eq(events.id, eventId), or(eq(events.status, 'setup'), eq(events.status, 'active')))
-      )
+      .where(and(eq(events.id, eventId), eq(events.status, 'setup')))
       .limit(1);
 
     if (event.length === 0) {

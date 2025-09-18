@@ -129,10 +129,7 @@ export function EventTab() {
                 <div className="space-y-3">
                   <CardTitle className="flex items-center gap-3 text-xl">
                     {event.name}
-                    <Badge
-                      variant={event.status === 'active' ? 'default' : 'secondary'}
-                      className="capitalize"
-                    >
+                    <Badge variant="secondary" className="capitalize">
                       {event.status}
                     </Badge>
                   </CardTitle>

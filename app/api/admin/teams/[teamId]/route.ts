@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { teams } from '@/lib/db/schema';
+import { teams, teamMembers, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function PUT(
@@ -45,7 +45,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ team });
+    // Fetch members to include member count
+    const members = await db
+      .select({
+        id: teamMembers.id,
+        userId: teamMembers.userId,
+        userEmail: users.email,
+        joinedAt: teamMembers.joinedAt,
+      })
+      .from(teamMembers)
+      .leftJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(teamMembers.teamId, teamId));
+
+    const teamWithMembers = {
+      ...team,
+      members,
+      memberCount: members.length,
+    };
+
+    return NextResponse.json({ team: teamWithMembers });
   } catch (error) {
     console.error('Error updating team:', error);
 
@@ -70,7 +88,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {

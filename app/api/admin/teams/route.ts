@@ -131,7 +131,14 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ team });
+    // Add member count for consistency
+    const teamWithMembers = {
+      ...team,
+      members: [],
+      memberCount: 0,
+    };
+
+    return NextResponse.json({ team: teamWithMembers });
   } catch (error) {
     console.error('Error creating team:', error);
 

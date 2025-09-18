@@ -32,7 +32,7 @@ import {
   Search,
   UserMinus,
   Edit,
-  Trash2,
+  // Trash2, // Removed - using Leave for all scenarios
   RefreshCw,
   Loader2,
 } from 'lucide-react';
@@ -52,6 +52,20 @@ type TeamFormData = {
   demoUrl: string;
   repoUrl: string;
   awardType: 'technical' | 'business' | 'both';
+};
+
+// Helper function to display award type with proper casing
+const getDisplayAwardType = (awardType: string) => {
+  switch (awardType) {
+    case 'both':
+      return 'General';
+    case 'technical':
+      return 'Technical';
+    case 'business':
+      return 'Business';
+    default:
+      return awardType;
+  }
 };
 
 export function TeamsTab() {
@@ -195,25 +209,26 @@ export function TeamsTab() {
     }
   };
 
-  const handleDeleteTeam = async () => {
-    if (!userTeam) return;
+  // Delete functionality removed - Leave team automatically handles deletion when last member
+  // const handleDeleteTeam = async () => {
+  //   if (!userTeam) return;
 
-    try {
-      const response = await fetch(`/api/participant/teams/${userTeam.id}`, {
-        method: 'DELETE',
-      });
+  //   try {
+  //     const response = await fetch(`/api/participant/teams/${userTeam.id}`, {
+  //       method: 'DELETE',
+  //     });
 
-      if (response.ok) {
-        toast.success('Team deleted successfully');
-        fetchTeams();
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Failed to delete team');
-      }
-    } catch {
-      toast.error('Failed to delete team');
-    }
-  };
+  //     if (response.ok) {
+  //       toast.success('Team deleted successfully');
+  //       fetchTeams();
+  //     } else {
+  //       const error = await response.json();
+  //       toast.error(error.message || 'Failed to delete team');
+  //     }
+  //   } catch {
+  //     toast.error('Failed to delete team');
+  //   }
+  // };
 
   const openEditDialog = () => {
     if (userTeam) {
@@ -337,12 +352,13 @@ export function TeamsTab() {
                     <UserMinus className="h-4 w-4 mr-2" />
                     Leave
                   </Button>
-                  {userTeam.memberCount === 1 && (
+                  {/* Delete button removed - Leave team automatically deletes when last member */}
+                  {/* {userTeam.memberCount === 1 && (
                     <Button variant="destructive" size="sm" onClick={handleDeleteTeam}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </Button>
-                  )}
+                  )} */}
                 </div>
               )}
             </div>
@@ -351,8 +367,8 @@ export function TeamsTab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <span className="text-sm text-muted-foreground">Award Type</span>
-                <Badge variant="outline" className="ml-2 capitalize">
-                  {userTeam.awardType}
+                <Badge variant="outline" className="ml-2">
+                  {getDisplayAwardType(userTeam.awardType)}
                 </Badge>
               </div>
               <div>
@@ -475,9 +491,7 @@ function TeamCard({
           <div className="space-y-2">
             <CardTitle className="flex items-center gap-2">
               {team.name}
-              <Badge variant="outline" className="capitalize">
-                {team.awardType}
-              </Badge>
+              <Badge variant="outline">{getDisplayAwardType(team.awardType)}</Badge>
               {team.userIsMember && <Badge>Your Team</Badge>}
             </CardTitle>
             {team.description && <CardDescription>{team.description}</CardDescription>}
@@ -569,7 +583,7 @@ function CreateTeamDialog({
             <SelectContent>
               <SelectItem value="technical">Technical</SelectItem>
               <SelectItem value="business">Business</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
+              <SelectItem value="both">General</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -647,9 +661,9 @@ function EditTeamDialog({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="technical">Technical</SelectItem>
-              <SelectItem value="business">Business</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
+              <SelectItem value="technical">Technical Award</SelectItem>
+              <SelectItem value="business">Business Award</SelectItem>
+              <SelectItem value="both">General Award</SelectItem>
             </SelectContent>
           </Select>
         </div>
