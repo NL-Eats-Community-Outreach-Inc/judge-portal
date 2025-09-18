@@ -35,7 +35,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DateTimePicker } from '@/components/ui/date-time-picker';
 import {
   Save,
   Loader2,
@@ -84,14 +83,14 @@ export default function EventManagement() {
     description: string;
     status: 'setup' | 'active' | 'completed';
     registrationOpen: boolean;
-    registrationCloseAt: Date | undefined;
+    registrationCloseAt: string;
     maxTeamSize: number;
   }>({
     name: '',
     description: '',
     status: 'setup',
     registrationOpen: false,
-    registrationCloseAt: undefined,
+    registrationCloseAt: '',
     maxTeamSize: 5,
   });
 
@@ -101,7 +100,7 @@ export default function EventManagement() {
       description: '',
       status: 'setup',
       registrationOpen: false,
-      registrationCloseAt: undefined,
+      registrationCloseAt: '',
       maxTeamSize: 5,
     });
     setEditingEvent(null);
@@ -120,8 +119,8 @@ export default function EventManagement() {
       status: event.status,
       registrationOpen: event.registrationOpen,
       registrationCloseAt: event.registrationCloseAt
-        ? new Date(event.registrationCloseAt)
-        : undefined,
+        ? new Date(event.registrationCloseAt).toISOString().slice(0, 16)
+        : '',
       maxTeamSize: event.maxTeamSize,
     });
     setIsDialogOpen(true);
@@ -136,11 +135,14 @@ export default function EventManagement() {
     }
 
     // Validate registration settings
-    if (formData.registrationCloseAt && formData.registrationCloseAt <= new Date()) {
-      toast.error('Validation Error', {
-        description: 'Registration close date must be in the future',
-      });
-      return;
+    if (formData.registrationCloseAt) {
+      const closeDate = new Date(formData.registrationCloseAt);
+      if (closeDate <= new Date()) {
+        toast.error('Validation Error', {
+          description: 'Registration close date must be in the future',
+        });
+        return;
+      }
     }
 
     if (formData.maxTeamSize < 1 || formData.maxTeamSize > 20) {
@@ -154,7 +156,9 @@ export default function EventManagement() {
     try {
       const requestData = {
         ...formData,
-        registrationCloseAt: formData.registrationCloseAt?.toISOString() || null,
+        registrationCloseAt: formData.registrationCloseAt
+          ? new Date(formData.registrationCloseAt).toISOString()
+          : null,
       };
 
       let response;
@@ -376,12 +380,15 @@ export default function EventManagement() {
 
                   <div className="space-y-2">
                     <Label htmlFor="registration-close">Registration Close Date (Optional)</Label>
-                    <DateTimePicker
+                    <Input
+                      id="registration-close"
+                      type="datetime-local"
                       value={formData.registrationCloseAt}
-                      onChange={(date) =>
-                        setFormData((prev) => ({ ...prev, registrationCloseAt: date }))
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, registrationCloseAt: e.target.value }))
                       }
-                      placeholder="Select date and time"
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="block"
                     />
                     <p className="text-xs text-muted-foreground">
                       Leave empty to keep registration open indefinitely
