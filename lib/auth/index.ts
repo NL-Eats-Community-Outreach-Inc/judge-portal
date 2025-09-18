@@ -4,7 +4,7 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'admin' | 'judge';
+export type UserRole = 'admin' | 'judge' | 'participant';
 
 export interface UserWithRole extends User {
   role?: UserRole;
@@ -52,6 +52,10 @@ export const authServer = {
 
   async requireJudge() {
     return await this.requireRole('judge');
+  },
+
+  async requireParticipant() {
+    return await this.requireRole('participant');
   },
 };
 

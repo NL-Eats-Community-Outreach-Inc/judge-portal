@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RoleSelector, type UserRole } from '@/components/role-selector';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -14,6 +15,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repeatPassword, setRepeatPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('participant');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -31,11 +33,17 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     }
 
     try {
+      // Determine redirect URL based on selected role
+      const redirectPath = selectedRole === 'participant' ? '/participant' : '/judge';
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=/judge`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${redirectPath}`,
+          data: {
+            role: selectedRole, // Store role in user metadata
+          },
         },
       });
 
@@ -43,9 +51,10 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
       // Check if user is immediately confirmed (email confirmation disabled)
       if (data.user && data.session) {
-        // User is auto-confirmed and logged in, redirect to root and let middleware handle role-based routing
-        console.log('User auto-confirmed and logged in');
-        router.push('/judge');
+        // User is auto-confirmed and logged in
+        // The database trigger and auth callback will handle user record creation
+        console.log('User auto-confirmed and logged in with role:', selectedRole);
+        router.push(redirectPath);
       } else {
         // User needs email confirmation, show success page
         console.log('User created, awaiting email confirmation');
@@ -68,6 +77,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
+              <RoleSelector selectedRole={selectedRole} onRoleChange={setSelectedRole} />
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

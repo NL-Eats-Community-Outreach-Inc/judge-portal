@@ -50,7 +50,7 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Github,
+  GitBranch,
   RefreshCw,
   GripVertical,
 } from 'lucide-react';
@@ -123,6 +123,13 @@ function SortableRow({
   );
 }
 
+interface TeamMember {
+  id: string;
+  userId: string;
+  userEmail: string;
+  joinedAt: string;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -134,6 +141,8 @@ interface Team {
   createdAt: string;
   updatedAt: string;
   eventId: string;
+  members?: TeamMember[];
+  memberCount?: number;
 }
 
 interface TeamFormData {
@@ -239,7 +248,9 @@ export default function TeamManagement() {
     }
 
     try {
-      const response = await fetch(`/api/admin/teams?eventId=${selectedEvent.id}`);
+      const response = await fetch(
+        `/api/admin/teams?eventId=${selectedEvent.id}&includeMembers=true`
+      );
       const data = await response.json();
 
       if (response.ok) {
@@ -359,6 +370,43 @@ export default function TeamManagement() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/teams/${teamId}/members/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove member');
+      }
+
+      // Update teams state to remove the member
+      setTeams((prev) =>
+        prev.map((team) => {
+          if (team.id === teamId) {
+            const updatedMembers = team.members?.filter((member) => member.userId !== userId) || [];
+            return {
+              ...team,
+              members: updatedMembers,
+              memberCount: updatedMembers.length,
+            };
+          }
+          return team;
+        })
+      );
+
+      toast.success('Success', {
+        description: 'Member removed successfully',
+      });
+    } catch (error) {
+      console.error('Error removing member:', error);
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to remove member',
+      });
     }
   };
 
@@ -646,6 +694,7 @@ export default function TeamManagement() {
                         <TableHead className="w-40">Team Name</TableHead>
                         <TableHead className="w-48">Description</TableHead>
                         <TableHead className="w-28">Award Type</TableHead>
+                        <TableHead className="w-32">Members</TableHead>
                         <TableHead className="w-28">Links</TableHead>
                         <TableHead className="w-28">Actions</TableHead>
                       </TableRow>
@@ -688,6 +737,61 @@ export default function TeamManagement() {
                                     : 'General'}
                               </Badge>
                             </TableCell>
+                            <TableCell className="w-32">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  {team.memberCount || 0}/{selectedEvent?.maxTeamSize || 5}
+                                </span>
+                                {team.members && team.members.length > 0 && (
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-xs"
+                                      >
+                                        View
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Team Members - {team.name}</DialogTitle>
+                                        <DialogDescription>
+                                          {team.memberCount} member
+                                          {team.memberCount !== 1 ? 's' : ''} in this team
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <div className="space-y-3">
+                                        {team.members.map((member) => (
+                                          <div
+                                            key={member.id}
+                                            className="flex items-center justify-between p-3 border rounded-lg"
+                                          >
+                                            <div>
+                                              <p className="font-medium">{member.userEmail}</p>
+                                              <p className="text-sm text-muted-foreground">
+                                                Joined{' '}
+                                                {new Date(member.joinedAt).toLocaleDateString()}
+                                              </p>
+                                            </div>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() =>
+                                                handleRemoveMember(team.id, member.userId)
+                                              }
+                                              disabled={selectedEvent?.status === 'completed'}
+                                            >
+                                              Remove
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="w-28">
                               <div className="flex gap-2">
                                 {team.demoUrl && (
@@ -708,7 +812,7 @@ export default function TeamManagement() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                     >
-                                      <Github className="h-4 w-4" />
+                                      <GitBranch className="h-4 w-4" />
                                     </a>
                                   </Button>
                                 )}

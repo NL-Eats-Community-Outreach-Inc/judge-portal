@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { teams, events } from '@/lib/db/schema';
+import { teams, events, teamMembers, users } from '@/lib/db/schema';
 import { eq, max } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
+    const includeMembers = searchParams.get('includeMembers') === 'true';
 
     // Build query with conditions
     const allTeams = eventId
@@ -48,6 +49,32 @@ export async function GET(request: NextRequest) {
           })
           .from(teams)
           .orderBy(teams.presentationOrder);
+
+    // If members are requested, fetch them for each team
+    if (includeMembers) {
+      const teamsWithMembers = await Promise.all(
+        allTeams.map(async (team) => {
+          const members = await db
+            .select({
+              id: teamMembers.id,
+              userId: teamMembers.userId,
+              userEmail: users.email,
+              joinedAt: teamMembers.joinedAt,
+            })
+            .from(teamMembers)
+            .leftJoin(users, eq(teamMembers.userId, users.id))
+            .where(eq(teamMembers.teamId, team.id));
+
+          return {
+            ...team,
+            members,
+            memberCount: members.length,
+          };
+        })
+      );
+
+      return NextResponse.json({ teams: teamsWithMembers });
+    }
 
     return NextResponse.json({ teams: allTeams });
   } catch (error) {

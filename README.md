@@ -1,8 +1,18 @@
 # JudgePortal
 
-A comprehensive real-time judging system for hackathons and competitive events. Built with modern web technologies, JudgePortal enables judges to score teams based on customizable weighted criteria while providing admins with powerful management and analytics capabilities.
+A comprehensive real-time judging system for hackathons and competitive events. Built with modern web technologies, JudgePortal enables judges to score teams, participants to self-register and manage teams, and admins to control the entire event lifecycle with powerful analytics capabilities.
 
 ## 🎯 Features
+
+### For Participants
+- **Self-Service Registration** - Choose role (participant/judge) during sign-up
+- **Event Discovery** - Browse available events with registration status
+- **Team Creation** - Create teams with descriptions, demo URLs, and repository links
+- **Team Joining** - Search and join existing teams within capacity limits
+- **Registration Windows** - Participate only during admin-controlled registration periods
+- **Team Management** - Edit team details, leave team, or delete if sole member
+- **Event Information** - Read-only access to event details and scoring criteria
+- **One Team Per Event** - Automatic enforcement of single team membership per event
 
 ### For Judges
 - **Judge Assignment System** - Judges must be assigned to events by admins to participate
@@ -16,9 +26,12 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 
 ### For Admins
 - **Multi-Event Management** - Create and manage multiple events with complete data separation
+- **Registration Controls** - Toggle registration open/closed and set closing deadlines
+- **Team Capacity Management** - Set maximum team size per event
+- **Team Roster Oversight** - View and manage participant team memberships
 - **Judge Assignment System** - Assign specific judges to events for enhanced security
 - **Single Active Event Enforcement** - Prevents confusion by allowing only one active event at a time
-- **User Role Management** - Promote judges to admins, delete judge accounts
+- **User Role Management** - Promote/demote users between admin, judge, and participant roles
 - **Team Award Types** - Configure teams as Technical, Business, or Both competition categories
 - **Weighted Criteria System** - Create scoring criteria with customizable weights (0-100%) and categories
 - **Real-time Results Dashboard** - Live score updates with three scoring modes (Total/Average/Weighted)
@@ -86,15 +99,35 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 
 4. **Set up the Database**
 
+   **Step 1: Run the main database setup**
    ```bash
    npm run db:setup
    ```
-   
+
    This will:
    - ✅ Create all database tables and relationships
-   - ✅ Set up Row Level Security policies  
+   - ✅ Set up Row Level Security policies
    - ✅ Add database functions and triggers
    - ✅ Create proper indexes for performance
+
+   **Step 2: Add participant enum value manually**
+   - Go to your Supabase Dashboard
+   - Navigate to SQL Editor
+   - Run this command:
+   ```sql
+   ALTER TYPE user_role ADD VALUE 'participant';
+   ```
+
+   **Step 3: Run participant feature setup**
+   ```bash
+   npm run db:participant-setup
+   ```
+
+   This will add:
+   - ✅ Registration controls to events table
+   - ✅ Team members table for participant teams
+   - ✅ Additional RLS policies for participants
+   - ✅ Helper functions for team management
 
 5. **Start Development Server**
    ```bash
@@ -140,9 +173,21 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 1. Create an admin account by signing up
 2. Manually promote the user to admin role in Supabase dashboard (one-time setup)
 3. Create an event and set it as "active"
-4. Add teams with award types and scoring criteria with weights
-5. Invite judges to register, then assign them to the event
-6. Judges can start scoring assigned teams
+4. Enable registration for the event and set max team size
+5. Add scoring criteria with weights and categories
+6. Participants can self-register and create/join teams
+7. Invite judges to register, then assign them to the event
+8. Judges can start scoring teams after registration closes
+
+### Participant Workflow
+
+1. **Sign Up** - Register and select "Participant" role
+2. **Browse Events** - View available events with registration status
+3. **Select Event** - Choose an event to participate in
+4. **Create or Join Team** - Either create a new team or join an existing one
+5. **Manage Team** - Add project details (demo URL, repository, description)
+6. **View Criteria** - Review scoring criteria to understand judging requirements
+7. **Track Registration** - Monitor registration deadline and team capacity
 
 ### Judge Workflow
 
@@ -158,12 +203,14 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 
 1. **Login** as admin
 2. **Manage Events** - Create, edit, and activate events with single active enforcement
-3. **Assign Judges** - Assign specific judges to events for security
-4. **Configure Teams** - Add teams with award types (Technical/Business/Both) and presentation order
-5. **Set Weighted Criteria** - Define scoring criteria with weights, categories, and markdown descriptions
-6. **Manage Users** - Promote judges to admins, delete judge accounts
-7. **Monitor Results** - View real-time scores with three scoring modes and award type filtering
-8. **Export Data** - Download CSV with total, average, and weighted scores
+3. **Control Registration** - Enable/disable registration and set deadlines
+4. **Assign Judges** - Assign specific judges to events for security
+5. **Monitor Teams** - View team rosters and participant memberships
+6. **Configure Teams** - Add teams with award types (Technical/Business/Both) and presentation order
+7. **Set Weighted Criteria** - Define scoring criteria with weights, categories, and markdown descriptions
+8. **Manage Users** - Promote/demote between admin, judge, and participant roles
+9. **Monitor Results** - View real-time scores with three scoring modes and award type filtering
+10. **Export Data** - Download CSV with total, average, and weighted scores
 
 ## 🗂️ Project Structure
 
@@ -172,6 +219,7 @@ judgeportal/
 ├── app/                   # Next.js app directory
 │   ├── admin/             # Admin panel routes
 │   ├── judge/             # Judge interface routes
+│   ├── participant/       # Participant interface routes
 │   ├── api/               # API endpoints
 │   └── auth/              # Authentication pages
 ├── components/            # Reusable UI components
@@ -179,6 +227,7 @@ judgeportal/
 │   ├── auth/              # Authentication helpers
 │   ├── db/                # Database schema and utilities
 │   └── supabase/          # Supabase client configuration
+├── scripts/               # Database setup scripts
 └── supabase/              # Database migrations
 ```
 
@@ -192,11 +241,12 @@ judgeportal/
 
 ## 📊 Database Schema
 
-The system uses six main tables:
+The system uses seven main tables:
 
-- **events** - Event management with status tracking (setup/active/completed)
-- **users** - User accounts with role assignments (admin/judge)
+- **events** - Event management with status tracking and registration controls
+- **users** - User accounts with role assignments (admin/judge/participant)
 - **teams** - Team information with award types (technical/business/both)
+- **team_members** - Participant team memberships (one team per event)
 - **criteria** - Weighted scoring criteria with categories per event
 - **event_judges** - Judge assignment system for event access control
 - **scores** - Individual judge scores and comments with event context
@@ -298,6 +348,10 @@ This setup ensures both code quality and consistent formatting while maintaining
 
 ## 🏆 Key Features Implemented
 
+- ✅ **Participant Self-Service** - Complete team registration and management system
+- ✅ **Registration Controls** - Admin-managed registration windows with deadlines
+- ✅ **Team Capacity Management** - Enforced team size limits per event
+- ✅ **One Team Per Event** - Automatic enforcement of membership constraints
 - ✅ **Judge Assignment Security** - Comprehensive judge-event assignment system
 - ✅ **Weighted Scoring** - Flexible criteria weights with category-based filtering
 - ✅ **Mobile Responsive** - Full mobile and tablet support with touch interfaces

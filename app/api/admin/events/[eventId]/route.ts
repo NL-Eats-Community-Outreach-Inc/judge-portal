@@ -16,10 +16,26 @@ export async function PUT(
     }
 
     const { eventId } = await params;
-    const { name, description, status } = await request.json();
+    const { name, description, status, registrationOpen, registrationCloseAt, maxTeamSize } =
+      await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
+    }
+
+    const teamSize = maxTeamSize || 5;
+
+    // Validate team size
+    if (teamSize < 1 || teamSize > 20) {
+      return NextResponse.json({ error: 'Team size must be between 1 and 20' }, { status: 400 });
+    }
+
+    // Validate registration close date if provided
+    if (registrationCloseAt && new Date(registrationCloseAt) <= new Date()) {
+      return NextResponse.json(
+        { error: 'Registration close date must be in the future' },
+        { status: 400 }
+      );
     }
 
     // If setting event to active, ensure no other event is active
@@ -45,6 +61,10 @@ export async function PUT(
         name: name.trim(),
         description: description?.trim() || null,
         status: status || 'setup',
+        registrationOpen: Boolean(registrationOpen),
+        registrationCloseAt: registrationCloseAt || null,
+        maxTeamSize: teamSize,
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(events.id, eventId))
       .returning();

@@ -8,6 +8,9 @@ interface Event {
   name: string;
   description: string | null;
   status: 'setup' | 'active' | 'completed';
+  registrationOpen: boolean;
+  registrationCloseAt: string | null;
+  maxTeamSize: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -54,6 +54,9 @@ interface Event {
   name: string;
   description: string | null;
   status: 'setup' | 'active' | 'completed';
+  registrationOpen: boolean;
+  registrationCloseAt: string | null;
+  maxTeamSize: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,10 +81,16 @@ export default function EventManagement() {
     name: string;
     description: string;
     status: 'setup' | 'active' | 'completed';
+    registrationOpen: boolean;
+    registrationCloseAt: string;
+    maxTeamSize: number;
   }>({
     name: '',
     description: '',
     status: 'setup',
+    registrationOpen: false,
+    registrationCloseAt: '',
+    maxTeamSize: 5,
   });
 
   const resetForm = () => {
@@ -89,6 +98,9 @@ export default function EventManagement() {
       name: '',
       description: '',
       status: 'setup',
+      registrationOpen: false,
+      registrationCloseAt: '',
+      maxTeamSize: 5,
     });
     setEditingEvent(null);
   };
@@ -104,6 +116,9 @@ export default function EventManagement() {
       name: event.name,
       description: event.description || '',
       status: event.status,
+      registrationOpen: event.registrationOpen,
+      registrationCloseAt: event.registrationCloseAt || '',
+      maxTeamSize: event.maxTeamSize,
     });
     setIsDialogOpen(true);
   };
@@ -112,6 +127,21 @@ export default function EventManagement() {
     if (!formData.name.trim()) {
       toast.error('Validation Error', {
         description: 'Event name is required',
+      });
+      return;
+    }
+
+    // Validate registration settings
+    if (formData.registrationCloseAt && new Date(formData.registrationCloseAt) <= new Date()) {
+      toast.error('Validation Error', {
+        description: 'Registration close date must be in the future',
+      });
+      return;
+    }
+
+    if (formData.maxTeamSize < 1 || formData.maxTeamSize > 20) {
+      toast.error('Validation Error', {
+        description: 'Team size must be between 1 and 20',
       });
       return;
     }
@@ -307,6 +337,65 @@ export default function EventManagement() {
                         {activeEvent.name}&quot;
                       </p>
                     )}
+                </div>
+
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">
+                    Participant Registration Settings
+                  </h4>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="registration-open"
+                        checked={formData.registrationOpen}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, registrationOpen: e.target.checked }))
+                        }
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="registration-open">Registration Open</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Allow participants to create and join teams
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="registration-close">Registration Close Date (Optional)</Label>
+                    <Input
+                      id="registration-close"
+                      type="datetime-local"
+                      value={formData.registrationCloseAt}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, registrationCloseAt: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty to keep registration open indefinitely
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max-team-size">Maximum Team Size</Label>
+                    <Input
+                      id="max-team-size"
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={formData.maxTeamSize}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          maxTeamSize: parseInt(e.target.value) || 5,
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum number of members allowed per team
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

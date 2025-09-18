@@ -84,12 +84,43 @@ export async function updateSession(request: NextRequest) {
       selectError = dbError;
     }
 
-    // If user doesn't exist in database, redirect to signup
+    // If user doesn't exist in database
     if (!userRole && !selectError) {
-      console.log('Middleware: User not found in database, redirecting to signup');
-      const url = request.nextUrl.clone();
-      url.pathname = '/auth/sign-up';
-      return NextResponse.redirect(url);
+      console.log('Middleware: User not found in database');
+
+      // If already on auth/sign-up, try to create the user record
+      if (pathname === '/auth/sign-up') {
+        console.log('Middleware: Already on sign-up page, attempting to create user record');
+
+        // Try to create the user record based on auth metadata
+        const userMetadata = user.user_metadata || {};
+        const role = userMetadata.role || 'judge';
+
+        try {
+          // Insert user record directly
+          await supabase.from('users').insert({
+            id: user.sub,
+            email: user.email || 'unknown@example.com',
+            role: role,
+          });
+          console.log('Middleware: Created user record with role:', role);
+
+          // Redirect to appropriate dashboard
+          const url = request.nextUrl.clone();
+          url.pathname = role === 'participant' ? '/participant' : '/judge';
+          return NextResponse.redirect(url);
+        } catch (insertError) {
+          console.error('Middleware: Failed to create user record:', insertError);
+          // Allow access to sign-up page to prevent loop
+          return supabaseResponse;
+        }
+      } else {
+        // Redirect to signup for other pages
+        console.log('Middleware: Redirecting to signup');
+        const url = request.nextUrl.clone();
+        url.pathname = '/auth/sign-up';
+        return NextResponse.redirect(url);
+      }
     }
 
     // Handle database errors
@@ -107,7 +138,13 @@ export async function updateSession(request: NextRequest) {
     // Root path - redirect based on role
     if (pathname === '/') {
       const url = request.nextUrl.clone();
-      url.pathname = role === 'admin' ? '/admin' : '/judge';
+      if (role === 'admin') {
+        url.pathname = '/admin';
+      } else if (role === 'participant') {
+        url.pathname = '/participant';
+      } else {
+        url.pathname = '/judge';
+      }
       console.log('Middleware: Redirecting from root to:', url.pathname);
       return NextResponse.redirect(url);
     }
@@ -131,10 +168,36 @@ export async function updateSession(request: NextRequest) {
           'Middleware: Non-judge trying to access judge route, redirecting based on role'
         );
         const url = request.nextUrl.clone();
-        url.pathname = role === 'admin' ? '/admin' : '/';
+        if (role === 'admin') {
+          url.pathname = '/admin';
+        } else if (role === 'participant') {
+          url.pathname = '/participant';
+        } else {
+          url.pathname = '/';
+        }
         return NextResponse.redirect(url);
       }
       console.log('Middleware: Judge access granted to judge route');
+      return supabaseResponse;
+    }
+
+    // Participant routes - only participants can access
+    if (pathname.startsWith('/participant')) {
+      if (role !== 'participant') {
+        console.log(
+          'Middleware: Non-participant trying to access participant route, redirecting based on role'
+        );
+        const url = request.nextUrl.clone();
+        if (role === 'admin') {
+          url.pathname = '/admin';
+        } else if (role === 'judge') {
+          url.pathname = '/judge';
+        } else {
+          url.pathname = '/';
+        }
+        return NextResponse.redirect(url);
+      }
+      console.log('Middleware: Participant access granted to participant route');
       return supabaseResponse;
     }
 

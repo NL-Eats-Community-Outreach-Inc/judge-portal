@@ -8,27 +8,37 @@ import {
   check,
   index,
   pgEnum,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'active', 'completed']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'judge']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant']);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
 
-export const events = pgTable('events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  description: text('description'),
-  status: eventStatusEnum('status').default('setup'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull()
-    .$onUpdate(() => sql`timezone('utc'::text, now())`),
-});
+export const events = pgTable(
+  'events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    description: text('description'),
+    status: eventStatusEnum('status').default('setup'),
+    registrationOpen: boolean('registration_open').default(false).notNull(),
+    registrationCloseAt: timestamp('registration_close_at', { withTimezone: true, mode: 'string' }),
+    maxTeamSize: integer('max_team_size').default(5).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    checkMaxTeamSize: check('check_max_team_size', sql`${table.maxTeamSize} >= 1`),
+  })
+);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
@@ -167,6 +177,32 @@ export const scores = pgTable(
   })
 );
 
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id')
+      .references(() => teams.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    eventId: uuid('event_id')
+      .references(() => events.id, { onDelete: 'cascade' })
+      .notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueUserEvent: unique().on(table.eventId, table.userId),
+    uniqueTeamUser: unique().on(table.teamId, table.userId),
+    eventIdx: index('idx_team_members_event').on(table.eventId),
+    teamIdx: index('idx_team_members_team').on(table.teamId),
+    userIdx: index('idx_team_members_user').on(table.userId),
+  })
+);
+
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -179,3 +215,5 @@ export type EventJudge = typeof eventJudges.$inferSelect;
 export type NewEventJudge = typeof eventJudges.$inferInsert;
 export type Score = typeof scores.$inferSelect;
 export type NewScore = typeof scores.$inferInsert;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type NewTeamMember = typeof teamMembers.$inferInsert;

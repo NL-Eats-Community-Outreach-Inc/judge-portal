@@ -30,13 +30,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, status } = await request.json();
+    const { name, description, status, registrationOpen, registrationCloseAt, maxTeamSize } =
+      await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
     }
 
     const eventStatus = status || 'setup';
+    const teamSize = maxTeamSize || 5;
+
+    // Validate team size
+    if (teamSize < 1 || teamSize > 20) {
+      return NextResponse.json({ error: 'Team size must be between 1 and 20' }, { status: 400 });
+    }
+
+    // Validate registration close date if provided
+    if (registrationCloseAt && new Date(registrationCloseAt) <= new Date()) {
+      return NextResponse.json(
+        { error: 'Registration close date must be in the future' },
+        { status: 400 }
+      );
+    }
 
     // If setting event to active, ensure no other event is active
     if (eventStatus === 'active') {
@@ -58,6 +73,9 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         status: eventStatus,
+        registrationOpen: Boolean(registrationOpen),
+        registrationCloseAt: registrationCloseAt || null,
+        maxTeamSize: teamSize,
       })
       .returning();
 

@@ -1,0 +1,670 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertCircle,
+  Plus,
+  Users,
+  ExternalLink,
+  GitBranch,
+  Search,
+  UserMinus,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
+import { useParticipantEvent } from '../contexts/participant-event-context';
+import { toast } from 'sonner';
+import type { Team, TeamMember } from '@/lib/db/schema';
+
+interface TeamWithMembers extends Team {
+  members: TeamMember[];
+  memberCount: number;
+  userIsMember: boolean;
+}
+
+export function TeamsTab() {
+  const [teams, setTeams] = useState<TeamWithMembers[]>([]);
+  const [userTeam, setUserTeam] = useState<TeamWithMembers | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { selectedEvent } = useParticipantEvent();
+
+  // Form states
+  const [teamForm, setTeamForm] = useState({
+    name: '',
+    description: '',
+    demoUrl: '',
+    repoUrl: '',
+    awardType: 'both' as 'technical' | 'business' | 'both',
+  });
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchTeams();
+    } else {
+      setTeams([]);
+      setUserTeam(null);
+    }
+  }, [selectedEvent]);
+
+  const fetchTeams = async () => {
+    if (!selectedEvent) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/participant/events/${selectedEvent.id}/teams`);
+      if (response.ok) {
+        const data = await response.json();
+        setTeams(data.teams);
+        setUserTeam(data.userTeam);
+      }
+    } catch (error) {
+      console.error('Failed to fetch teams:', error);
+      toast.error('Failed to load teams');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      const response = await fetch('/api/participant/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...teamForm,
+          eventId: selectedEvent.id,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Team created successfully!');
+        setIsCreateDialogOpen(false);
+        setTeamForm({
+          name: '',
+          description: '',
+          demoUrl: '',
+          repoUrl: '',
+          awardType: 'both',
+        });
+        fetchTeams();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to create team');
+      }
+    } catch (error) {
+      toast.error('Failed to create team');
+    }
+  };
+
+  const handleJoinTeam = async (teamId: string) => {
+    try {
+      const response = await fetch(`/api/participant/teams/${teamId}/join`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        toast.success('Successfully joined the team!');
+        fetchTeams();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to join team');
+      }
+    } catch (error) {
+      toast.error('Failed to join team');
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!userTeam) return;
+
+    try {
+      const response = await fetch(`/api/participant/teams/${userTeam.id}/leave`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Left the team successfully');
+        fetchTeams();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to leave team');
+      }
+    } catch (error) {
+      toast.error('Failed to leave team');
+    }
+  };
+
+  const handleUpdateTeam = async () => {
+    if (!userTeam) return;
+
+    try {
+      const response = await fetch(`/api/participant/teams/${userTeam.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(teamForm),
+      });
+
+      if (response.ok) {
+        toast.success('Team updated successfully!');
+        setIsEditDialogOpen(false);
+        fetchTeams();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to update team');
+      }
+    } catch (error) {
+      toast.error('Failed to update team');
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!userTeam) return;
+
+    try {
+      const response = await fetch(`/api/participant/teams/${userTeam.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Team deleted successfully');
+        fetchTeams();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to delete team');
+      }
+    } catch (error) {
+      toast.error('Failed to delete team');
+    }
+  };
+
+  const openEditDialog = () => {
+    if (userTeam) {
+      setTeamForm({
+        name: userTeam.name,
+        description: userTeam.description || '',
+        demoUrl: userTeam.demoUrl || '',
+        repoUrl: userTeam.repoUrl || '',
+        awardType: userTeam.awardType,
+      });
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const filteredTeams = teams.filter(
+    (team) =>
+      team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      team.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const isRegistrationOpen =
+    Boolean(selectedEvent?.registrationOpen) &&
+    (!selectedEvent?.registrationCloseAt ||
+      new Date(selectedEvent.registrationCloseAt) > new Date());
+
+  if (!selectedEvent) {
+    return (
+      <Card>
+        <CardContent>
+          <div className="text-center py-12 text-muted-foreground">
+            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p>No event selected</p>
+            <p className="text-sm">Select an event to view and manage teams</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Teams</h2>
+          <p className="text-muted-foreground">
+            Teams for {selectedEvent.name} • Max {selectedEvent.maxTeamSize} members per team
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setIsRefreshing(true);
+              try {
+                await fetchTeams();
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
+          {!userTeam && isRegistrationOpen && (
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Team
+                </Button>
+              </DialogTrigger>
+              <CreateTeamDialog
+                teamForm={teamForm}
+                setTeamForm={setTeamForm}
+                onSubmit={handleCreateTeam}
+              />
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+      {!isRegistrationOpen && (
+        <Card className="border-muted bg-muted/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <span className="font-medium">Registration Closed</span>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Team registration is currently closed for this event.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {userTeam && (
+        <Card className="border-primary">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Your Team: {userTeam.name}
+                  <Badge>Member</Badge>
+                </CardTitle>
+                <CardDescription>{userTeam.description}</CardDescription>
+              </div>
+              {isRegistrationOpen && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={openEditDialog}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleLeaveTeam}>
+                    <UserMinus className="h-4 w-4 mr-2" />
+                    Leave
+                  </Button>
+                  {userTeam.memberCount === 1 && (
+                    <Button variant="destructive" size="sm" onClick={handleDeleteTeam}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <span className="text-sm text-muted-foreground">Award Type</span>
+                <Badge variant="outline" className="ml-2 capitalize">
+                  {userTeam.awardType}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">Members</span>
+                <div className="font-medium">
+                  {userTeam.memberCount} / {selectedEvent.maxTeamSize}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {userTeam.demoUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Demo
+                    </a>
+                  </Button>
+                )}
+                {userTeam.repoUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
+                      <GitBranch className="h-4 w-4 mr-1" />
+                      Repo
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search teams..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="text-sm text-muted-foreground">{filteredTeams.length} teams found</div>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-6 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredTeams.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Teams Found</h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'No teams match your search.' : 'No teams have been created yet.'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {filteredTeams.map((team) => (
+              <TeamCard
+                key={team.id}
+                team={team}
+                userTeam={userTeam}
+                maxTeamSize={selectedEvent.maxTeamSize}
+                isRegistrationOpen={isRegistrationOpen}
+                onJoin={() => handleJoinTeam(team.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {userTeam && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <EditTeamDialog
+            teamForm={teamForm}
+            setTeamForm={setTeamForm}
+            onSubmit={handleUpdateTeam}
+          />
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+function TeamCard({
+  team,
+  userTeam,
+  maxTeamSize,
+  isRegistrationOpen,
+  onJoin,
+}: {
+  team: TeamWithMembers;
+  userTeam: TeamWithMembers | null;
+  maxTeamSize: number;
+  isRegistrationOpen: boolean;
+  onJoin: () => void;
+}) {
+  const canJoin =
+    !userTeam && isRegistrationOpen && team.memberCount < maxTeamSize && !team.userIsMember;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <CardTitle className="flex items-center gap-2">
+              {team.name}
+              <Badge variant="outline" className="capitalize">
+                {team.awardType}
+              </Badge>
+              {team.userIsMember && <Badge>Your Team</Badge>}
+            </CardTitle>
+            {team.description && <CardDescription>{team.description}</CardDescription>}
+          </div>
+          <div className="text-right space-y-1">
+            <div className="text-sm text-muted-foreground">
+              {team.memberCount} / {maxTeamSize} members
+            </div>
+            {team.memberCount >= maxTeamSize && <Badge variant="secondary">Full</Badge>}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            {team.demoUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={team.demoUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Demo
+                </a>
+              </Button>
+            )}
+            {team.repoUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={team.repoUrl} target="_blank" rel="noopener noreferrer">
+                  <GitBranch className="h-4 w-4 mr-1" />
+                  Repo
+                </a>
+              </Button>
+            )}
+          </div>
+
+          {canJoin && <Button onClick={onJoin}>Join Team</Button>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CreateTeamDialog({
+  teamForm,
+  setTeamForm,
+  onSubmit,
+}: {
+  teamForm: any;
+  setTeamForm: any;
+  onSubmit: () => void;
+}) {
+  return (
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle>Create New Team</DialogTitle>
+        <DialogDescription>
+          Create a new team for this event. You&apos;ll be automatically added as a member.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Team Name</Label>
+          <Input
+            id="name"
+            value={teamForm.name}
+            onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+            placeholder="Enter team name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description (Optional)</Label>
+          <Textarea
+            id="description"
+            value={teamForm.description}
+            onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
+            placeholder="Describe your team"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="awardType">Award Type</Label>
+          <Select
+            value={teamForm.awardType}
+            onValueChange={(value) => setTeamForm({ ...teamForm, awardType: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="technical">Technical</SelectItem>
+              <SelectItem value="business">Business</SelectItem>
+              <SelectItem value="both">Both</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="demoUrl">Demo URL (Optional)</Label>
+          <Input
+            id="demoUrl"
+            value={teamForm.demoUrl}
+            onChange={(e) => setTeamForm({ ...teamForm, demoUrl: e.target.value })}
+            placeholder="https://your-demo.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="repoUrl">Repository URL (Optional)</Label>
+          <Input
+            id="repoUrl"
+            value={teamForm.repoUrl}
+            onChange={(e) => setTeamForm({ ...teamForm, repoUrl: e.target.value })}
+            placeholder="https://github.com/username/repo"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button onClick={onSubmit} disabled={!teamForm.name.trim()}>
+          Create Team
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function EditTeamDialog({
+  teamForm,
+  setTeamForm,
+  onSubmit,
+}: {
+  teamForm: any;
+  setTeamForm: any;
+  onSubmit: () => void;
+}) {
+  return (
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle>Edit Team</DialogTitle>
+        <DialogDescription>Update your team&apos;s information.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label htmlFor="edit-name">Team Name</Label>
+          <Input
+            id="edit-name"
+            value={teamForm.name}
+            onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+            placeholder="Enter team name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-description">Description (Optional)</Label>
+          <Textarea
+            id="edit-description"
+            value={teamForm.description}
+            onChange={(e) => setTeamForm({ ...teamForm, description: e.target.value })}
+            placeholder="Describe your team"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-awardType">Award Type</Label>
+          <Select
+            value={teamForm.awardType}
+            onValueChange={(value) => setTeamForm({ ...teamForm, awardType: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="technical">Technical</SelectItem>
+              <SelectItem value="business">Business</SelectItem>
+              <SelectItem value="both">Both</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-demoUrl">Demo URL (Optional)</Label>
+          <Input
+            id="edit-demoUrl"
+            value={teamForm.demoUrl}
+            onChange={(e) => setTeamForm({ ...teamForm, demoUrl: e.target.value })}
+            placeholder="https://your-demo.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-repoUrl">Repository URL (Optional)</Label>
+          <Input
+            id="edit-repoUrl"
+            value={teamForm.repoUrl}
+            onChange={(e) => setTeamForm({ ...teamForm, repoUrl: e.target.value })}
+            placeholder="https://github.com/username/repo"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button onClick={onSubmit} disabled={!teamForm.name.trim()}>
+          Update Team
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
