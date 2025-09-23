@@ -28,13 +28,14 @@ import {
   Plus,
   Users,
   ExternalLink,
-  GitBranch,
+  Code2,
   Search,
   UserMinus,
   Edit,
   // Trash2, // Removed - using Leave for all scenarios
   RefreshCw,
   Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import { useParticipantEvent } from '../contexts/participant-event-context';
 import { toast } from 'sonner';
@@ -332,23 +333,45 @@ export function TeamsTab() {
       )}
 
       {userTeam && (
-        <Card className="border-primary">
+        <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  Your Team: {userTeam.name}
-                  <Badge>Member</Badge>
-                </CardTitle>
-                <CardDescription>{userTeam.description}</CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <CardTitle className="text-green-900 dark:text-green-100 flex items-center gap-2">
+                    Your Team
+                    {/* <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-100">Member</Badge> */}
+                  </CardTitle>
+                  <CardDescription className="text-green-700 dark:text-green-300">
+                    {userTeam.name}
+                  </CardDescription>
+                  {userTeam.description && (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      {userTeam.description}
+                    </p>
+                  )}
+                </div>
               </div>
               {isRegistrationOpen && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={openEditDialog}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={openEditDialog}
+                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleLeaveTeam}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleLeaveTeam}
+                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                  >
                     <UserMinus className="h-4 w-4 mr-2" />
                     Leave
                   </Button>
@@ -366,20 +389,32 @@ export function TeamsTab() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <span className="text-sm text-muted-foreground">Award Type</span>
-                <Badge variant="outline" className="ml-2">
+                <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                  Award Type
+                </span>
+                <Badge
+                  variant="outline"
+                  className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
+                >
                   {getDisplayAwardType(userTeam.awardType)}
                 </Badge>
               </div>
               <div>
-                <span className="text-sm text-muted-foreground">Members</span>
-                <div className="font-medium">
+                <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                  Members
+                </span>
+                <div className="font-medium text-green-700 dark:text-green-300">
                   {userTeam.memberCount} / {selectedEvent.maxTeamSize}
                 </div>
               </div>
               <div className="flex gap-2">
                 {userTeam.demoUrl && (
-                  <Button variant="outline" size="sm" asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    asChild
+                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                  >
                     <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4 mr-1" />
                       Demo
@@ -387,9 +422,14 @@ export function TeamsTab() {
                   </Button>
                 )}
                 {userTeam.repoUrl && (
-                  <Button variant="outline" size="sm" asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    asChild
+                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                  >
                     <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
-                      <GitBranch className="h-4 w-4 mr-1" />
+                      <Code2 className="h-4 w-4 mr-1" />
                       Repo
                     </a>
                   </Button>
@@ -519,7 +559,7 @@ function TeamCard({
             {team.repoUrl && (
               <Button variant="outline" size="sm" asChild>
                 <a href={team.repoUrl} target="_blank" rel="noopener noreferrer">
-                  <GitBranch className="h-4 w-4 mr-1" />
+                  <Code2 className="h-4 w-4 mr-1" />
                   Repo
                 </a>
               </Button>

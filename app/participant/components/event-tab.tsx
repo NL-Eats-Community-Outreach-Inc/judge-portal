@@ -4,7 +4,26 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Info, RefreshCw, Loader2 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Calendar,
+  Clock,
+  Info,
+  RefreshCw,
+  Loader2,
+  Eye,
+  Users,
+  FileText,
+  Shield,
+  CalendarDays,
+  X,
+} from 'lucide-react';
 import { useParticipantEvent } from '../contexts/participant-event-context';
 import type { Event } from '@/lib/db/schema';
 
@@ -12,6 +31,7 @@ export function EventTab() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sheetEvent, setSheetEvent] = useState<Event | null>(null);
   const { selectedEvent, setSelectedEvent } = useParticipantEvent();
 
   useEffect(() => {
@@ -119,8 +139,10 @@ export function EventTab() {
         {events.map((event) => (
           <Card
             key={event.id}
-            className={`transition-all cursor-pointer border-border/50 ${
-              selectedEvent?.id === event.id ? 'ring-2 ring-primary' : 'hover:border-border'
+            className={`transition-all duration-300 cursor-pointer border-border/50 ${
+              selectedEvent?.id === event.id
+                ? 'bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/80 dark:from-blue-950/10 dark:via-slate-900/20 dark:to-indigo-950/10 ring-2 ring-blue-400 dark:ring-blue-600/40 shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 transform scale-[1.02] border-blue-200 dark:border-blue-800/30'
+                : 'hover:border-border hover:shadow-md hover:bg-gradient-to-br hover:from-muted/30 hover:to-muted/20 hover:scale-[1.01] transform'
             }`}
             onClick={() => handleSelectEvent(event)}
           >
@@ -137,7 +159,11 @@ export function EventTab() {
                     {event.description}
                   </CardDescription>
                 </div>
-                {selectedEvent?.id === event.id && <Badge variant="outline">Selected</Badge>}
+                {selectedEvent?.id === event.id && (
+                  <Badge className="bg-blue-500 text-white border-0 shadow-sm animate-in fade-in-0 zoom-in-95 duration-200 pointer-events-none">
+                    ✓ Selected
+                  </Badge>
+                )}
               </div>
             </CardHeader>
 
@@ -153,23 +179,238 @@ export function EventTab() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 pt-2 border-t border-border/30">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Registration:</span>
-                  <Badge variant={isRegistrationOpen(event) ? 'default' : 'secondary'}>
-                    {isRegistrationOpen(event) ? 'Open' : 'Closed'}
-                  </Badge>
-                </div>
-                {event.registrationCloseAt && isRegistrationOpen(event) && (
-                  <div className="text-sm text-muted-foreground">
-                    Closes {formatDate(event.registrationCloseAt)}
+              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Registration:</span>
+                    <Badge variant={isRegistrationOpen(event) ? 'default' : 'secondary'}>
+                      {isRegistrationOpen(event) ? 'Open' : 'Closed'}
+                    </Badge>
                   </div>
-                )}
+                  {event.registrationCloseAt && isRegistrationOpen(event) && (
+                    <div className="text-sm text-muted-foreground">
+                      Closes {formatDate(event.registrationCloseAt)}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSheetEvent(event);
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Details
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Sheet open={!!sheetEvent} onOpenChange={(open) => !open && setSheetEvent(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-0">
+          {sheetEvent && (
+            <>
+              {/* Gradient Header Section */}
+              <div className="relative bg-gradient-to-br from-blue-50 via-indigo-50/50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 p-8 border-b border-border/30">
+                {/* Close Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSheetEvent(null)}
+                  className="absolute right-4 top-4 h-8 w-8 rounded-full hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </Button>
+
+                <SheetHeader className="space-y-4 pr-8">
+                  <div>
+                    <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
+                      {sheetEvent.name}
+                    </SheetTitle>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Badge
+                      variant="secondary"
+                      className="capitalize bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border-border/50"
+                    >
+                      {sheetEvent.status}
+                    </Badge>
+                    <Badge
+                      variant={isRegistrationOpen(sheetEvent) ? 'default' : 'secondary'}
+                      className={
+                        isRegistrationOpen(sheetEvent)
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : ''
+                      }
+                    >
+                      Registration {isRegistrationOpen(sheetEvent) ? 'Open' : 'Closed'}
+                    </Badge>
+                  </div>
+                  {sheetEvent.description && (
+                    <SheetDescription className="text-base text-muted-foreground/90 leading-relaxed pt-2">
+                      {sheetEvent.description}
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Event Overview Card */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-muted/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Event Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Event Status</span>
+                      <span className="text-sm font-medium capitalize">{sheetEvent.status}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Event Type</span>
+                      <span className="text-sm font-medium">Competition Event</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Team Configuration Card */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-purple-50/10 dark:to-purple-950/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Team Configuration
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Maximum Team Size</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{sheetEvent.maxTeamSize}</span>
+                        <span className="text-sm text-muted-foreground">members</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Registration Status</span>
+                      <Badge
+                        variant={isRegistrationOpen(sheetEvent) ? 'default' : 'secondary'}
+                        className={
+                          isRegistrationOpen(sheetEvent)
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : ''
+                        }
+                      >
+                        {isRegistrationOpen(sheetEvent) ? 'Open' : 'Closed'}
+                      </Badge>
+                    </div>
+                    {sheetEvent.registrationCloseAt && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <span className="text-sm text-muted-foreground">
+                          {isRegistrationOpen(sheetEvent)
+                            ? 'Registration Closes'
+                            : 'Registration Closed'}
+                        </span>
+                        <span className="text-sm font-medium">
+                          {new Date(sheetEvent.registrationCloseAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Timeline Card */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-cyan-50/10 dark:to-cyan-950/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Event Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/30 hover:to-muted/40 transition-colors">
+                          <p className="text-xs text-muted-foreground mb-1">Created</p>
+                          <p className="text-sm font-medium">
+                            {new Date(sheetEvent.createdAt).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/30 hover:to-muted/40 transition-colors">
+                          <p className="text-xs text-muted-foreground mb-1">Last Updated</p>
+                          <p className="text-sm font-medium">
+                            {new Date(sheetEvent.updatedAt).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Resources Card (Placeholder) */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card/50 via-card/30 to-muted/20 border-dashed">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-muted-foreground/70">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Resources
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground/60 italic">
+                      Event resources and documentation will be available here
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Access & Permissions Card (Placeholder) */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card/50 via-card/30 to-muted/20 border-dashed">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-muted-foreground/70">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Access & Permissions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground/60 italic">
+                      Access control and permission details will be shown here
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

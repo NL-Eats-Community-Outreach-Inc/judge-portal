@@ -50,7 +50,7 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  GitBranch,
+  Code2,
   RefreshCw,
   GripVertical,
 } from 'lucide-react';
@@ -812,7 +812,7 @@ export default function TeamManagement() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                     >
-                                      <GitBranch className="h-4 w-4" />
+                                      <Code2 className="h-4 w-4" />
                                     </a>
                                   </Button>
                                 )}
