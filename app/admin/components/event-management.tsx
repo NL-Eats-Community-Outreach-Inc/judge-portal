@@ -135,15 +135,16 @@ export default function EventManagement() {
     }
 
     // Validate registration settings
-    if (formData.registrationCloseAt) {
-      const closeDate = new Date(formData.registrationCloseAt);
-      if (closeDate <= new Date()) {
-        toast.error('Validation Error', {
-          description: 'Registration close date must be in the future',
-        });
-        return;
-      }
-    }
+    // Note: Commented out to allow admins to set any date (including past dates)
+    // if (formData.registrationCloseAt) {
+    //   const closeDate = new Date(formData.registrationCloseAt);
+    //   if (closeDate <= new Date()) {
+    //     toast.error('Validation Error', {
+    //       description: 'Registration close date must be in the future',
+    //     });
+    //     return;
+    //   }
+    // }
 
     if (formData.maxTeamSize < 1 || formData.maxTeamSize > 20) {
       toast.error('Validation Error', {
@@ -291,7 +292,7 @@ export default function EventManagement() {
                 Create Event
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-4xl max-w-[calc(100%-2rem)]">
               <DialogHeader>
                 <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
                 <DialogDescription>
@@ -300,62 +301,64 @@ export default function EventManagement() {
                     : 'Fill in the details to create a new judging event.'}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="event-name">Event Name *</Label>
-                  <Input
-                    id="event-name"
-                    value={formData.name}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter event name"
-                  />
+              <div className="grid grid-cols-2 gap-6">
+                {/* Left Column - Basic Event Details */}
+                <div className="space-y-4 pr-6 border-r">
+                  <div className="space-y-2">
+                    <Label htmlFor="event-name">Event Name *</Label>
+                    <Input
+                      id="event-name"
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                      placeholder="Enter event name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="event-description">Description</Label>
+                    <Textarea
+                      id="event-description"
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                      placeholder="Enter event description"
+                      className="resize-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="event-status">Status</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: 'setup' | 'active' | 'completed') =>
+                        setFormData((prev) => ({ ...prev, status: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="setup">Setup - Preparing event</SelectItem>
+                        <SelectItem value="active">Active - Judging in progress</SelectItem>
+                        <SelectItem value="completed">Completed - Event finished</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.status === 'active' &&
+                      activeEvent &&
+                      activeEvent.id !== editingEvent?.id && (
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          Warning: Setting this event to active will deactivate &quot;
+                          {activeEvent.name}&quot;
+                        </p>
+                      )}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="event-description">Description</Label>
-                  <Textarea
-                    id="event-description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                    placeholder="Enter event description"
-                    className="resize-none"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="event-status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: 'setup' | 'active' | 'completed') =>
-                      setFormData((prev) => ({ ...prev, status: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="setup">Setup - Preparing event</SelectItem>
-                      <SelectItem value="active">Active - Judging in progress</SelectItem>
-                      <SelectItem value="completed">Completed - Event finished</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {formData.status === 'active' &&
-                    activeEvent &&
-                    activeEvent.id !== editingEvent?.id && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Warning: Setting this event to active will deactivate &quot;
-                        {activeEvent.name}&quot;
-                      </p>
-                    )}
-                </div>
-
-                <div className="border-t pt-4 space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground">
-                    Participant Registration Settings
-                  </h4>
+                {/* Right Column - Participant Registration Settings */}
+                <div className="space-y-4">
+                  <Label>Participant Registration Settings</Label>
 
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
@@ -387,7 +390,6 @@ export default function EventManagement() {
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, registrationCloseAt: e.target.value }))
                       }
-                      min={new Date().toISOString().slice(0, 16)}
                       className="block"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -415,28 +417,28 @@ export default function EventManagement() {
                     </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex items-center gap-2"
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                    {editingEvent ? 'Update Event' : 'Create Event'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {editingEvent ? 'Update Event' : 'Create Event'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

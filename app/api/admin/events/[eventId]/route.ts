@@ -31,12 +31,13 @@ export async function PUT(
     }
 
     // Validate registration close date if provided
-    if (registrationCloseAt && new Date(registrationCloseAt) <= new Date()) {
-      return NextResponse.json(
-        { error: 'Registration close date must be in the future' },
-        { status: 400 }
-      );
-    }
+    // Note: Commented out to allow admins to set any date (including past dates for events where registration has closed)
+    // if (registrationCloseAt && new Date(registrationCloseAt) <= new Date()) {
+    //   return NextResponse.json(
+    //     { error: 'Registration close date must be in the future' },
+    //     { status: 400 }
+    //   );
+    // }
 
     // If setting event to active, ensure no other event is active
     if (status === 'active') {
