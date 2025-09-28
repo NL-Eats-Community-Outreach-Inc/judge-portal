@@ -49,6 +49,7 @@ import {
 import { toast } from 'sonner';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import JudgeAssignmentDialog from '@/components/judge-assignment-dialog';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 interface Event {
   id: string;
@@ -113,14 +114,26 @@ export default function EventManagement() {
 
   const openEditDialog = (event: Event) => {
     setEditingEvent(event);
+
+    // Convert UTC timestamp back to local datetime string for the input
+    let localDateTimeString = '';
+    if (event.registrationCloseAt) {
+      const utcDate = new Date(event.registrationCloseAt);
+      // Get local date components
+      const year = utcDate.getFullYear();
+      const month = (utcDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = utcDate.getDate().toString().padStart(2, '0');
+      const hours = utcDate.getHours().toString().padStart(2, '0');
+      const minutes = utcDate.getMinutes().toString().padStart(2, '0');
+      localDateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
     setFormData({
       name: event.name,
       description: event.description || '',
       status: event.status,
       registrationOpen: event.registrationOpen,
-      registrationCloseAt: event.registrationCloseAt
-        ? new Date(event.registrationCloseAt).toISOString().slice(0, 16)
-        : '',
+      registrationCloseAt: localDateTimeString,
       maxTeamSize: event.maxTeamSize,
     });
     setIsDialogOpen(true);
@@ -155,11 +168,19 @@ export default function EventManagement() {
 
     setIsSaving(true);
     try {
+      // Convert local datetime string to proper UTC ISO string
+      let registrationCloseAtISO = null;
+      if (formData.registrationCloseAt) {
+        // formData.registrationCloseAt is in format "YYYY-MM-DDTHH:mm"
+        // Create a date object treating it as local time
+        const localDate = new Date(formData.registrationCloseAt);
+        // Convert to UTC ISO string (this properly handles timezone conversion)
+        registrationCloseAtISO = localDate.toISOString();
+      }
+
       const requestData = {
         ...formData,
-        registrationCloseAt: formData.registrationCloseAt
-          ? new Date(formData.registrationCloseAt).toISOString()
-          : null,
+        registrationCloseAt: registrationCloseAtISO,
       };
 
       let response;
@@ -383,14 +404,12 @@ export default function EventManagement() {
 
                   <div className="space-y-2">
                     <Label htmlFor="registration-close">Registration Close Date (Optional)</Label>
-                    <Input
-                      id="registration-close"
-                      type="datetime-local"
+                    <DateTimePicker
                       value={formData.registrationCloseAt}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, registrationCloseAt: e.target.value }))
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, registrationCloseAt: value || '' }))
                       }
-                      className="block"
+                      placeholder="Select date and time"
                     />
                     <p className="text-xs text-muted-foreground">
                       Leave empty to keep registration open indefinitely
