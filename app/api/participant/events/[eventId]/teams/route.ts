@@ -83,7 +83,7 @@ export async function GET(
     // Get user's team details with member information if they have one
     let userTeam = null;
     if (userTeamId) {
-      const userTeamBase = teamsWithCounts.find(team => team.id === userTeamId);
+      const userTeamBase = teamsWithCounts.find((team) => team.id === userTeamId);
       if (userTeamBase) {
         // Fetch member details only for user's own team
         const members = await db

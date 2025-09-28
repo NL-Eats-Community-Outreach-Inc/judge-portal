@@ -325,274 +325,275 @@ export function TeamsTab() {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </Button>
-          {!userTeam && isRegistrationOpen && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Team
-                </Button>
-              </DialogTrigger>
-              <CreateTeamDialog
-                teamForm={teamForm}
-                setTeamForm={setTeamForm}
-                onSubmit={handleCreateTeam}
-              />
-            </Dialog>
-          )}
-        </div>
-      </div>
-
-      {!isRegistrationOpen && (
-        <Card className="border-muted bg-muted/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <AlertCircle className="h-4 w-4" />
-              <span className="font-medium">Registration Closed</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Team registration is currently closed for this event.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {userTeam && (
-        <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                  <CheckCircle className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <CardTitle className="text-green-900 dark:text-green-100 flex items-center gap-2">
-                    Your Team
-                    {/* <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-100">Member</Badge> */}
-                  </CardTitle>
-                  <CardDescription className="text-green-700 dark:text-green-300">
-                    {userTeam.name}
-                  </CardDescription>
-                  {userTeam.description && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                      {userTeam.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {isRegistrationOpen && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={openEditDialog}
-                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
+            {!userTeam && isRegistrationOpen && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Team
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                      >
-                        <UserMinus className="h-4 w-4 mr-2" />
-                        Leave
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Leave Team?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {userTeam.memberCount === 1
-                            ? "You are the only member. Leaving will delete this team permanently."
-                            : "Are you sure you want to leave this team? You can only be on one team per event."}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleLeaveTeam}>
-                          Leave Team
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  {/* Delete button removed - Leave team automatically deletes when last member */}
-                  {/* {userTeam.memberCount === 1 && (
+                </DialogTrigger>
+                <CreateTeamDialog
+                  teamForm={teamForm}
+                  setTeamForm={setTeamForm}
+                  onSubmit={handleCreateTeam}
+                />
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        {!isRegistrationOpen && (
+          <Card className="border-muted bg-muted/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <AlertCircle className="h-4 w-4" />
+                <span className="font-medium">Registration Closed</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Team registration is currently closed for this event.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {userTeam && (
+          <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="text-green-900 dark:text-green-100 flex items-center gap-2">
+                      Your Team
+                      {/* <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-100">Member</Badge> */}
+                    </CardTitle>
+                    <CardDescription className="text-green-700 dark:text-green-300">
+                      {userTeam.name}
+                    </CardDescription>
+                    {userTeam.description && (
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                        {userTeam.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {isRegistrationOpen && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={openEditDialog}
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                        >
+                          <UserMinus className="h-4 w-4 mr-2" />
+                          Leave
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Leave Team?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {userTeam.memberCount === 1
+                              ? 'You are the only member. Leaving will delete this team permanently.'
+                              : 'Are you sure you want to leave this team? You can only be on one team per event.'}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleLeaveTeam}>
+                            Leave Team
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    {/* Delete button removed - Leave team automatically deletes when last member */}
+                    {/* {userTeam.memberCount === 1 && (
                     <Button variant="destructive" size="sm" onClick={handleDeleteTeam}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </Button>
                   )} */}
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Award Type
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
-                  >
-                    {getDisplayAwardType(userTeam.awardType)}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Members
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-green-700 dark:text-green-300">
-                      {userTeam.memberCount} / {selectedEvent.maxTeamSize}
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Award Type
                     </span>
-                    {userTeam.members && userTeam.members.length > 0 && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
+                    <Badge
+                      variant="outline"
+                      className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
+                    >
+                      {getDisplayAwardType(userTeam.awardType)}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Members
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-green-700 dark:text-green-300">
+                        {userTeam.memberCount} / {selectedEvent.maxTeamSize}
+                      </span>
+                      {userTeam.members && userTeam.members.length > 0 && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
+                            >
+                              View
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent
+                            onOpenAutoFocus={(e) => {
+                              // Prevent auto-focus since this is a read-only dialog
+                              e.preventDefault();
+                            }}
                           >
-                            View
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent
-                          onOpenAutoFocus={(e) => {
-                            // Prevent auto-focus since this is a read-only dialog
-                            e.preventDefault();
-                          }}
-                        >
-                          <DialogHeader>
-                            <DialogTitle>Team Members - {userTeam.name}</DialogTitle>
-                            <DialogDescription>
-                              {userTeam.memberCount} member{userTeam.memberCount !== 1 ? 's' : ''} in your team
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-3">
-                            {userTeam.members.map((member) => (
-                              <div
-                                key={member.id}
-                                className="flex items-center justify-between p-3 border rounded-lg"
-                              >
-                                <div>
-                                  <p className="font-medium">{member.userEmail}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Joined {new Date(member.joinedAt).toLocaleDateString()}
-                                  </p>
+                            <DialogHeader>
+                              <DialogTitle>Team Members - {userTeam.name}</DialogTitle>
+                              <DialogDescription>
+                                {userTeam.memberCount} member{userTeam.memberCount !== 1 ? 's' : ''}{' '}
+                                in your team
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-3">
+                              {userTeam.members.map((member) => (
+                                <div
+                                  key={member.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg"
+                                >
+                                  <div>
+                                    <p className="font-medium">{member.userEmail}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                              ))}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {userTeam.demoUrl && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        asChild
+                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                      >
+                        <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Demo
+                        </a>
+                      </Button>
+                    )}
+                    {userTeam.repoUrl && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        asChild
+                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                      >
+                        <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
+                          <Code2 className="h-4 w-4 mr-1" />
+                          Repo
+                        </a>
+                      </Button>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {userTeam.demoUrl && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      asChild
-                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                    >
-                      <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Demo
-                      </a>
-                    </Button>
-                  )}
-                  {userTeam.repoUrl && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      asChild
-                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                    >
-                      <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
-                        <Code2 className="h-4 w-4 mr-1" />
-                        Repo
-                      </a>
-                    </Button>
-                  )}
-                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search teams..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="text-sm text-muted-foreground">{filteredTeams.length} teams found</div>
-        </div>
-
-        {loading ? (
-          <div className="grid gap-4">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-6 bg-muted rounded w-3/4"></div>
-                  <div className="h-4 bg-muted rounded w-1/2"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filteredTeams.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Teams Found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? 'No teams match your search.' : 'No teams have been created yet.'}
-              </p>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4">
-            {filteredTeams.map((team) => (
-              <TeamCard
-                key={team.id}
-                team={team}
-                userTeam={userTeam}
-                maxTeamSize={selectedEvent.maxTeamSize}
-                isRegistrationOpen={isRegistrationOpen}
-                onJoin={() => handleJoinTeam(team.id)}
-              />
-            ))}
-          </div>
         )}
-      </div>
 
-      {userTeam && (
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <EditTeamDialog
-            teamForm={teamForm}
-            setTeamForm={setTeamForm}
-            onSubmit={handleUpdateTeam}
-          />
-        </Dialog>
-      )}
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search teams..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">{filteredTeams.length} teams found</div>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-4">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="h-6 bg-muted rounded w-3/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                    <div className="h-4 bg-muted rounded w-2/3"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredTeams.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Teams Found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'No teams match your search.' : 'No teams have been created yet.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredTeams.map((team) => (
+                <TeamCard
+                  key={team.id}
+                  team={team}
+                  userTeam={userTeam}
+                  maxTeamSize={selectedEvent.maxTeamSize}
+                  isRegistrationOpen={isRegistrationOpen}
+                  onJoin={() => handleJoinTeam(team.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {userTeam && (
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <EditTeamDialog
+              teamForm={teamForm}
+              setTeamForm={setTeamForm}
+              onSubmit={handleUpdateTeam}
+            />
+          </Dialog>
+        )}
       </div>
 
       {/* Loading overlays - positioned at the end to avoid layout shift */}

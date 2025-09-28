@@ -14,26 +14,29 @@ export function CriteriaTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { selectedEvent } = useParticipantEvent();
 
-  const fetchCriteria = useCallback(async (isRefresh = false) => {
-    if (!selectedEvent) return;
+  const fetchCriteria = useCallback(
+    async (isRefresh = false) => {
+      if (!selectedEvent) return;
 
-    if (!isRefresh) {
-      setLoading(true);
-    }
-    try {
-      const response = await fetch(`/api/participant/events/${selectedEvent.id}/criteria`);
-      if (response.ok) {
-        const data = await response.json();
-        setCriteria(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch criteria:', error);
-    } finally {
       if (!isRefresh) {
-        setLoading(false);
+        setLoading(true);
       }
-    }
-  }, [selectedEvent]);
+      try {
+        const response = await fetch(`/api/participant/events/${selectedEvent.id}/criteria`);
+        if (response.ok) {
+          const data = await response.json();
+          setCriteria(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch criteria:', error);
+      } finally {
+        if (!isRefresh) {
+          setLoading(false);
+        }
+      }
+    },
+    [selectedEvent]
+  );
 
   useEffect(() => {
     if (selectedEvent) {
@@ -130,80 +133,80 @@ export function CriteriaTab() {
           </Button>
         </div>
 
-      {Object.entries(groupedCriteria).map(([category, categoryCriteria]) => (
-        <div key={category} className="space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-lg font-semibold capitalize text-foreground">
-              {category} Criteria
-            </h3>
-            <Badge variant="secondary">{categoryCriteria.length} criteria</Badge>
-          </div>
+        {Object.entries(groupedCriteria).map(([category, categoryCriteria]) => (
+          <div key={category} className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold capitalize text-foreground">
+                {category} Criteria
+              </h3>
+              <Badge variant="secondary">{categoryCriteria.length} criteria</Badge>
+            </div>
 
-          <div className="grid gap-4">
-            {categoryCriteria
-              .sort((a, b) => a.displayOrder - b.displayOrder)
-              .map((criterion) => (
-                <Card key={criterion.id} className="border-border/50">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-3 text-lg">
-                          {criterion.name}
-                          <Badge variant="outline" className="capitalize">
-                            {criterion.category}
-                          </Badge>
-                        </CardTitle>
-                        {criterion.description && (
-                          <CardDescription>{criterion.description}</CardDescription>
-                        )}
-                      </div>
-                      <div className="text-right space-y-2">
-                        <div className="text-sm font-semibold">Weight: {criterion.weight}%</div>
-                        <div className="text-xs text-muted-foreground">
-                          Score: {criterion.minScore}-{criterion.maxScore}
+            <div className="grid gap-4">
+              {categoryCriteria
+                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .map((criterion) => (
+                  <Card key={criterion.id} className="border-border/50">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-3 text-lg">
+                            {criterion.name}
+                            <Badge variant="outline" className="capitalize">
+                              {criterion.category}
+                            </Badge>
+                          </CardTitle>
+                          {criterion.description && (
+                            <CardDescription>{criterion.description}</CardDescription>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Weight Distribution</span>
-                        <span>{criterion.weight}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${criterion.weight}%` }}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <span className="text-xs text-muted-foreground block mb-1">
-                            Minimum Score
-                          </span>
-                          <div className="text-lg font-bold text-foreground">
-                            {criterion.minScore}
-                          </div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <span className="text-xs text-muted-foreground block mb-1">
-                            Maximum Score
-                          </span>
-                          <div className="text-lg font-bold text-foreground">
-                            {criterion.maxScore}
+                        <div className="text-right space-y-2">
+                          <div className="text-sm font-semibold">Weight: {criterion.weight}%</div>
+                          <div className="text-xs text-muted-foreground">
+                            Score: {criterion.minScore}-{criterion.maxScore}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Weight Distribution</span>
+                          <span>{criterion.weight}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all"
+                            style={{ width: `${criterion.weight}%` }}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xs text-muted-foreground block mb-1">
+                              Minimum Score
+                            </span>
+                            <div className="text-lg font-bold text-foreground">
+                              {criterion.minScore}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <span className="text-xs text-muted-foreground block mb-1">
+                              Maximum Score
+                            </span>
+                            <div className="text-lg font-bold text-foreground">
+                              {criterion.maxScore}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
       </div>
 
       {/* Refresh overlay - positioned at the end to avoid layout shift */}
