@@ -17,6 +17,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,10 +50,17 @@ import {
 } from 'lucide-react';
 import { useParticipantEvent } from '../contexts/participant-event-context';
 import { toast } from 'sonner';
-import type { Team, TeamMember } from '@/lib/db/schema';
+import type { Team } from '@/lib/db/schema';
+
+interface TeamMemberWithEmail {
+  id: string;
+  userId: string;
+  userEmail: string;
+  joinedAt: string;
+}
 
 interface TeamWithMembers extends Team {
-  members: TeamMember[];
+  members: TeamMemberWithEmail[];
   memberCount: number;
   userIsMember: boolean;
 }
@@ -366,15 +384,34 @@ export function TeamsTab() {
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleLeaveTeam}
-                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                  >
-                    <UserMinus className="h-4 w-4 mr-2" />
-                    Leave
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                      >
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Leave
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Leave Team?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {userTeam.memberCount === 1
+                            ? "You are the only member. Leaving will delete this team permanently."
+                            : "Are you sure you want to leave this team? You can only be on one team per event."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLeaveTeam}>
+                          Leave Team
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   {/* Delete button removed - Leave team automatically deletes when last member */}
                   {/* {userTeam.memberCount === 1 && (
                     <Button variant="destructive" size="sm" onClick={handleDeleteTeam}>
@@ -387,53 +424,98 @@ export function TeamsTab() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Award Type
-                </span>
-                <Badge
-                  variant="outline"
-                  className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
-                >
-                  {getDisplayAwardType(userTeam.awardType)}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                  Members
-                </span>
-                <div className="font-medium text-green-700 dark:text-green-300">
-                  {userTeam.memberCount} / {selectedEvent.maxTeamSize}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Award Type
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
+                  >
+                    {getDisplayAwardType(userTeam.awardType)}
+                  </Badge>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                {userTeam.demoUrl && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    asChild
-                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                  >
-                    <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Demo
-                    </a>
-                  </Button>
-                )}
-                {userTeam.repoUrl && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    asChild
-                    className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                  >
-                    <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
-                      <Code2 className="h-4 w-4 mr-1" />
-                      Repo
-                    </a>
-                  </Button>
-                )}
+                <div>
+                  <span className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Members
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-green-700 dark:text-green-300">
+                      {userTeam.memberCount} / {selectedEvent.maxTeamSize}
+                    </span>
+                    {userTeam.members && userTeam.members.length > 0 && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
+                          >
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent
+                          onOpenAutoFocus={(e) => {
+                            // Prevent auto-focus since this is a read-only dialog
+                            e.preventDefault();
+                          }}
+                        >
+                          <DialogHeader>
+                            <DialogTitle>Team Members - {userTeam.name}</DialogTitle>
+                            <DialogDescription>
+                              {userTeam.memberCount} member{userTeam.memberCount !== 1 ? 's' : ''} in your team
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            {userTeam.members.map((member) => (
+                              <div
+                                key={member.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div>
+                                  <p className="font-medium">{member.userEmail}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {userTeam.demoUrl && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      asChild
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                    >
+                      <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Demo
+                      </a>
+                    </Button>
+                  )}
+                  {userTeam.repoUrl && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      asChild
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                    >
+                      <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
+                        <Code2 className="h-4 w-4 mr-1" />
+                        Repo
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

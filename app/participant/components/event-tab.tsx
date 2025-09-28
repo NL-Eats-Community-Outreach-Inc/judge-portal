@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
@@ -252,17 +251,12 @@ export function EventTab() {
                       Registration {isRegistrationOpen(sheetEvent) ? 'Open' : 'Closed'}
                     </Badge>
                   </div>
-                  {sheetEvent.description && (
-                    <SheetDescription className="text-base text-muted-foreground/90 leading-relaxed pt-2">
-                      {sheetEvent.description}
-                    </SheetDescription>
-                  )}
                 </SheetHeader>
               </div>
 
               <div className="p-6 space-y-6">
                 {/* Event Overview Card */}
-                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-muted/10">
+                {/* <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-muted/10">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-muted/50">
@@ -272,13 +266,70 @@ export function EventTab() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/70 transition-colors">
                       <span className="text-sm text-muted-foreground">Event Status</span>
                       <span className="text-sm font-medium capitalize">{sheetEvent.status}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/70 transition-colors">
                       <span className="text-sm text-muted-foreground">Event Type</span>
                       <span className="text-sm font-medium">Competition Event</span>
+                    </div>
+                  </CardContent>
+                </Card> */}
+
+                {/* Event Description Card */}
+                {sheetEvent.description && (
+                  <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-muted/10">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-muted/50">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        Event Description
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {sheetEvent.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Timeline Card */}
+                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-cyan-50/10 dark:to-cyan-950/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Event Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/50 hover:to-muted/60 transition-colors">
+                          <p className="text-xs text-muted-foreground mb-1">Created</p>
+                          <p className="text-sm font-medium">
+                            {new Date(sheetEvent.createdAt).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/50 hover:to-muted/60 transition-colors">
+                          <p className="text-xs text-muted-foreground mb-1">Last Updated</p>
+                          <p className="text-sm font-medium">
+                            {new Date(sheetEvent.updatedAt).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -294,14 +345,14 @@ export function EventTab() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/70 transition-colors">
                       <span className="text-sm text-muted-foreground">Maximum Team Size</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold">{sheetEvent.maxTeamSize}</span>
                         <span className="text-sm text-muted-foreground">members</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/70 transition-colors">
                       <span className="text-sm text-muted-foreground">Registration Status</span>
                       <Badge
                         variant={isRegistrationOpen(sheetEvent) ? 'default' : 'secondary'}
@@ -315,7 +366,7 @@ export function EventTab() {
                       </Badge>
                     </div>
                     {sheetEvent.registrationCloseAt && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/70 transition-colors">
                         <span className="text-sm text-muted-foreground">
                           {isRegistrationOpen(sheetEvent)
                             ? 'Registration Closes'
@@ -332,44 +383,6 @@ export function EventTab() {
                         </span>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-
-                {/* Timeline Card */}
-                <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card/95 to-cyan-50/10 dark:to-cyan-950/10">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-muted/50">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      Event Timeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/30 hover:to-muted/40 transition-colors">
-                          <p className="text-xs text-muted-foreground mb-1">Created</p>
-                          <p className="text-sm font-medium">
-                            {new Date(sheetEvent.createdAt).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                        <div className="flex-1 p-3 rounded-lg bg-gradient-to-r from-muted/20 to-muted/30 hover:from-muted/30 hover:to-muted/40 transition-colors">
-                          <p className="text-xs text-muted-foreground mb-1">Last Updated</p>
-                          <p className="text-sm font-medium">
-                            {new Date(sheetEvent.updatedAt).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { teams, teamMembers, events } from '@/lib/db/schema';
+import { teams, teamMembers, events, users } from '@/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 
@@ -35,7 +35,7 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found or not accessible' }, { status: 404 });
     }
 
-    // Get all teams for the event with member counts
+    // Get all teams for the event
     const eventTeams = await db
       .select({
         id: teams.id,
@@ -48,26 +48,28 @@ export async function GET(
         createdAt: teams.createdAt,
         updatedAt: teams.updatedAt,
         eventId: teams.eventId,
-        memberCount: count(teamMembers.id),
       })
       .from(teams)
-      .leftJoin(teamMembers, eq(teams.id, teamMembers.teamId))
       .where(eq(teams.eventId, eventId))
-      .groupBy(
-        teams.id,
-        teams.name,
-        teams.description,
-        teams.demoUrl,
-        teams.repoUrl,
-        teams.awardType,
-        teams.presentationOrder,
-        teams.createdAt,
-        teams.updatedAt,
-        teams.eventId
-      )
       .orderBy(teams.presentationOrder);
 
-    // Check if user is on any team in this event
+    // Get member counts for all teams (but not member details for privacy)
+    const teamsWithCounts = await Promise.all(
+      eventTeams.map(async (team) => {
+        const memberCount = await db
+          .select({ count: count(teamMembers.id) })
+          .from(teamMembers)
+          .where(eq(teamMembers.teamId, team.id));
+
+        return {
+          ...team,
+          members: [], // Empty for privacy - only populated for user's own team later
+          memberCount: memberCount[0]?.count || 0,
+        };
+      })
+    );
+
+    // Check if user is on any team in this event and get user's team details
     const userTeamMember = await db
       .select({
         teamId: teamMembers.teamId,
@@ -78,53 +80,34 @@ export async function GET(
 
     const userTeamId = userTeamMember[0]?.teamId;
 
-    // Get user's team details if they have one
+    // Get user's team details with member information if they have one
     let userTeam = null;
     if (userTeamId) {
-      const userTeamData = await db
-        .select({
-          id: teams.id,
-          name: teams.name,
-          description: teams.description,
-          demoUrl: teams.demoUrl,
-          repoUrl: teams.repoUrl,
-          awardType: teams.awardType,
-          presentationOrder: teams.presentationOrder,
-          createdAt: teams.createdAt,
-          updatedAt: teams.updatedAt,
-          eventId: teams.eventId,
-          memberCount: count(teamMembers.id),
-        })
-        .from(teams)
-        .leftJoin(teamMembers, eq(teams.id, teamMembers.teamId))
-        .where(eq(teams.id, userTeamId))
-        .groupBy(
-          teams.id,
-          teams.name,
-          teams.description,
-          teams.demoUrl,
-          teams.repoUrl,
-          teams.awardType,
-          teams.presentationOrder,
-          teams.createdAt,
-          teams.updatedAt,
-          teams.eventId
-        )
-        .limit(1);
+      const userTeamBase = teamsWithCounts.find(team => team.id === userTeamId);
+      if (userTeamBase) {
+        // Fetch member details only for user's own team
+        const members = await db
+          .select({
+            id: teamMembers.id,
+            userId: teamMembers.userId,
+            userEmail: users.email,
+            joinedAt: teamMembers.joinedAt,
+          })
+          .from(teamMembers)
+          .leftJoin(users, eq(teamMembers.userId, users.id))
+          .where(eq(teamMembers.teamId, userTeamId));
 
-      if (userTeamData.length > 0) {
         userTeam = {
-          ...userTeamData[0],
-          members: [],
+          ...userTeamBase,
+          members,
           userIsMember: true,
         };
       }
     }
 
     // Add userIsMember flag to all teams
-    const teamsWithMemberInfo = eventTeams.map((team) => ({
+    const teamsWithMemberInfo = teamsWithCounts.map((team) => ({
       ...team,
-      members: [],
       userIsMember: team.id === userTeamId,
     }));
 

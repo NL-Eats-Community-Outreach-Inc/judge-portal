@@ -17,7 +17,7 @@ export function RoleSelector({ selectedRole, onRoleChange, className }: RoleSele
     {
       value: 'judge' as const,
       label: 'Judge',
-      description: 'Evaluate and score team presentations',
+      description: 'Evaluate team presentations',
       icon: Gavel,
     },
     {
