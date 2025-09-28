@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -101,9 +101,9 @@ export function EventTab() {
   return (
     <div className="relative">
       <div className="space-y-6">
-        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-3">
-            <Info className="h-4 w-4 text-muted-foreground" />
+            <Info className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-sm text-muted-foreground">
               Select an event to view criteria and manage your team
             </span>
@@ -122,7 +122,7 @@ export function EventTab() {
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
 
@@ -130,28 +130,29 @@ export function EventTab() {
           {events.map((event) => (
             <Card
               key={event.id}
-              className={`transition-all duration-300 cursor-pointer border-border/50 ${
+              className={`transition-all duration-300 cursor-pointer border-border/50 w-full max-w-full overflow-hidden ${
                 selectedEvent?.id === event.id
-                  ? 'bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/80 dark:from-blue-950/10 dark:via-slate-900/20 dark:to-indigo-950/10 ring-2 ring-blue-400 dark:ring-blue-600/40 shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 transform scale-[1.02] border-blue-200 dark:border-blue-800/30'
-                  : 'hover:border-border hover:shadow-md hover:bg-gradient-to-br hover:from-muted/30 hover:to-muted/20 hover:scale-[1.01] transform'
+                  ? 'bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-purple-50/80 dark:from-blue-950/10 dark:via-slate-900/20 dark:to-indigo-950/10 ring-2 ring-blue-400 dark:ring-blue-600/40 shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 transform scale-[1.01] border-blue-200 dark:border-blue-800/30'
+                  : ''
               }`}
               onClick={() => handleSelectEvent(event)}
             >
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-3">
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      {event.name}
-                      <Badge variant="secondary" className="capitalize">
-                        {event.status}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground/80 leading-relaxed">
-                      {event.description}
-                    </CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-3 flex-1 overflow-hidden">
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                      <h3 className="text-xl font-semibold leading-none tracking-tight min-w-0 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {event.name.length > 20 ? event.name.substring(0, 20) + '...' : event.name}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {event.description && event.description.length > 100
+                        ? event.description.substring(0, 100) + '...'
+                        : event.description}
+                    </p>
                   </div>
                   {selectedEvent?.id === event.id && (
-                    <Badge className="bg-blue-500 text-white border-0 shadow-sm animate-in fade-in-0 zoom-in-95 duration-200 pointer-events-none">
+                    <Badge className="bg-blue-500 text-white border-0 shadow-sm animate-in fade-in-0 zoom-in-95 duration-200 pointer-events-none shrink-0">
                       ✓ Selected
                     </Badge>
                   )}
@@ -194,7 +195,7 @@ export function EventTab() {
                     className="flex items-center gap-1.5"
                   >
                     <Eye className="h-4 w-4" />
-                    View Details
+                    <span className="hidden sm:inline">View Details</span>
                   </Button>
                 </div>
               </CardContent>

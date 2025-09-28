@@ -90,7 +90,7 @@ const getDisplayAwardType = (awardType: string) => {
 export function TeamsTab() {
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [userTeam, setUserTeam] = useState<TeamWithMembers | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -135,6 +135,7 @@ export function TeamsTab() {
     } else {
       setTeams([]);
       setUserTeam(null);
+      setLoading(false);
     }
   }, [selectedEvent, fetchTeams]);
 
@@ -300,15 +301,22 @@ export function TeamsTab() {
   return (
     <div className="relative">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-bold">Teams</h2>
-            <p className="text-muted-foreground">
-              Teams for {selectedEvent.name} • Max {selectedEvent.maxTeamSize} members per team
+            <p className="text-muted-foreground text-sm flex items-center gap-1">
+              <span className="flex-shrink-0">Teams for</span>
+              <span
+                className="truncate max-w-[150px] sm:max-w-[250px] md:max-w-[350px] lg:max-w-[450px]"
+                title={selectedEvent.name}
+              >
+                {selectedEvent.name}
+              </span>
+              <span className="flex-shrink-0">• Max {selectedEvent.maxTeamSize} members</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               variant="outline"
               onClick={async () => {
@@ -323,14 +331,14 @@ export function TeamsTab() {
               className="flex items-center gap-2"
             >
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            {!userTeam && isRegistrationOpen && (
+            {!loading && !userTeam && isRegistrationOpen && (
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Team
+                    <Plus className="h-4 w-4" />
+                    <span className="ml-2 hidden sm:inline">Create Team</span>
                   </Button>
                 </DialogTrigger>
                 <CreateTeamDialog
@@ -360,33 +368,30 @@ export function TeamsTab() {
         {userTeam && (
           <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                     <CheckCircle className="h-5 w-5 text-white" />
                   </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-green-900 dark:text-green-100 flex items-center gap-2">
-                      Your Team
-                      {/* <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-100">Member</Badge> */}
-                    </CardTitle>
-                    <CardDescription className="text-green-700 dark:text-green-300">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-green-900 dark:text-green-100">Your Team</CardTitle>
+                    <CardDescription className="text-green-700 dark:text-green-300 font-medium break-words mt-1">
                       {userTeam.name}
                     </CardDescription>
                     {userTeam.description && (
-                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-2 break-words">
                         {userTeam.description}
                       </p>
                     )}
                   </div>
                 </div>
                 {isRegistrationOpen && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={openEditDialog}
-                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm w-full sm:w-auto"
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
@@ -396,7 +401,7 @@ export function TeamsTab() {
                         <Button
                           variant="secondary"
                           size="sm"
-                          className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
+                          className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm w-full sm:w-auto"
                         >
                           <UserMinus className="h-4 w-4 mr-2" />
                           Leave
@@ -419,111 +424,104 @@ export function TeamsTab() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    {/* Delete button removed - Leave team automatically deletes when last member */}
-                    {/* {userTeam.memberCount === 1 && (
-                    <Button variant="destructive" size="sm" onClick={handleDeleteTeam}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  )} */}
                   </div>
                 )}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                      Award Type
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-green-900 dark:text-green-100 uppercase tracking-wider">
+                    Award Type
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="w-fit border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
+                  >
+                    {getDisplayAwardType(userTeam.awardType)}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-green-900 dark:text-green-100 uppercase tracking-wider">
+                    Members
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">
+                      {userTeam.memberCount} / {selectedEvent.maxTeamSize}
                     </span>
-                    <Badge
-                      variant="outline"
-                      className="ml-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200"
-                    >
-                      {getDisplayAwardType(userTeam.awardType)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-green-900 dark:text-green-100">
-                      Members
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-green-700 dark:text-green-300">
-                        {userTeam.memberCount} / {selectedEvent.maxTeamSize}
-                      </span>
-                      {userTeam.members && userTeam.members.length > 0 && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
-                            >
-                              View
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent
-                            onOpenAutoFocus={(e) => {
-                              // Prevent auto-focus since this is a read-only dialog
-                              e.preventDefault();
-                            }}
+                    {userTeam.members && userTeam.members.length > 0 && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
                           >
-                            <DialogHeader>
-                              <DialogTitle>Team Members - {userTeam.name}</DialogTitle>
-                              <DialogDescription>
-                                {userTeam.memberCount} member{userTeam.memberCount !== 1 ? 's' : ''}{' '}
-                                in your team
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-3">
-                              {userTeam.members.map((member) => (
-                                <div
-                                  key={member.id}
-                                  className="flex items-center justify-between p-3 border rounded-lg"
-                                >
-                                  <div>
-                                    <p className="font-medium">{member.userEmail}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      Joined {new Date(member.joinedAt).toLocaleDateString()}
-                                    </p>
-                                  </div>
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent
+                          onOpenAutoFocus={(e) => {
+                            // Prevent auto-focus since this is a read-only dialog
+                            e.preventDefault();
+                          }}
+                        >
+                          <DialogHeader>
+                            <DialogTitle>Team Members - {userTeam.name}</DialogTitle>
+                            <DialogDescription>
+                              {userTeam.memberCount} member{userTeam.memberCount !== 1 ? 's' : ''}{' '}
+                              in your team
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-3">
+                            {userTeam.members.map((member) => (
+                              <div
+                                key={member.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div>
+                                  <p className="font-medium">{member.userEmail}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Joined {new Date(member.joinedAt).toLocaleDateString()}
+                                  </p>
                                 </div>
-                              ))}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {userTeam.demoUrl && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        asChild
-                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                      >
-                        <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Demo
-                        </a>
-                      </Button>
-                    )}
-                    {userTeam.repoUrl && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        asChild
-                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm"
-                      >
-                        <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
-                          <Code2 className="h-4 w-4 mr-1" />
-                          Repo
-                        </a>
-                      </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     )}
                   </div>
+                </div>
+
+                <div className="flex gap-2 col-span-2 lg:col-span-2">
+                  {userTeam.demoUrl && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      asChild
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm flex-1"
+                    >
+                      <a href={userTeam.demoUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Demo
+                      </a>
+                    </Button>
+                  )}
+                  {userTeam.repoUrl && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      asChild
+                      className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm flex-1"
+                    >
+                      <a href={userTeam.repoUrl} target="_blank" rel="noopener noreferrer">
+                        <Code2 className="h-4 w-4 mr-1" />
+                        Repo
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -638,48 +636,61 @@ function TeamCard({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <CardTitle className="flex items-center gap-2">
-              {team.name}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="space-y-2 min-w-0 flex-1">
+              <CardTitle className="break-words">{team.name}</CardTitle>
+              {team.description && (
+                <CardDescription className="break-words">{team.description}</CardDescription>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 flex-shrink-0">
               <Badge variant="outline">{getDisplayAwardType(team.awardType)}</Badge>
               {team.userIsMember && <Badge>Your Team</Badge>}
-            </CardTitle>
-            {team.description && <CardDescription>{team.description}</CardDescription>}
-          </div>
-          <div className="text-right space-y-1">
-            <div className="text-sm text-muted-foreground">
-              {team.memberCount} / {maxTeamSize} members
             </div>
-            {team.memberCount >= maxTeamSize && <Badge variant="secondary">Full</Badge>}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {team.memberCount} / {maxTeamSize} members
+                </span>
+                {team.memberCount >= maxTeamSize && (
+                  <Badge variant="secondary" className="ml-1">
+                    Full
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {team.demoUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={team.demoUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Demo
+                  </a>
+                </Button>
+              )}
+              {team.repoUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={team.repoUrl} target="_blank" rel="noopener noreferrer">
+                    <Code2 className="h-4 w-4 mr-1" />
+                    Repo
+                  </a>
+                </Button>
+              )}
+              {canJoin && (
+                <Button size="sm" onClick={onJoin} className="ml-auto">
+                  Join Team
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
-
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {team.demoUrl && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={team.demoUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  Demo
-                </a>
-              </Button>
-            )}
-            {team.repoUrl && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={team.repoUrl} target="_blank" rel="noopener noreferrer">
-                  <Code2 className="h-4 w-4 mr-1" />
-                  Repo
-                </a>
-              </Button>
-            )}
-          </div>
-
-          {canJoin && <Button onClick={onJoin}>Join Team</Button>}
-        </div>
-      </CardContent>
     </Card>
   );
 }
