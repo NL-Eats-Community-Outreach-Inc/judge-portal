@@ -14,10 +14,12 @@ export function CriteriaTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { selectedEvent } = useParticipantEvent();
 
-  const fetchCriteria = useCallback(async () => {
+  const fetchCriteria = useCallback(async (isRefresh = false) => {
     if (!selectedEvent) return;
 
-    setLoading(true);
+    if (!isRefresh) {
+      setLoading(true);
+    }
     try {
       const response = await fetch(`/api/participant/events/${selectedEvent.id}/criteria`);
       if (response.ok) {
@@ -27,7 +29,9 @@ export function CriteriaTab() {
     } catch (error) {
       console.error('Failed to fetch criteria:', error);
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        setLoading(false);
+      }
     }
   }, [selectedEvent]);
 
@@ -99,35 +103,32 @@ export function CriteriaTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Judging Criteria</h2>
-          <p className="text-muted-foreground">
-            Criteria for {selectedEvent.name} • {criteria.length} total criteria
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            setIsRefreshing(true);
-            try {
-              await fetchCriteria();
-            } finally {
-              setIsRefreshing(false);
-            }
-          }}
-          disabled={isRefreshing}
-          className="flex items-center gap-2"
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
+    <div className="relative">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Judging Criteria</h2>
+            <p className="text-muted-foreground">
+              Criteria for {selectedEvent.name} • {criteria.length} total criteria
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setIsRefreshing(true);
+              try {
+                await fetchCriteria(true);
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
             <RefreshCw className="h-4 w-4" />
-          )}
-          Refresh
-        </Button>
-      </div>
+            Refresh
+          </Button>
+        </div>
 
       {Object.entries(groupedCriteria).map(([category, categoryCriteria]) => (
         <div key={category} className="space-y-4">
@@ -203,6 +204,17 @@ export function CriteriaTab() {
           </div>
         </div>
       ))}
+      </div>
+
+      {/* Refresh overlay - positioned at the end to avoid layout shift */}
+      {isRefreshing && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing criteria...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

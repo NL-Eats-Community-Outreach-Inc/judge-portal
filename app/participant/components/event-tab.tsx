@@ -104,8 +104,9 @@ export function EventTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+    <div className="relative">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-3">
           <Info className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
@@ -125,11 +126,7 @@ export function EventTab() {
           disabled={isRefreshing}
           className="flex items-center gap-2"
         >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
+          <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
       </div>
@@ -424,6 +421,17 @@ export function EventTab() {
           )}
         </SheetContent>
       </Sheet>
+      </div>
+
+      {/* Refresh overlay - positioned at the end to avoid layout shift */}
+      {isRefreshing && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing events...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -95,6 +95,10 @@ export function TeamsTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState<{
+    isLoading: boolean;
+    action: string;
+  }>({ isLoading: false, action: '' });
   const { selectedEvent } = useParticipantEvent();
 
   // Form states
@@ -168,6 +172,7 @@ export function TeamsTab() {
   };
 
   const handleJoinTeam = async (teamId: string) => {
+    setActionLoading({ isLoading: true, action: 'Joining team...' });
     try {
       const response = await fetch(`/api/participant/teams/${teamId}/join`, {
         method: 'POST',
@@ -175,19 +180,22 @@ export function TeamsTab() {
 
       if (response.ok) {
         toast.success('Successfully joined the team!');
-        fetchTeams();
+        await fetchTeams();
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to join team');
       }
     } catch {
       toast.error('Failed to join team');
+    } finally {
+      setActionLoading({ isLoading: false, action: '' });
     }
   };
 
   const handleLeaveTeam = async () => {
     if (!userTeam) return;
 
+    setActionLoading({ isLoading: true, action: 'Leaving team...' });
     try {
       const response = await fetch(`/api/participant/teams/${userTeam.id}/leave`, {
         method: 'DELETE',
@@ -195,13 +203,15 @@ export function TeamsTab() {
 
       if (response.ok) {
         toast.success('Left the team successfully');
-        fetchTeams();
+        await fetchTeams();
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to leave team');
       }
     } catch {
       toast.error('Failed to leave team');
+    } finally {
+      setActionLoading({ isLoading: false, action: '' });
     }
   };
 
@@ -288,36 +298,33 @@ export function TeamsTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Teams</h2>
-          <p className="text-muted-foreground">
-            Teams for {selectedEvent.name} • Max {selectedEvent.maxTeamSize} members per team
-          </p>
-        </div>
+    <div className="relative">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Teams</h2>
+            <p className="text-muted-foreground">
+              Teams for {selectedEvent.name} • Max {selectedEvent.maxTeamSize} members per team
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={async () => {
-              setIsRefreshing(true);
-              try {
-                await fetchTeams();
-              } finally {
-                setIsRefreshing(false);
-              }
-            }}
-            disabled={isRefreshing}
-            className="flex items-center gap-2"
-          >
-            {isRefreshing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                  await fetchTeams();
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
               <RefreshCw className="h-4 w-4" />
-            )}
-            Refresh
-          </Button>
+              Refresh
+            </Button>
           {!userTeam && isRegistrationOpen && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
@@ -585,6 +592,27 @@ export function TeamsTab() {
             onSubmit={handleUpdateTeam}
           />
         </Dialog>
+      )}
+      </div>
+
+      {/* Loading overlays - positioned at the end to avoid layout shift */}
+      {isRefreshing && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">Refreshing teams...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Action loading overlay for join/leave team */}
+      {actionLoading.isLoading && (
+        <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
+          <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">{actionLoading.action}</span>
+          </div>
+        </div>
       )}
     </div>
   );
