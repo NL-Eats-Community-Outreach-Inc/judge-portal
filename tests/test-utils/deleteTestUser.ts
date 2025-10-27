@@ -7,7 +7,6 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env');
 }
 
-
 async function srFetch(url: string, opts: RequestInit = {}) {
   opts.headers = {
     ...(opts.headers || {}),
@@ -18,7 +17,11 @@ async function srFetch(url: string, opts: RequestInit = {}) {
   const res = await fetch(url, opts);
   const txt = await res.text();
   let body: any;
-  try { body = JSON.parse(txt); } catch { body = txt; }
+  try {
+    body = JSON.parse(txt);
+  } catch {
+    body = txt;
+  }
   return { res, body };
 }
 
@@ -32,16 +35,20 @@ export async function getUserIdByEmail(email: string): Promise<string> {
   const { res, body } = await srFetch(url, { method: 'GET' });
 
   if (!res.ok) {
-    throw new Error(`[getUserIdByEmail] Admin lookup failed ${res.status}: ${JSON.stringify(body)}`);
+    throw new Error(
+      `[getUserIdByEmail] Admin lookup failed ${res.status}: ${JSON.stringify(body)}`
+    );
   }
 
   // Admin might return { users: [...] } or an array depending on versions; normalize
-  const users = Array.isArray(body) ? body : (Array.isArray(body?.users) ? body.users : []);
+  const users = Array.isArray(body) ? body : Array.isArray(body?.users) ? body.users : [];
   if (!users || users.length === 0) {
     throw new Error(`[getUserIdByEmail] No user found for ${email}`);
   }
   if (users.length > 1) {
-    throw new Error(`[getUserIdByEmail] Multiple users found for ${email}: ${users.map((u:any)=>u.id).join(', ')}`);
+    throw new Error(
+      `[getUserIdByEmail] Multiple users found for ${email}: ${users.map((u: any) => u.id).join(', ')}`
+    );
   }
   return users[0].id;
 }
@@ -50,7 +57,7 @@ export async function getUserIdByEmail(email: string): Promise<string> {
 export async function cleanupTestUserById(userId: string) {
   //const url = `${SUPABASE_URL}/rpc/cleanup_test_user_by_id`;
   const res = await fetch(`/api/admin/users/${userId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
     /* headers: {
       'Content-Type': 'application/json',
       apikey: SERVICE_ROLE_KEY,

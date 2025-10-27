@@ -11,13 +11,13 @@ test.describe.parallel('Judge portal - sign-up & cleanup', () => {
 
     // Prepare to capture the signup response
     let createdUserId: string | undefined;
-    
+
     await page.getByRole('link', { name: 'Sign up' }).click();
-    
+
     await page.fill('input[id="email"]', user.email);
     await page.fill('input[id="password"]', user.password);
     await page.fill('input[id="repeat-password"]', user.password);
-    
+
     page.on('response', async (response) => {
       try {
         const url = response.url();
@@ -57,12 +57,13 @@ test.describe.parallel('Judge portal - sign-up & cleanup', () => {
     if (createdUserId) {
       (testInfo.project as any).testUserId = createdUserId;
     } else {
-      console.warn('[test] Could not capture createdUserId; cleanup may fail and will try fallback.');
+      console.warn(
+        '[test] Could not capture createdUserId; cleanup may fail and will try fallback.'
+      );
     }
 
     await expect(page).toHaveURL(/\/judge/);
   });
-
 
   test.afterEach(async ({}, testInfo) => {
     // TODO: Delete test users once finished.
