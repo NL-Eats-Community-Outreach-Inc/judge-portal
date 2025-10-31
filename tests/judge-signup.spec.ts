@@ -7,19 +7,22 @@ test.describe('Judge portal - sign-up & cleanup', () => {
   const user = { email: uniqueTestEmail(), password: 'UniqueTestPassphrase28940!' };
 
   test('Dashboard reached @judge', async ({ page }, testInfo) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'networkidle' });
 
     // Prepare to capture the signup response
     let createdUserId: string | undefined;
 
+    // Click sign up and wait for navigation
     await page.getByRole('link', { name: 'Sign up' }).click();
+    await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
-    // Wait for sign-up form to be visible
-    await page.waitForSelector('input[id="email"]', { state: 'visible' });
+    // Wait for form to be ready and fill it
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    await page.fill('input[id="email"]', user.email);
-    await page.fill('input[id="password"]', user.password);
-    await page.fill('input[id="repeat-password"]', user.password);
+    await emailInput.fill(user.email);
+    await page.locator('input[id="password"]').fill(user.password);
+    await page.locator('input[id="repeat-password"]').fill(user.password);
 
     page.on('response', async (response) => {
       try {
@@ -43,8 +46,8 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await Promise.all([
       // Click triggers the signup network call
       page.getByRole('button', { name: 'Sign up' }).click(),
-      // Wait for navigation to the judge dashboard
-      page.waitForURL(/\/judge/),
+      // Wait for navigation to the judge dashboard (increased timeout for CI)
+      page.waitForURL(/\/judge/, { timeout: 60000 }),
     ]);
 
     // If we didn't capture the id from the network, fallback to admin lookup by email
