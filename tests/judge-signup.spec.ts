@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { uniqueTestEmail } from './test-utils/createUniqueEmail';
-import { cleanupTestUserById, getUserIdByEmail } from './test-utils/deleteTestUser';
+import { uniqueTestEmail } from './test-utils/create-unique-email';
+import { cleanupTestUserById, getUserIdByEmail } from './test-utils/delete-test-user';
 
 test.describe('Judge portal - sign-up & cleanup', () => {
   // One test user per test
