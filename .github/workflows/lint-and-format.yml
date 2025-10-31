@@ -5,7 +5,7 @@ on:
   push:
 
 jobs:
-  lint:
+  lint-and-format:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
