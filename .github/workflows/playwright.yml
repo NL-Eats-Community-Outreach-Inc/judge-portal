@@ -33,15 +33,15 @@ jobs:
         echo "✓ GitHub Secrets are configured"
     - name: Create .env file for Next.js
       run: |
-        cat > .env << EOF
-        NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-        NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-        SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
-        DATABASE_URL=$DATABASE_URL
-        EOF
-        echo "✓ Created .env file"
-        echo "Content preview (first 2 lines, masked):"
-        head -n 2 .env | sed 's/=.*/=***/'
+        cat > .env << 'ENVEOF'
+NEXT_PUBLIC_SUPABASE_URL=${{ secrets.TEST_SUPABASE_URL }}
+NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.TEST_SUPABASE_ANON_KEY }}
+SUPABASE_SERVICE_ROLE_KEY=${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}
+ENVEOF
+        echo "✓ Created .env file ($(wc -l < .env) lines, $(wc -c < .env) bytes)"
+        echo "First line check:"
+        head -n 1 .env | od -c | head -n 2
     - name: Start Next.js server
       run: |
         npm run dev > server.log 2>&1 &
