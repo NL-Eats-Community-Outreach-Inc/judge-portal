@@ -8,6 +8,11 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -17,6 +22,11 @@ jobs:
       run: npm ci
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
+    - name: Start Next.js server
+      run: npm run dev &
+    - name: Wait for server to be ready
+      run: |
+        timeout 60 bash -c 'until curl -s http://localhost:3000 > /dev/null; do sleep 1; done' || exit 1
     - name: Run Playwright tests
       run: npx playwright test
     - uses: actions/upload-artifact@v4

@@ -1,28 +1,13 @@
-//import { createClient } from '@supabase/supabase-js';
-//import { getCurrentUser } from '@/lib/auth/server';
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env');
 }
 
-async function srFetch(url: string, opts: RequestInit = {}) {
-  opts.headers = {
-    ...(opts.headers || {}),
-    apiKey: SERVICE_ROLE_KEY,
-    Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-    'Content-Type': 'application/json',
-  };
-  const res = await fetch(url, opts);
-  const txt = await res.text();
-  let body: any;
-  try {
-    body = JSON.parse(txt);
-  } catch {
-    body = txt;
-  }
-  return { res, body };
+// Safety check: ensure we're using test database
+if (!SUPABASE_URL.includes('ynexconwrqhiohlvpnav')) {
+  throw new Error('Test utilities must use test Supabase project only!');
 }
 
 /**
@@ -30,46 +15,76 @@ async function srFetch(url: string, opts: RequestInit = {}) {
  * Throws if not found or if multiple found.
  */
 export async function getUserIdByEmail(email: string): Promise<string> {
-  const ADMIN_USERS_BASE = `${SUPABASE_URL}/auth/v1/admin/users`;
-  const url = `${ADMIN_USERS_BASE}?email=${encodeURIComponent(email)}`;
-  const { res, body } = await srFetch(url, { method: 'GET' });
+  const url = `${SUPABASE_URL}/auth/v1/admin/users`;
 
-  if (!res.ok) {
-    throw new Error(
-      `[getUserIdByEmail] Admin lookup failed ${res.status}: ${JSON.stringify(body)}`
-    );
-  }
-
-  // Admin might return { users: [...] } or an array depending on versions; normalize
-  const users = Array.isArray(body) ? body : Array.isArray(body?.users) ? body.users : [];
-  if (!users || users.length === 0) {
-    throw new Error(`[getUserIdByEmail] No user found for ${email}`);
-  }
-  if (users.length > 1) {
-    throw new Error(
-      `[getUserIdByEmail] Multiple users found for ${email}: ${users.map((u: any) => u.id).join(', ')}`
-    );
-  }
-  return users[0].id;
-}
-
-// TODO: Delete functionality.
-export async function cleanupTestUserById(userId: string) {
-  //const url = `${SUPABASE_URL}/rpc/cleanup_test_user_by_id`;
-  const res = await fetch(`/api/admin/users/${userId}`, {
-    method: 'DELETE',
-    /* headers: {
-      'Content-Type': 'application/json',
+  const res = await fetch(url, {
+    headers: {
       apikey: SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     },
-    body: JSON.stringify({ p_user_id: userId }), */
   });
-  const body = await res.json().catch(() => null);
+
   if (!res.ok) {
-    console.error('[cleanup] Response error', res.status, body);
-    throw new Error(`Cleanup failed ${res.status}: ${JSON.stringify(body)}`);
+    const body = await res.text();
+    throw new Error(`[getUserIdByEmail] Admin lookup failed ${res.status}: ${body}`);
   }
-  console.log('[cleanup] Cleanup result', body);
-  return body;
+
+  const data = await res.json();
+  const users = data.users || [];
+
+  const matchedUser = users.find((u: any) => u.email === email);
+  if (!matchedUser) {
+    throw new Error(`[getUserIdByEmail] No user found for ${email}`);
+  }
+
+  return matchedUser.id;
+}
+
+/**
+ * Delete a test user - must delete from database first, then auth
+ */
+export async function cleanupTestUserById(userId: string) {
+  // Step 1: Delete from database using SQL (cascades to scores, event_judges, etc)
+  const sqlUrl = `${SUPABASE_URL}/rest/v1/rpc/delete_user_cascade`;
+  const sqlRes = await fetch(sqlUrl, {
+    method: 'POST',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ user_id: userId }),
+  });
+
+  // If RPC doesn't exist, delete directly from users table
+  if (sqlRes.status === 404) {
+    const deleteUrl = `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`;
+    const delRes = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+    });
+    if (!delRes.ok && delRes.status !== 404) {
+      console.error('[cleanup] DB delete failed:', delRes.status);
+    }
+  }
+
+  // Step 2: Delete from auth
+  const authUrl = `${SUPABASE_URL}/auth/v1/admin/users/${userId}`;
+  const authRes = await fetch(authUrl, {
+    method: 'DELETE',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+  });
+
+  if (!authRes.ok && authRes.status !== 404) {
+    const body = await authRes.text();
+    console.error('[cleanup] Auth delete failed:', authRes.status, body);
+  }
+
+  console.log(`[cleanup] Deleted user ${userId}`);
 }

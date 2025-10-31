@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { uniqueTestEmail } from './test-utils/createUniqueEmail';
 import { cleanupTestUserById, getUserIdByEmail } from './test-utils/deleteTestUser';
 
-test.describe.parallel('Judge portal - sign-up & cleanup', () => {
+test.describe('Judge portal - sign-up & cleanup', () => {
   // One test user per test
   const user = { email: uniqueTestEmail(), password: 'UniqueTestPassphrase28940!' };
 
@@ -13,6 +13,9 @@ test.describe.parallel('Judge portal - sign-up & cleanup', () => {
     let createdUserId: string | undefined;
 
     await page.getByRole('link', { name: 'Sign up' }).click();
+
+    // Wait for sign-up form to be visible
+    await page.waitForSelector('input[id="email"]', { state: 'visible' });
 
     await page.fill('input[id="email"]', user.email);
     await page.fill('input[id="password"]', user.password);
@@ -66,9 +69,14 @@ test.describe.parallel('Judge portal - sign-up & cleanup', () => {
   });
 
   test.afterEach(async ({}, testInfo) => {
-    // TODO: Delete test users once finished.
-    /* if (testInfo.project?.testUserId) {
-      await cleanupTestUserById(testInfo.project.testUserId);
-    } */
+    const testUserId = (testInfo.project as any).testUserId;
+    if (testUserId) {
+      try {
+        await cleanupTestUserById(testUserId);
+      } catch (err) {
+        console.error('[afterEach] Cleanup failed:', err);
+        // Don't fail the test if cleanup fails
+      }
+    }
   });
 });
