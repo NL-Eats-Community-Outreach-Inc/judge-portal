@@ -22,6 +22,14 @@ jobs:
       run: npm ci
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
+    - name: Create .env file for Next.js
+      run: |
+        cat > .env << 'EOF'
+        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.TEST_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.TEST_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY=${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+        DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}
+        EOF
     - name: Start Next.js server
       run: |
         npm run dev > server.log 2>&1 &

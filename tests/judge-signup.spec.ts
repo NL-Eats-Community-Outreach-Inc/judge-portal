@@ -7,6 +7,14 @@ test.describe('Judge portal - sign-up & cleanup', () => {
   const user = { email: uniqueTestEmail(), password: 'UniqueTestPassphrase28940!' };
 
   test('Dashboard reached @judge', async ({ page }, testInfo) => {
+    // Capture console errors for debugging
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
     await page.goto('/', { waitUntil: 'networkidle' });
 
     // Prepare to capture the signup response
@@ -66,6 +74,11 @@ test.describe('Judge portal - sign-up & cleanup', () => {
       console.warn(
         '[test] Could not capture createdUserId; cleanup may fail and will try fallback.'
       );
+    }
+
+    // Log console errors if any occurred
+    if (consoleErrors.length > 0) {
+      console.error('[test] Browser console errors:', consoleErrors);
     }
 
     await expect(page).toHaveURL(/\/judge/);
