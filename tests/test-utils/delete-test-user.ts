@@ -11,7 +11,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 if (process.env.ALLOW_TEST_UTILITIES !== 'true') {
   throw new Error(
     'Set ALLOW_TEST_UTILITIES=true in .env.local to run test utilities. ' +
-    'Never set this in production!'
+      'Never set this in production!'
   );
 }
 
@@ -49,31 +49,17 @@ export async function getUserIdByEmail(email: string): Promise<string> {
  * Delete a test user - must delete from database first, then auth
  */
 export async function cleanupTestUserById(userId: string) {
-  // Step 1: Delete from database using SQL (cascades to scores, event_judges, etc)
-  const sqlUrl = `${SUPABASE_URL}/rest/v1/rpc/delete_user_cascade`;
-  const sqlRes = await fetch(sqlUrl, {
-    method: 'POST',
+  // Delete directly from users table (ON DELETE CASCADE handles related records)
+  const deleteUrl = `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`;
+  const delRes = await fetch(deleteUrl, {
+    method: 'DELETE',
     headers: {
       apikey: SERVICE_ROLE_KEY,
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ user_id: userId }),
   });
-
-  // If RPC doesn't exist, delete directly from users table
-  if (sqlRes.status === 404) {
-    const deleteUrl = `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`;
-    const delRes = await fetch(deleteUrl, {
-      method: 'DELETE',
-      headers: {
-        apikey: SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-      },
-    });
-    if (!delRes.ok && delRes.status !== 404) {
-      console.error('[cleanup] DB delete failed:', delRes.status);
-    }
+  if (!delRes.ok && delRes.status !== 404) {
+    console.error('[cleanup] DB delete failed:', delRes.status);
   }
 
   // Step 2: Delete from auth
