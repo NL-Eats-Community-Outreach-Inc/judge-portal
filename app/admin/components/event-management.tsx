@@ -477,7 +477,7 @@ export default function EventManagement() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-destructive hover:text-destructive disabled:text-muted-foreground"
+                                        className="text-red-600 hover:text-red-700 disabled:text-muted-foreground"
                                         onClick={() => setDeletingEvent(event)}
                                         disabled={
                                           event.status === 'active' || event.status === 'completed'
