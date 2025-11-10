@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 // Generates a brand‑new email for the test user.
 export function uniqueTestEmail(): string {
-  return `test-judge-${uuidv4()}@example.com`;
+  return `test-judge-${randomUUID()}@example.com`;
 }

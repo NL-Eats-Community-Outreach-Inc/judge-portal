@@ -6,8 +6,13 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 // Safety check: ensure we're using test database
-if (!SUPABASE_URL.includes('ynexconwrqhiohlvpnav')) {
-  throw new Error('Test utilities must use test Supabase project only!');
+// Require explicit opt-in flag that each developer sets in their .env.local
+// This works for any test database and still prevents accidental production usage
+if (process.env.ALLOW_TEST_UTILITIES !== 'true') {
+  throw new Error(
+    'Set ALLOW_TEST_UTILITIES=true in .env.local to run test utilities. ' +
+    'Never set this in production!'
+  );
 }
 
 /**
