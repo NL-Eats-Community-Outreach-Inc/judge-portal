@@ -85,6 +85,9 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
         options: {
           shouldCreateUser: true,
           data: {
+            // CRITICAL: Add flag to prevent automatic user creation by trigger
+            // The trigger will skip creation until OTP is verified
+            invite_pending: true,
             role: role,
           },
         },
@@ -108,6 +111,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     setError(null);
 
     try {
+      // Verify OTP
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
@@ -117,6 +121,21 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error;
 
       if (data.user) {
+        // CRITICAL: Create user record in public.users table
+        // The trigger was skipped due to invite_pending flag
+        // We need to manually insert the user with the selected role
+        const { error: insertError } = await supabase.from('users').insert({
+          id: data.user.id,
+          email: data.user.email,
+          role: role,
+        });
+
+        // Ignore conflict errors (user already exists)
+        if (insertError && !insertError.message.includes('duplicate')) {
+          console.error('Error creating user record:', insertError);
+          throw new Error('Failed to complete account setup');
+        }
+
         const redirectPath = role === 'judge' ? '/judge' : '/participant';
         router.push(redirectPath);
       }

@@ -42,7 +42,13 @@ export async function POST(request: NextRequest) {
       email: invitation.email,
       options: {
         // Don't set emailRedirectTo - this makes Supabase send a 6-digit code instead of a magic link
-        shouldCreateUser: true, // Allow new judges to receive OTP; user will be created on verification
+        shouldCreateUser: true,
+        data: {
+          // CRITICAL: Add flag to prevent automatic user creation by trigger
+          // The verify endpoint will create the user after OTP is confirmed
+          invite_pending: true,
+          role: invitation.role,
+        },
       },
     });
 

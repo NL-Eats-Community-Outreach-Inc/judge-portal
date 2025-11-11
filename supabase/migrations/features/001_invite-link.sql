@@ -85,6 +85,8 @@ CREATE POLICY "Allow authenticated user creation"
 -- Step 9: Update handle_new_user trigger to read role from metadata
 -- This fixes the issue where all OTP signups were getting 'judge' role
 -- Function runs as SECURITY DEFINER to bypass RLS on users table insert
+-- CRITICAL FIX: Skip user creation for invite flow (invite_pending flag)
+-- The /api/invite/verify endpoint will create the user after OTP verification
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 SECURITY DEFINER
@@ -94,7 +96,17 @@ AS $$
 DECLARE
   selected_role user_role;
   metadata_role text;
+  invite_pending boolean;
 BEGIN
+  -- CRITICAL FIX: Check if this is an invite flow user (has invite_pending flag)
+  -- If so, skip automatic creation - the verify endpoint will create them
+  invite_pending := COALESCE((new.raw_user_meta_data->>'invite_pending')::boolean, false);
+
+  IF invite_pending THEN
+    RAISE NOTICE 'Skipping user creation for % - invite pending OTP verification', new.email;
+    RETURN new;
+  END IF;
+
   -- Get role from user metadata as text first
   metadata_role := new.raw_user_meta_data->>'role';
 
@@ -132,9 +144,17 @@ $$;
 -- Grant execute permission to authenticated and anon roles
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO authenticated, anon;
 
+-- Step 10: Ensure trigger is correctly set up (INSERT only is sufficient)
+-- The trigger will check invite_pending flag and skip creation for invite flow
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- Success message
 DO $$
 BEGIN
   RAISE NOTICE 'Feature "invite-link" migration completed successfully!';
-  RAISE NOTICE 'User role trigger updated - now reads from user metadata';
+  RAISE NOTICE 'User role trigger updated - now checks invite_pending flag';
+  RAISE NOTICE 'Invite flow users will be created by verify endpoint after OTP confirmation';
 END $$;
