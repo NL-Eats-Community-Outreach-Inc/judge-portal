@@ -35,6 +35,19 @@ export default function InviteVerifyPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Special handling for existing users
+        if (data.existingRole && data.redirectUrl) {
+          toast.error('Account Already Exists', {
+            description: data.error || 'You already have an account',
+            duration: 6000,
+          });
+          // Redirect to their existing dashboard after a short delay
+          setTimeout(() => {
+            router.push(data.redirectUrl);
+          }, 2000);
+          return;
+        }
+
         toast.error('Verification failed', {
           description: data.error || 'Invalid or expired code',
         });

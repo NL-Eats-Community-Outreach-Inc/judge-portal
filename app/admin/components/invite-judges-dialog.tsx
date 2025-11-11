@@ -73,20 +73,45 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         return;
       }
 
-      // Handle case where all emails already have pending invitations
+      // Handle case where all emails already have pending invitations or are registered
       if (data.invitations && data.invitations.length > 0) {
         setInviteLinks(data.invitations);
 
-        const successMessage = data.existingInvites
-          ? `Created ${data.invitations.length} invitation(s). ${data.existingInvites.length} email(s) already had pending invitations.`
+        const warnings: string[] = [];
+        if (data.existingInvites && data.existingInvites.length > 0) {
+          warnings.push(`${data.existingInvites.length} email(s) already had pending invitations`);
+        }
+        if (data.alreadyRegistered && data.alreadyRegistered.length > 0) {
+          const registeredList = data.alreadyRegistered
+            .map((u: { email: string; role: string }) => `${u.email} (${u.role})`)
+            .join(', ');
+          warnings.push(`${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`);
+        }
+
+        const successMessage = warnings.length > 0
+          ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
           : `Created ${data.invitations.length} invitation(s)`;
 
         toast.success('Invitations sent!', {
           description: successMessage,
+          duration: 8000,
         });
-      } else if (data.existingInvites && data.existingInvites.length > 0) {
+      } else {
+        // No invitations created - all emails were filtered out
+        const warnings: string[] = [];
+        if (data.existingInvites && data.existingInvites.length > 0) {
+          warnings.push(`${data.existingInvites.length} email(s) already have pending invitations`);
+        }
+        if (data.alreadyRegistered && data.alreadyRegistered.length > 0) {
+          const registeredList = data.alreadyRegistered
+            .map((u: { email: string; role: string }) => `${u.email} (${u.role})`)
+            .join(', ');
+          warnings.push(`${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`);
+        }
+
         toast.warning('No new invitations created', {
-          description: `All ${data.existingInvites.length} email(s) already have pending invitations`,
+          description: warnings.join('. '),
+          duration: 8000,
         });
         setOpen(false);
         return;

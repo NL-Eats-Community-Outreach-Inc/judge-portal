@@ -5,6 +5,9 @@ import {
   getAllInvitations,
   getExistingInvitation,
 } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/admin/invitations
@@ -45,14 +48,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Filter out emails with existing invitations
-    const newEmails = emails.filter(email => !existingInvites.includes(email));
+    // Check for already registered users
+    const alreadyRegistered: Array<{ email: string; role: string }> = [];
+    for (const email of emails) {
+      const existingUser = await db
+        .select({ email: users.email, role: users.role })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingUser[0]) {
+        alreadyRegistered.push({
+          email: existingUser[0].email!,
+          role: existingUser[0].role!,
+        });
+      }
+    }
+
+    // Filter out emails with existing invitations or registered users
+    const registeredEmails = alreadyRegistered.map(u => u.email);
+    const newEmails = emails.filter(
+      email => !existingInvites.includes(email) && !registeredEmails.includes(email)
+    );
 
     if (newEmails.length === 0) {
       return NextResponse.json(
         {
-          message: 'All emails already have pending invitations',
-          existingInvites,
+          message: 'All emails are already invited or registered',
+          existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+          alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
         },
         { status: 200 }
       );
@@ -82,6 +106,7 @@ export async function POST(request: NextRequest) {
       success: true,
       invitations: invitesWithLinks,
       existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+      alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
     });
   } catch (error: any) {
     console.error('Create invitations error:', error);

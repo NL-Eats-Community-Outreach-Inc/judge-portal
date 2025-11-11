@@ -61,25 +61,29 @@ export async function POST(request: NextRequest) {
       .where(eq(users.id, data.user.id))
       .limit(1);
 
-    // If user doesn't exist, create user record
-    if (!existingUser[0]) {
-      await db.insert(users).values({
-        id: data.user.id,
-        email: invitation.email,
-        role: invitation.role, // Use role from invitation
-      });
-    } else {
-      // Update user role if it's different
-      if (existingUser[0].role !== invitation.role) {
-        await db
-          .update(users)
-          .set({
-            role: invitation.role,
-            updatedAt: new Date().toISOString(),
-          })
-          .where(eq(users.id, data.user.id));
-      }
+    // If user already exists, reject the invite
+    // Invite links are only for onboarding new users, not role changes
+    if (existingUser[0]) {
+      const roleRedirect =
+        existingUser[0].role === 'admin' ? '/admin' :
+        existingUser[0].role === 'judge' ? '/judge' : '/participant';
+
+      return NextResponse.json(
+        {
+          error: 'You already have an account. Please contact an administrator if you need a role change.',
+          existingRole: existingUser[0].role,
+          redirectUrl: roleRedirect,
+        },
+        { status: 400 }
+      );
     }
+
+    // Create new user record with role from invitation
+    await db.insert(users).values({
+      id: data.user.id,
+      email: invitation.email,
+      role: invitation.role,
+    });
 
     // Accept invitation (mark as accepted)
     await acceptInvitation(invitation.id, data.user.id);
