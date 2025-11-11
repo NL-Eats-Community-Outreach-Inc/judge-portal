@@ -50,8 +50,13 @@ export async function updateSession(request: NextRequest) {
 
   // Handle unauthenticated users
   if (!user) {
-    // Allow access to auth pages and root
-    if (pathname === '/' || pathname.startsWith('/auth')) {
+    // Allow access to auth pages, root, invite pages, and public API endpoints
+    if (
+      pathname === '/' ||
+      pathname.startsWith('/auth') ||
+      pathname.startsWith('/invite') ||
+      pathname.startsWith('/api/invite')
+    ) {
       return supabaseResponse;
     }
     // Redirect to login for protected routes

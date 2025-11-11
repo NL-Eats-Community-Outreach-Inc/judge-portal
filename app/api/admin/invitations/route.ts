@@ -1,0 +1,165 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { authServer } from '@/lib/auth';
+import {
+  createBatchInvitations,
+  getInvitationsByEvent,
+  getExistingInvitation,
+} from '@/lib/auth';
+
+/**
+ * POST /api/admin/invitations
+ * Create invitations (batch supported)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Verify admin role
+    const user = await authServer.requireAdmin();
+
+    const body = await request.json();
+    const { eventId, emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
+
+    // Validation
+    if (!eventId) {
+      return NextResponse.json(
+        { error: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one email is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter(email => !emailRegex.test(email));
+    if (invalidEmails.length > 0) {
+      return NextResponse.json(
+        { error: 'Invalid email addresses', invalidEmails },
+        { status: 400 }
+      );
+    }
+
+    // Check for existing pending invitations
+    const existingInvites: string[] = [];
+    for (const email of emails) {
+      const existing = await getExistingInvitation(email, eventId);
+      if (existing) {
+        existingInvites.push(email);
+      }
+    }
+
+    // Filter out emails with existing invitations
+    const newEmails = emails.filter(email => !existingInvites.includes(email));
+
+    if (newEmails.length === 0) {
+      return NextResponse.json(
+        {
+          message: 'All emails already have pending invitations',
+          existingInvites,
+        },
+        { status: 200 }
+      );
+    }
+
+    // Create invitations
+    const invitations = await createBatchInvitations({
+      eventId,
+      emails: newEmails,
+      role,
+      customMessage,
+      expiresInDays,
+      createdBy: user.id,
+    });
+
+    // Generate invite links
+    const origin = request.nextUrl.origin;
+    const invitesWithLinks = invitations.map(invite => ({
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      inviteLink: `${origin}/invite/${invite.token}`,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      invitations: invitesWithLinks,
+      existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+    });
+  } catch (error: any) {
+    console.error('Create invitations error:', error);
+
+    if (error.message?.includes('role required')) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/admin/invitations?eventId=xxx
+ * List invitations for an event
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // Verify admin role
+    await authServer.requireAdmin();
+
+    const { searchParams } = request.nextUrl;
+    const eventId = searchParams.get('eventId');
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const invitations = await getInvitationsByEvent(eventId);
+
+    // Generate invite links
+    const origin = request.nextUrl.origin;
+    const invitesWithLinks = invitations.map(invite => ({
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      status: invite.status,
+      customMessage: invite.customMessage,
+      expiresAt: invite.expiresAt,
+      acceptedAt: invite.acceptedAt,
+      createdAt: invite.createdAt,
+      inviteLink: `${origin}/invite/${invite.token}`,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      invitations: invitesWithLinks,
+    });
+  } catch (error: any) {
+    console.error('List invitations error:', error);
+
+    if (error.message?.includes('role required')) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

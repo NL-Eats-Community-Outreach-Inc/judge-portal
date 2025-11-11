@@ -12,9 +12,11 @@ import {
 import { sql } from 'drizzle-orm';
 
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'active', 'completed']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'judge']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant']);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
+export const invitationRoleEnum = pgEnum('invitation_role', ['judge', 'participant']);
+export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'revoked', 'expired']);
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -167,6 +169,40 @@ export const scores = pgTable(
   })
 );
 
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    token: text('token').notNull().unique(),
+    eventId: uuid('event_id')
+      .references(() => events.id, { onDelete: 'cascade' })
+      .notNull(),
+    email: text('email').notNull(),
+    role: invitationRoleEnum('role').notNull(),
+    status: invitationStatusEnum('status').default('pending').notNull(),
+    customMessage: text('custom_message'),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
+    createdBy: uuid('created_by')
+      .references(() => users.id)
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    tokenIdx: index('idx_invitations_token').on(table.token),
+    emailEventIdx: index('idx_invitations_email_event').on(table.email, table.eventId),
+    statusIdx: index('idx_invitations_status').on(table.status),
+    eventIdx: index('idx_invitations_event').on(table.eventId),
+    createdByIdx: index('idx_invitations_created_by').on(table.createdBy),
+  })
+);
+
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -179,3 +215,5 @@ export type EventJudge = typeof eventJudges.$inferSelect;
 export type NewEventJudge = typeof eventJudges.$inferInsert;
 export type Score = typeof scores.$inferSelect;
 export type NewScore = typeof scores.$inferInsert;
+export type Invitation = typeof invitations.$inferSelect;
+export type NewInvitation = typeof invitations.$inferInsert;

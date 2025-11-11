@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAdminEvent } from '../contexts/admin-event-context';
+import { InviteJudgesDialog } from './invite-judges-dialog';
+import { InvitationsList } from './invitations-list';
 import {
   Select,
   SelectContent,
@@ -42,11 +45,13 @@ interface User {
 }
 
 export default function UserManagement() {
+  const { selectedEvent } = useAdminEvent();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>());
   const [deletingUsers, setDeletingUsers] = useState(new Set<string>());
+  const [invitationRefreshTrigger, setInvitationRefreshTrigger] = useState(0);
 
   // Use useCallback to ensure stable reference for real-time sync
   const fetchUsers = useCallback(async () => {
@@ -219,6 +224,20 @@ export default function UserManagement() {
       >
         {getStatsCards()}
       </div>
+
+      {/* Judge Invitations Section */}
+      {selectedEvent && (
+        <InvitationsList
+          eventId={selectedEvent.id}
+          refreshTrigger={invitationRefreshTrigger}
+          actionButton={
+            <InviteJudgesDialog
+              eventId={selectedEvent.id}
+              onInvitesSent={() => setInvitationRefreshTrigger((prev) => prev + 1)}
+            />
+          }
+        />
+      )}
 
       <Card
         className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
