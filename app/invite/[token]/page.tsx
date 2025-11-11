@@ -65,7 +65,7 @@ export default function InviteLandingPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              This invitation link may have expired or been revoked. Please contact the event
+              This invitation link may have expired or been revoked. Please contact your
               administrator for a new invitation.
             </p>
             <Button variant="outline" className="w-full" onClick={() => router.push('/')}>
@@ -81,29 +81,19 @@ export default function InviteLandingPage() {
     <div className="flex items-center justify-center h-screen px-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>You've Been Invited!</CardTitle>
+          <CardTitle>You've Been Invited as a Judge!</CardTitle>
           <CardDescription>
-            You've been invited to participate in an upcoming event
+            Complete your registration to access the judging platform
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
-                  <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Event Details</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      You'll get more information after verifying your email
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
                   <User className="h-5 w-5 mt-0.5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">Your Role</p>
+                    <p className="font-medium">Judge Account</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      You've been invited as a judge for this event
+                      You've been invited to join as a judge. No password required!
                     </p>
                   </div>
                 </div>
@@ -111,9 +101,19 @@ export default function InviteLandingPage() {
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
                   <Mail className="h-5 w-5 mt-0.5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">Next Step</p>
+                    <p className="font-medium">Email Verification</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Click continue to verify your email address
+                      We'll send a 6-digit code to verify your email address
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
+                  <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">After Registration</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      An admin will assign you to events once your account is created
                     </p>
                   </div>
                 </div>

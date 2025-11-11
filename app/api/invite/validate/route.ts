@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInvitationByToken, isInvitationValid } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { db } from '@/lib/db';
-import { events } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/invite/validate
@@ -39,20 +36,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get event details
-    const event = await db
-      .select()
-      .from(events)
-      .where(eq(events.id, invitation.eventId))
-      .limit(1);
-
-    if (!event[0]) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
-    }
-
     // Trigger OTP code email via Supabase
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -78,11 +61,6 @@ export async function POST(request: NextRequest) {
         email: invitation.email,
         role: invitation.role,
         customMessage: invitation.customMessage,
-        event: {
-          id: event[0].id,
-          name: event[0].name,
-          description: event[0].description,
-        },
       },
     });
   } catch (error) {

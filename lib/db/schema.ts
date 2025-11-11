@@ -174,9 +174,6 @@ export const invitations = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     token: text('token').notNull().unique(),
-    eventId: uuid('event_id')
-      .references(() => events.id, { onDelete: 'cascade' })
-      .notNull(),
     email: text('email').notNull(),
     role: invitationRoleEnum('role').notNull(),
     status: invitationStatusEnum('status').default('pending').notNull(),
@@ -196,9 +193,8 @@ export const invitations = pgTable(
   },
   (table) => ({
     tokenIdx: index('idx_invitations_token').on(table.token),
-    emailEventIdx: index('idx_invitations_email_event').on(table.email, table.eventId),
+    emailIdx: index('idx_invitations_email').on(table.email),
     statusIdx: index('idx_invitations_status').on(table.status),
-    eventIdx: index('idx_invitations_event').on(table.eventId),
     createdByIdx: index('idx_invitations_created_by').on(table.createdBy),
   })
 );

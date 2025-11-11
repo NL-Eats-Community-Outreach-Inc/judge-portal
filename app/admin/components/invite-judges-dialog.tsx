@@ -23,11 +23,10 @@ import { Loader2, Mail, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InviteJudgesDialogProps {
-  eventId: string;
   onInvitesSent?: () => void;
 }
 
-export function InviteJudgesDialog({ eventId, onInvitesSent }: InviteJudgesDialogProps) {
+export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
   const [open, setOpen] = useState(false);
   const [emails, setEmails] = useState('');
   const [customMessage, setCustomMessage] = useState('');
@@ -58,7 +57,6 @@ export function InviteJudgesDialog({ eventId, onInvitesSent }: InviteJudgesDialo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventId,
           emails: emailList,
           role: 'judge',
           customMessage: customMessage || undefined,
@@ -88,7 +86,7 @@ export function InviteJudgesDialog({ eventId, onInvitesSent }: InviteJudgesDialo
         });
       } else if (data.existingInvites && data.existingInvites.length > 0) {
         toast.warning('No new invitations created', {
-          description: `All ${data.existingInvites.length} email(s) already have pending invitations for this event`,
+          description: `All ${data.existingInvites.length} email(s) already have pending invitations`,
         });
         setOpen(false);
         return;
@@ -134,10 +132,10 @@ export function InviteJudgesDialog({ eventId, onInvitesSent }: InviteJudgesDialo
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Invite Judges to Event</DialogTitle>
+          <DialogTitle>Invite Judges</DialogTitle>
           <DialogDescription>
-            Send invitation links to judges via email. They'll be able to join without creating an
-            account.
+            Send invitation links to judges via email. They'll be able to register without creating
+            a password.
           </DialogDescription>
         </DialogHeader>
 

@@ -41,14 +41,13 @@ interface Invitation {
 }
 
 interface InvitationsListProps {
-  eventId: string;
   refreshTrigger?: number;
   actionButton?: React.ReactNode;
 }
 
 const ITEMS_PER_PAGE = 5;
 
-export function InvitationsList({ eventId, refreshTrigger, actionButton }: InvitationsListProps) {
+export function InvitationsList({ refreshTrigger, actionButton }: InvitationsListProps) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -62,7 +61,7 @@ export function InvitationsList({ eventId, refreshTrigger, actionButton }: Invit
       setIsLoading(true);
     }
     try {
-      const response = await fetch(`/api/admin/invitations?eventId=${eventId}`);
+      const response = await fetch('/api/admin/invitations');
       const data = await response.json();
 
       if (response.ok) {
@@ -83,8 +82,8 @@ export function InvitationsList({ eventId, refreshTrigger, actionButton }: Invit
 
   useEffect(() => {
     fetchInvitations(false);
-    setCurrentPage(1); // Reset to first page when event or trigger changes
-  }, [eventId, refreshTrigger]);
+    setCurrentPage(1); // Reset to first page when trigger changes
+  }, [refreshTrigger]);
 
   const handleCopyLink = async (link: string, id: string) => {
     try {

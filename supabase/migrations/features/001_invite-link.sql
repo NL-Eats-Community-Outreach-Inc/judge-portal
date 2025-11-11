@@ -29,7 +29,6 @@ END $$;
 CREATE TABLE IF NOT EXISTS invitations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   token TEXT NOT NULL UNIQUE,
-  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
   email TEXT NOT NULL,
   role invitation_role NOT NULL,
   status invitation_status DEFAULT 'pending' NOT NULL,
@@ -43,9 +42,8 @@ CREATE TABLE IF NOT EXISTS invitations (
 
 -- Step 5: Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
-CREATE INDEX IF NOT EXISTS idx_invitations_email_event ON invitations(email, event_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 CREATE INDEX IF NOT EXISTS idx_invitations_status ON invitations(status);
-CREATE INDEX IF NOT EXISTS idx_invitations_event ON invitations(event_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_created_by ON invitations(created_by);
 
 -- Step 6: Enable Row Level Security

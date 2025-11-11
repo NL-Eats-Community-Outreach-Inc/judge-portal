@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Accept invitation (mark as accepted and assign to event)
+    // Accept invitation (mark as accepted)
     await acceptInvitation(invitation.id, data.user.id);
 
     // Determine redirect URL based on role

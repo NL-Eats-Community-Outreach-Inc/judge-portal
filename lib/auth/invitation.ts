@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { invitations, eventJudges } from '@/lib/db/schema';
+import { invitations } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
@@ -52,7 +52,6 @@ export function isInvitationValid(invitation: Invitation): {
  * Create a new invitation
  */
 export async function createInvitation(data: {
-  eventId: string;
   email: string;
   role: InvitationRole;
   customMessage?: string;
@@ -66,7 +65,6 @@ export async function createInvitation(data: {
     .insert(invitations)
     .values({
       token,
-      eventId: data.eventId,
       email: data.email,
       role: data.role,
       customMessage: data.customMessage,
@@ -82,7 +80,6 @@ export async function createInvitation(data: {
  * Create multiple invitations (batch)
  */
 export async function createBatchInvitations(data: {
-  eventId: string;
   emails: string[];
   role: InvitationRole;
   customMessage?: string;
@@ -93,7 +90,6 @@ export async function createBatchInvitations(data: {
 
   const invitationData = data.emails.map(email => ({
     token: generateInvitationToken(),
-    eventId: data.eventId,
     email,
     role: data.role,
     customMessage: data.customMessage,
@@ -125,24 +121,20 @@ export async function getInvitationByToken(
 }
 
 /**
- * Get invitations by event ID
+ * Get all invitations
  */
-export async function getInvitationsByEvent(
-  eventId: string
-): Promise<Invitation[]> {
+export async function getAllInvitations(): Promise<Invitation[]> {
   return db
     .select()
     .from(invitations)
-    .where(eq(invitations.eventId, eventId))
     .orderBy(desc(invitations.createdAt));
 }
 
 /**
- * Check if invitation exists for email and event
+ * Check if pending invitation exists for email
  */
 export async function getExistingInvitation(
-  email: string,
-  eventId: string
+  email: string
 ): Promise<Invitation | null> {
   const result = await db
     .select()
@@ -150,7 +142,6 @@ export async function getExistingInvitation(
     .where(
       and(
         eq(invitations.email, email),
-        eq(invitations.eventId, eventId),
         eq(invitations.status, 'pending')
       )
     )
@@ -160,7 +151,7 @@ export async function getExistingInvitation(
 }
 
 /**
- * Accept an invitation (mark as accepted and create user assignment)
+ * Accept an invitation (mark as accepted)
  */
 export async function acceptInvitation(
   invitationId: string,
@@ -191,17 +182,7 @@ export async function acceptInvitation(
     })
     .where(eq(invitations.id, invitationId));
 
-  // Assign user to event
-  if (invitation[0].role === 'judge') {
-    await db
-      .insert(eventJudges)
-      .values({
-        eventId: invitation[0].eventId,
-        judgeId: userId,
-      })
-      .onConflictDoNothing();
-  }
-  // For participants, assignment logic will be added when participant feature is implemented
+  // Note: Event assignment is now handled separately by admins through the event management UI
 }
 
 /**

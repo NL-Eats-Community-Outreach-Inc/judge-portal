@@ -226,18 +226,14 @@ export default function UserManagement() {
       </div>
 
       {/* Judge Invitations Section */}
-      {selectedEvent && (
-        <InvitationsList
-          eventId={selectedEvent.id}
-          refreshTrigger={invitationRefreshTrigger}
-          actionButton={
-            <InviteJudgesDialog
-              eventId={selectedEvent.id}
-              onInvitesSent={() => setInvitationRefreshTrigger((prev) => prev + 1)}
-            />
-          }
-        />
-      )}
+      <InvitationsList
+        refreshTrigger={invitationRefreshTrigger}
+        actionButton={
+          <InviteJudgesDialog
+            onInvitesSent={() => setInvitationRefreshTrigger((prev) => prev + 1)}
+          />
+        }
+      />
 
       <Card
         className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}

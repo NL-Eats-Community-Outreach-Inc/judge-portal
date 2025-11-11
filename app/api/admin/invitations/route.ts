@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import {
   createBatchInvitations,
-  getInvitationsByEvent,
+  getAllInvitations,
   getExistingInvitation,
 } from '@/lib/auth';
 
@@ -16,16 +16,9 @@ export async function POST(request: NextRequest) {
     const user = await authServer.requireAdmin();
 
     const body = await request.json();
-    const { eventId, emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
+    const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
 
     // Validation
-    if (!eventId) {
-      return NextResponse.json(
-        { error: 'Event ID is required' },
-        { status: 400 }
-      );
-    }
-
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json(
         { error: 'At least one email is required' },
@@ -46,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Check for existing pending invitations
     const existingInvites: string[] = [];
     for (const email of emails) {
-      const existing = await getExistingInvitation(email, eventId);
+      const existing = await getExistingInvitation(email);
       if (existing) {
         existingInvites.push(email);
       }
@@ -67,7 +60,6 @@ export async function POST(request: NextRequest) {
 
     // Create invitations
     const invitations = await createBatchInvitations({
-      eventId,
       emails: newEmails,
       role,
       customMessage,
@@ -109,25 +101,15 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/admin/invitations?eventId=xxx
- * List invitations for an event
+ * GET /api/admin/invitations
+ * List all invitations
  */
 export async function GET(request: NextRequest) {
   try {
     // Verify admin role
     await authServer.requireAdmin();
 
-    const { searchParams } = request.nextUrl;
-    const eventId = searchParams.get('eventId');
-
-    if (!eventId) {
-      return NextResponse.json(
-        { error: 'Event ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const invitations = await getInvitationsByEvent(eventId);
+    const invitations = await getAllInvitations();
 
     // Generate invite links
     const origin = request.nextUrl.origin;
