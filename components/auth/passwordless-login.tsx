@@ -91,8 +91,26 @@ export function PasswordlessLogin() {
           description: 'Redirecting to your dashboard...',
         });
 
-        // Redirect to judge dashboard
-        router.push('/judge');
+        // Get user role and redirect to appropriate dashboard
+        const { data: roleData, error: roleError } = await supabase.rpc('check_user_role', {
+          user_id: data.user.id,
+        });
+
+        if (roleError) {
+          console.error('Error checking user role:', roleError);
+          router.push('/'); // Let middleware handle the redirect
+        } else {
+          const userRole = roleData?.[0]?.role;
+          if (userRole === 'admin') {
+            router.push('/admin');
+          } else if (userRole === 'judge') {
+            router.push('/judge');
+          } else if (userRole === 'participant') {
+            router.push('/participant');
+          } else {
+            router.push('/'); // Let middleware handle the redirect
+          }
+        }
       }
     } catch (error) {
       toast.error('Verification failed', {
@@ -168,7 +186,7 @@ export function PasswordlessLogin() {
       {/* Info Banner */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
         <p className="text-sm text-blue-900 dark:text-blue-100">
-          💡 For returning judges: We&apos;ll send a 6-digit code to your email
+          💡 For returning users: We&apos;ll send a 6-digit code to your email
         </p>
       </div>
 

@@ -112,7 +112,13 @@ export async function updateSession(request: NextRequest) {
     // Root path - redirect based on role
     if (pathname === '/') {
       const url = request.nextUrl.clone();
-      url.pathname = role === 'admin' ? '/admin' : '/judge';
+      if (role === 'admin') {
+        url.pathname = '/admin';
+      } else if (role === 'participant') {
+        url.pathname = '/participant';
+      } else {
+        url.pathname = '/judge';
+      }
       console.log('Middleware: Redirecting from root to:', url.pathname);
       return NextResponse.redirect(url);
     }
@@ -136,10 +142,24 @@ export async function updateSession(request: NextRequest) {
           'Middleware: Non-judge trying to access judge route, redirecting based on role'
         );
         const url = request.nextUrl.clone();
-        url.pathname = role === 'admin' ? '/admin' : '/';
+        url.pathname = role === 'admin' ? '/admin' : role === 'participant' ? '/participant' : '/';
         return NextResponse.redirect(url);
       }
       console.log('Middleware: Judge access granted to judge route');
+      return supabaseResponse;
+    }
+
+    // Participant routes - only participants can access
+    if (pathname.startsWith('/participant')) {
+      if (role !== 'participant') {
+        console.log(
+          'Middleware: Non-participant trying to access participant route, redirecting based on role'
+        );
+        const url = request.nextUrl.clone();
+        url.pathname = role === 'admin' ? '/admin' : '/judge';
+        return NextResponse.redirect(url);
+      }
+      console.log('Middleware: Participant access granted to participant route');
       return supabaseResponse;
     }
 

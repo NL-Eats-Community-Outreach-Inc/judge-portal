@@ -46,6 +46,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
           router.push('/admin');
         } else if (userRole === 'judge') {
           router.push('/judge');
+        } else if (userRole === 'participant') {
+          router.push('/participant');
         } else {
           router.push('/'); // Let middleware handle the redirect
         }
