@@ -7,7 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-export function PasswordChangeForm() {
+interface PasswordChangeFormProps {
+  onSuccess?: () => void;
+}
+
+export function PasswordChangeForm({ onSuccess }: PasswordChangeFormProps = {}) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +57,11 @@ export function PasswordChangeForm() {
       // Clear form
       setNewPassword('');
       setConfirmPassword('');
+
+      // Call onSuccess callback if provided (e.g., to close dialog)
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {

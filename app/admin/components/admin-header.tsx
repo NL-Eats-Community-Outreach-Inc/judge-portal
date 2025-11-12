@@ -15,7 +15,11 @@ import { useRouter } from 'next/navigation';
 import type { UserWithRole } from '@/lib/auth';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  onOpenSettings?: () => void;
+}
+
+export function AdminHeader({ onOpenSettings }: AdminHeaderProps) {
   const router = useRouter();
   const [user, setUser] = useState<UserWithRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +96,7 @@ export function AdminHeader() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => router.push('/admin/settings')}>
+                  <DropdownMenuItem onClick={onOpenSettings}>
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
                   </DropdownMenuItem>
