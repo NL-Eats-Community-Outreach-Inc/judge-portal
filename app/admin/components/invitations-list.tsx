@@ -81,7 +81,9 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
   };
 
   useEffect(() => {
-    fetchInvitations(false);
+    // If we already have data, use refreshing state to keep table visible
+    const hasData = invitations.length > 0;
+    fetchInvitations(hasData);
     setCurrentPage(1); // Reset to first page when trigger changes
   }, [refreshTrigger]);
 
@@ -106,7 +108,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
         toast.success('Invitation revoked', {
           description: `${email}'s invitation has been revoked`,
         });
-        fetchInvitations();
+        fetchInvitations(true); // Use refreshing state to keep table visible
       } else {
         toast.error('Failed to revoke invitation');
       }
@@ -144,16 +146,6 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
     setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
       <CardHeader>
@@ -163,9 +155,11 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
             <div>
               <CardTitle>Judge Invitations</CardTitle>
               <CardDescription>
-                {invitations.length === 0
-                  ? 'No invitations sent yet'
-                  : `${invitations.length} invitation(s) sent`}
+                {isLoading
+                  ? 'Loading invitations...'
+                  : invitations.length === 0
+                    ? 'No invitations sent yet'
+                    : `${invitations.length} invitation(s) sent`}
               </CardDescription>
             </div>
           </div>
@@ -173,7 +167,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
             <Button
               variant="outline"
               onClick={() => fetchInvitations(true)}
-              disabled={isRefreshing}
+              disabled={isRefreshing || isLoading}
               className="flex items-center gap-2"
             >
               {isRefreshing ? (
@@ -188,7 +182,42 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
         </div>
       </CardHeader>
       <CardContent>
-        {invitations.length === 0 ? (
+        {isLoading ? (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Sent</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="h-4 bg-muted animate-pulse rounded w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-6 bg-muted animate-pulse rounded w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted animate-pulse rounded w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted animate-pulse rounded w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="h-8 bg-muted animate-pulse rounded w-8 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : invitations.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p>No invitations sent yet</p>
@@ -259,7 +288,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
         )}
 
         {/* Pagination Controls */}
-        {invitations.length > ITEMS_PER_PAGE && (
+        {!isLoading && invitations.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between pt-4 border-t">
             <p className="text-sm text-muted-foreground">
               Showing {startIndex + 1} to {Math.min(endIndex, invitations.length)} of{' '}

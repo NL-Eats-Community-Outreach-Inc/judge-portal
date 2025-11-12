@@ -144,11 +144,18 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
     setExpiresInDays('7');
     setInviteLinks([]);
     setCopiedIndex(null);
-    setOpen(false);
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    // Reset state when dialog is closed
+    if (!newOpen) {
+      handleReset();
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Mail className="mr-2 h-4 w-4" />
@@ -201,7 +208,10 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleReset} className="flex-1">
+              <Button onClick={() => {
+                handleReset();
+                // Keep dialog open to create more invitations
+              }} className="flex-1">
                 Invite More Judges
               </Button>
               <Button variant="outline" onClick={() => setOpen(false)}>
