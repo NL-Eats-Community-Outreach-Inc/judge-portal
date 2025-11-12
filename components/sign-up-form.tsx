@@ -121,13 +121,22 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error;
 
       if (data.user) {
-        // CRITICAL: Create user record in public.users table
+        // 🔒 SECURITY FIX: Read role from user metadata (server-side, cannot be tampered)
+        // The role was set during signInWithOtp (line 91) and stored securely by Supabase
+        const roleFromMetadata = data.user.user_metadata?.role as UserRole | undefined;
+
+        // Validate that role exists and is valid
+        if (!roleFromMetadata || (roleFromMetadata !== 'judge' && roleFromMetadata !== 'participant')) {
+          console.error('Invalid or missing role in user metadata:', roleFromMetadata);
+          throw new Error('Invalid role configuration. Please try signing up again.');
+        }
+
+        // Create user record in public.users table with validated role from metadata
         // The trigger was skipped due to invite_pending flag
-        // We need to manually insert the user with the selected role
         const { error: insertError } = await supabase.from('users').insert({
           id: data.user.id,
           email: data.user.email,
-          role: role,
+          role: roleFromMetadata, // ✅ Using server-side metadata, not client variable
         });
 
         // Ignore conflict errors (user already exists)
@@ -136,7 +145,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
           throw new Error('Failed to complete account setup');
         }
 
-        const redirectPath = role === 'judge' ? '/judge' : '/participant';
+        const redirectPath = roleFromMetadata === 'judge' ? '/judge' : '/participant';
         router.push(redirectPath);
       }
     } catch (error: unknown) {
