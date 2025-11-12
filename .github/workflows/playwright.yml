@@ -1,0 +1,73 @@
+name: Playwright Tests
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  playwright-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Validate GitHub Secrets
+        run: |
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            echo "❌ ERROR: TEST_SUPABASE_URL secret is not set!"
+            echo "Please add GitHub Secrets: Settings → Secrets and variables → Actions"
+            echo "Required secrets: TEST_SUPABASE_URL, TEST_SUPABASE_ANON_KEY, TEST_SUPABASE_SERVICE_ROLE_KEY, TEST_DATABASE_URL"
+            exit 1
+          fi
+          echo "✓ GitHub Secrets are configured"
+      - name: Create .env file for Next.js
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.TEST_SUPABASE_URL }}" > .env
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.TEST_SUPABASE_ANON_KEY }}" >> .env
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+          echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" >> .env
+          echo "ALLOW_TEST_UTILITIES=true" >> .env
+          echo "✓ Created .env file ($(wc -l < .env) lines, $(wc -c < .env) bytes)"
+          echo "First line check (should have no leading spaces):"
+          head -n 1 .env | od -c | head -n 2
+      - name: Start Next.js server
+        run: |
+          npm run dev > server.log 2>&1 &
+          echo $! > .server.pid
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for Next.js server..."
+          timeout 120 bash -c 'until curl -sf http://localhost:3000 | grep -q ".*"; do echo "Waiting..."; sleep 2; done' || (cat server.log && exit 1)
+          echo "Server is ready!"
+      - name: Run Playwright tests
+        run: npx playwright test
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f .server.pid ]; then
+            kill $(cat .server.pid) || true
+          fi
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+      - name: Upload server logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: server.log
+          retention-days: 7
