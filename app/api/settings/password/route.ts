@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Get new password from request body
     const body = await request.json();
-    const { currentPassword, newPassword } = body;
+    const { newPassword } = body;
 
     // Validate input
     if (!newPassword || newPassword.length < 6) {
@@ -27,23 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If current password provided, verify it first (for users who already have a password)
-    if (currentPassword) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        return NextResponse.json(
-          { error: 'Current password is incorrect. If you registered via OTP, leave the current password field blank.' },
-          { status: 400 }
-        );
-      }
-    }
-    // If no current password provided, we're setting password for the first time (OTP users)
-
-    // Update password
+    // Update password - user is already authenticated via session
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });

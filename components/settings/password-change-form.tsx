@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 export function PasswordChangeForm() {
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,14 +32,12 @@ export function PasswordChangeForm() {
       }
 
       // Call API to update password
-      // Only send currentPassword if it's not empty
       const response = await fetch('/api/settings/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          currentPassword: currentPassword || undefined,
           newPassword,
         }),
       });
@@ -54,7 +51,6 @@ export function PasswordChangeForm() {
       toast.success('Password updated successfully');
 
       // Clear form
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
@@ -74,22 +70,6 @@ export function PasswordChangeForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="current-password">
-              Current Password <span className="text-muted-foreground text-xs">(optional)</span>
-            </Label>
-            <Input
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Leave blank if setting first password"
-            />
-            <p className="text-xs text-muted-foreground">
-              If you registered via OTP and don&apos;t have a password yet, leave this blank.
-            </p>
-          </div>
-
           <div className="grid gap-2">
             <Label htmlFor="new-password">New Password</Label>
             <Input
