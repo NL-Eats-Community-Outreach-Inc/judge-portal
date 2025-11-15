@@ -51,6 +51,7 @@ interface User {
 }
 
 export default function UserManagement() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { selectedEvent } = useAdminEvent();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
