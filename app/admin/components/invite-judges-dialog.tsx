@@ -121,7 +121,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       }
 
       onInvitesSent?.();
-    } catch (error) {
+    } catch {
       toast.error('Something went wrong', {
         description: 'Please try again later',
       });
@@ -136,7 +136,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       setCopiedIndex(index);
       toast.success('Link copied!');
       setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (error) {
+    } catch {
       toast.error('Failed to copy link');
     }
   };
@@ -169,7 +169,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         <DialogHeader>
           <DialogTitle>Invite Judges</DialogTitle>
           <DialogDescription>
-            Send invitation links to judges via email. They'll be able to register without creating
+            Send invitation links to judges via email. They&apos;ll be able to register without creating
             a password.
           </DialogDescription>
         </DialogHeader>

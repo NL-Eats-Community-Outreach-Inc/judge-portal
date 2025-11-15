@@ -47,7 +47,7 @@ export default function InviteLandingPage() {
 
       // Redirect to verification page
       router.push(`/invite/${token}/verify`);
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.');
       toast.error('Failed to send verification code');
     } finally {
@@ -81,7 +81,7 @@ export default function InviteLandingPage() {
     <div className="flex items-center justify-center h-screen px-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>You've Been Invited as a Judge!</CardTitle>
+          <CardTitle>You&apos;ve Been Invited as a Judge!</CardTitle>
           <CardDescription>
             Complete your registration to access the judging platform
           </CardDescription>
@@ -93,7 +93,7 @@ export default function InviteLandingPage() {
               <div>
                 <p className="font-medium">Judge Account</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You've been invited to join as a judge. No password required!
+                  You&apos;ve been invited to join as a judge. No password required!
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function InviteLandingPage() {
               <div>
                 <p className="font-medium">Email Verification</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  We'll send a 6-digit code to verify your email address
+                  We&apos;ll send a 6-digit code to verify your email address
                 </p>
               </div>
             </div>
@@ -126,7 +126,7 @@ export default function InviteLandingPage() {
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
-              We'll send a verification code to your email
+              We&apos;ll send a verification code to your email
             </p>
           </div>
         </CardContent>

@@ -62,7 +62,7 @@ export function MagicLinkForm({
         });
         onSuccess?.();
       }
-    } catch (error) {
+    } catch {
       toast.error('Something went wrong', {
         description: 'Please try again later.',
       });

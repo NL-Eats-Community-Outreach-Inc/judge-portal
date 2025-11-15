@@ -50,7 +50,7 @@ export function PasswordlessLogin() {
           description: 'We sent you a 6-digit verification code.',
         });
       }
-    } catch (error) {
+    } catch {
       toast.error('Something went wrong', {
         description: 'Please try again later.',
       });
@@ -110,7 +110,7 @@ export function PasswordlessLogin() {
           }
         }
       }
-    } catch (error) {
+    } catch {
       toast.error('Verification failed', {
         description: 'Please try again.',
       });

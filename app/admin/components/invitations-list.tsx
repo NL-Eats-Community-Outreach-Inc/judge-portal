@@ -79,7 +79,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
       } else {
         toast.error('Failed to load invitations');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load invitations');
     } finally {
       if (showRefreshing) {
@@ -95,7 +95,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
     const hasData = invitations.length > 0;
     fetchInvitations(hasData);
     setCurrentPage(1); // Reset to first page when trigger changes
-  }, [refreshTrigger]);
+  }, [refreshTrigger, invitations.length]);
 
   const handleCopyLink = async (link: string, id: string) => {
     try {
@@ -103,7 +103,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
       setCopiedId(id);
       toast.success('Link copied!');
       setTimeout(() => setCopiedId(null), 2000);
-    } catch (error) {
+    } catch {
       toast.error('Failed to copy link');
     }
   };
@@ -122,7 +122,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
       } else {
         toast.error('Failed to revoke invitation');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to revoke invitation');
     }
   };
@@ -233,7 +233,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p>No invitations sent yet</p>
-            <p className="text-sm">Use the "Invite Judges" button above to send invitations</p>
+            <p className="text-sm">Use the &quot;Invite Judges&quot; button above to send invitations</p>
           </div>
         ) : (
           <div className="rounded-md border">

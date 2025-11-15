@@ -134,6 +134,7 @@ export async function getExistingInvitation(email: string): Promise<Invitation |
 /**
  * Accept an invitation (mark as accepted)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function acceptInvitation(invitationId: string, userId: string): Promise<void> {
   const invitation = await db
     .select()
@@ -188,7 +189,7 @@ export async function markExpiredInvitations(): Promise<number> {
     .where(
       and(
         eq(invitations.status, 'pending'),
-        // @ts-ignore - SQL comparison
+        // @ts-expect-error - SQL comparison
         db.sql`expires_at < now()`
       )
     )

@@ -101,10 +101,10 @@ export async function POST(request: NextRequest) {
       existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
       alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create invitations error:', error);
 
-    if (error.message?.includes('role required')) {
+    if (error instanceof Error && error.message?.includes('role required')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -141,10 +141,10 @@ export async function GET(request: NextRequest) {
       success: true,
       invitations: invitesWithLinks,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('List invitations error:', error);
 
-    if (error.message?.includes('role required')) {
+    if (error instanceof Error && error.message?.includes('role required')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

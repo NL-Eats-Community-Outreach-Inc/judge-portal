@@ -26,10 +26,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       success: true,
       message: 'Invitation revoked successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Revoke invitation error:', error);
 
-    if (error.message?.includes('role required')) {
+    if (error instanceof Error && error.message?.includes('role required')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -59,10 +59,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       success: true,
       message: 'Invitation deleted successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete invitation error:', error);
 
-    if (error.message?.includes('role required')) {
+    if (error instanceof Error && error.message?.includes('role required')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

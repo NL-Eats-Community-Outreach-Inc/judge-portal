@@ -10,10 +10,22 @@ interface SettingsPanelProps {
   onPasswordChangeSuccess?: () => void;
 }
 
+interface UserData {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
+interface AuthUser {
+  id: string;
+  email?: string;
+}
+
 export function SettingsPanel({ onPasswordChangeSuccess }: SettingsPanelProps) {
   const supabase = createClient();
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

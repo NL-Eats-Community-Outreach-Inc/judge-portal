@@ -60,7 +60,7 @@ export default function InviteVerifyPage() {
 
       // Redirect to appropriate dashboard
       router.push(data.redirectUrl);
-    } catch (err) {
+    } catch {
       toast.error('Something went wrong', {
         description: 'Please try again',
       });
@@ -94,7 +94,7 @@ export default function InviteVerifyPage() {
 
       // Clear current OTP
       setOtp('');
-    } catch (err) {
+    } catch {
       toast.error('Failed to resend code');
     } finally {
       setIsResending(false);
@@ -141,13 +141,13 @@ export default function InviteVerifyPage() {
             <div className="text-center">
               <Button variant="ghost" size="sm" onClick={handleResend} disabled={isResending}>
                 {isResending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                {isResending ? 'Sending...' : "Didn't receive a code? Resend"}
+                {isResending ? 'Sending...' : "Didn\u0027t receive a code? Resend"}
               </Button>
             </div>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            The code expires in 1 hour. Check your spam folder if you don't see it.
+            The code expires in 1 hour. Check your spam folder if you don&apos;t see it.
           </p>
         </CardContent>
       </Card>
