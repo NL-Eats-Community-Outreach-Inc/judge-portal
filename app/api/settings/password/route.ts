@@ -6,13 +6,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get new password from request body
@@ -33,10 +33,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (updateError) {
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -44,9 +41,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Password update error:', error);
-    return NextResponse.json(
-      { error: 'An unexpected error occurred' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

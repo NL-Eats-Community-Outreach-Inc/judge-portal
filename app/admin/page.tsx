@@ -105,9 +105,7 @@ export default function AdminDashboard() {
           >
             <DialogHeader>
               <DialogTitle className="text-2xl md:text-3xl font-bold">Settings</DialogTitle>
-              <DialogDescription>
-                Manage your account settings and preferences
-              </DialogDescription>
+              <DialogDescription>Manage your account settings and preferences</DialogDescription>
             </DialogHeader>
             <SettingsPanel onPasswordChangeSuccess={() => setSettingsOpen(false)} />
           </DialogContent>

@@ -14,29 +14,20 @@ export async function POST(request: NextRequest) {
     const { token, otp } = await request.json();
 
     if (!token || !otp) {
-      return NextResponse.json(
-        { error: 'Token and OTP are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Token and OTP are required' }, { status: 400 });
     }
 
     // Get invitation
     const invitation = await getInvitationByToken(token);
 
     if (!invitation) {
-      return NextResponse.json(
-        { error: 'Invalid invitation' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
     }
 
     // Validate invitation
     const validationResult = isInvitationValid(invitation);
     if (!validationResult.valid) {
-      return NextResponse.json(
-        { error: validationResult.reason },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
     }
 
     // Verify OTP with Supabase
@@ -48,29 +39,26 @@ export async function POST(request: NextRequest) {
     });
 
     if (error || !data.user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired OTP code' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid or expired OTP code' }, { status: 400 });
     }
 
     // Check if user already exists in our database
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, data.user.id))
-      .limit(1);
+    const existingUser = await db.select().from(users).where(eq(users.id, data.user.id)).limit(1);
 
     // If user already exists, reject the invite
     // Invite links are only for onboarding new users, not role changes
     if (existingUser[0]) {
       const roleRedirect =
-        existingUser[0].role === 'admin' ? '/admin' :
-        existingUser[0].role === 'judge' ? '/judge' : '/participant';
+        existingUser[0].role === 'admin'
+          ? '/admin'
+          : existingUser[0].role === 'judge'
+            ? '/judge'
+            : '/participant';
 
       return NextResponse.json(
         {
-          error: 'You already have an account. Please contact an administrator if you need a role change.',
+          error:
+            'You already have an account. Please contact an administrator if you need a role change.',
           existingRole: existingUser[0].role,
           redirectUrl: roleRedirect,
         },
@@ -102,9 +90,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Invitation verification error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

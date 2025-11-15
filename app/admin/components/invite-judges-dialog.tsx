@@ -32,9 +32,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
   const [customMessage, setCustomMessage] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('7');
   const [isLoading, setIsLoading] = useState(false);
-  const [inviteLinks, setInviteLinks] = useState<
-    Array<{ email: string; inviteLink: string }>
-  >([]);
+  const [inviteLinks, setInviteLinks] = useState<Array<{ email: string; inviteLink: string }>>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,8 +43,8 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       // Parse emails (comma or newline separated)
       const emailList = emails
         .split(/[,\n]/)
-        .map(e => e.trim())
-        .filter(e => e.length > 0);
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
 
       if (emailList.length === 0) {
         toast.error('Please enter at least one email address');
@@ -85,12 +83,15 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
           const registeredList = data.alreadyRegistered
             .map((u: { email: string; role: string }) => `${u.email} (${u.role})`)
             .join(', ');
-          warnings.push(`${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`);
+          warnings.push(
+            `${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`
+          );
         }
 
-        const successMessage = warnings.length > 0
-          ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
-          : `Created ${data.invitations.length} invitation(s)`;
+        const successMessage =
+          warnings.length > 0
+            ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
+            : `Created ${data.invitations.length} invitation(s)`;
 
         toast.success('Invitations sent!', {
           description: successMessage,
@@ -106,7 +107,9 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
           const registeredList = data.alreadyRegistered
             .map((u: { email: string; role: string }) => `${u.email} (${u.role})`)
             .join(', ');
-          warnings.push(`${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`);
+          warnings.push(
+            `${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`
+          );
         }
 
         toast.warning('No new invitations created', {
@@ -184,10 +187,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
 
             <div className="space-y-2">
               {inviteLinks.map((invite, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 p-3 rounded-lg border bg-muted"
-                >
+                <div key={index} className="flex items-center gap-2 p-3 rounded-lg border bg-muted">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{invite.email}</p>
                     <p className="text-xs text-muted-foreground truncate">{invite.inviteLink}</p>
@@ -208,10 +208,13 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={() => {
-                handleReset();
-                // Keep dialog open to create more invitations
-              }} className="flex-1">
+              <Button
+                onClick={() => {
+                  handleReset();
+                  // Keep dialog open to create more invitations
+                }}
+                className="flex-1"
+              >
                 Invite More Judges
               </Button>
               <Button variant="outline" onClick={() => setOpen(false)}>

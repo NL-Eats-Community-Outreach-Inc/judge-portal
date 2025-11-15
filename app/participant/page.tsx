@@ -22,7 +22,9 @@ export default function ParticipantPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <Card className="p-4 md:p-6 text-center">
             <Calendar className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">Event Registration</h3>
+            <h3 className="font-semibold text-foreground text-sm md:text-base">
+              Event Registration
+            </h3>
             <p className="text-xs md:text-sm text-muted-foreground mt-1">
               Browse and register for upcoming events
             </p>

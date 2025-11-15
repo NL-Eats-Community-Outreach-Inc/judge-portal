@@ -45,7 +45,8 @@ export function ParticipantSidebar({
         <Card
           className={cn(
             'p-4 cursor-pointer transition-all duration-200 border hover:bg-muted/50',
-            pathname === '/participant' && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+            pathname === '/participant' &&
+              'ring-2 ring-primary ring-offset-2 ring-offset-background'
           )}
           onClick={() => handleNavigation('/participant')}
         >
@@ -58,9 +59,7 @@ export function ParticipantSidebar({
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        <p className="text-xs text-muted-foreground text-center">
-          More features coming soon
-        </p>
+        <p className="text-xs text-muted-foreground text-center">More features coming soon</p>
       </div>
     </aside>
   );

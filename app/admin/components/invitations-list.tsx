@@ -12,7 +12,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Copy, MoreVertical, Loader2, Check, XCircle, RefreshCw, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Copy,
+  MoreVertical,
+  Loader2,
+  Check,
+  XCircle,
+  RefreshCw,
+  Mail,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -147,7 +157,9 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
   };
 
   return (
-    <Card className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}>
+    <Card
+      className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
+    >
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

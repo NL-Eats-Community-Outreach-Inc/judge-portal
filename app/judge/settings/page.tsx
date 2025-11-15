@@ -18,11 +18,7 @@ export default async function JudgeSettingsPage() {
   }
 
   // Get user details from database
-  const { data: userData } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
 
   // Format date
   const joinDate = userData?.created_at
@@ -39,9 +35,7 @@ export default async function JudgeSettingsPage() {
         {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your account settings and preferences
-          </p>
+          <p className="text-muted-foreground mt-2">Manage your account settings and preferences</p>
         </div>
 
         {/* Account Information */}

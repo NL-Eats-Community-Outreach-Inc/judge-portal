@@ -43,8 +43,10 @@ export function MagicLinkForm({
       });
 
       if (error) {
-        // Better error messages for common scenarios
-        if (error.message.includes('User not found') || error.message.includes('Signups not allowed')) {
+        if (
+          error.message.includes('User not found') ||
+          error.message.includes('Signups not allowed')
+        ) {
           toast.error('Account not found', {
             description: 'Please check your invitation email or contact an admin.',
           });
@@ -73,9 +75,7 @@ export function MagicLinkForm({
     return (
       <div className="space-y-4 text-center">
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-          <h3 className="font-semibold text-green-900 dark:text-green-100">
-            Check your email
-          </h3>
+          <h3 className="font-semibold text-green-900 dark:text-green-100">Check your email</h3>
           <p className="mt-1 text-sm text-green-700 dark:text-green-300">
             We sent a 6-digit verification code to <strong>{email}</strong>
           </p>
@@ -83,11 +83,7 @@ export function MagicLinkForm({
             Enter the code from your email to sign in. The code will expire in 1 hour.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setEmailSent(false)}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={() => setEmailSent(false)} className="w-full">
           Send another link
         </Button>
       </div>

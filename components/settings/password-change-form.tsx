@@ -74,7 +74,8 @@ export function PasswordChangeForm({ onSuccess }: PasswordChangeFormProps = {}) 
       <CardHeader>
         <CardTitle>Password Management</CardTitle>
         <CardDescription>
-          Set or update your password. You can continue using OTP login even after setting a password.
+          Set or update your password. You can continue using OTP login even after setting a
+          password.
         </CardDescription>
       </CardHeader>
       <CardContent>

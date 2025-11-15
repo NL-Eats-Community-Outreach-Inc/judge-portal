@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
-import {
-  createBatchInvitations,
-  getAllInvitations,
-  getExistingInvitation,
-} from '@/lib/auth';
+import { createBatchInvitations, getAllInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -23,15 +19,12 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one email is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = emails.filter(email => !emailRegex.test(email));
+    const invalidEmails = emails.filter((email) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
       return NextResponse.json(
         { error: 'Invalid email addresses', invalidEmails },
@@ -66,9 +59,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Filter out emails with existing invitations or registered users
-    const registeredEmails = alreadyRegistered.map(u => u.email);
+    const registeredEmails = alreadyRegistered.map((u) => u.email);
     const newEmails = emails.filter(
-      email => !existingInvites.includes(email) && !registeredEmails.includes(email)
+      (email) => !existingInvites.includes(email) && !registeredEmails.includes(email)
     );
 
     if (newEmails.length === 0) {
@@ -93,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map(invite => ({
+    const invitesWithLinks = invitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,
@@ -112,16 +105,10 @@ export async function POST(request: NextRequest) {
     console.error('Create invitations error:', error);
 
     if (error.message?.includes('role required')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -138,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map(invite => ({
+    const invitesWithLinks = invitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,
@@ -158,15 +145,9 @@ export async function GET(request: NextRequest) {
     console.error('List invitations error:', error);
 
     if (error.message?.includes('role required')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

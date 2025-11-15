@@ -121,12 +121,14 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error;
 
       if (data.user) {
-        // 🔒 SECURITY FIX: Read role from user metadata (server-side, cannot be tampered)
-        // The role was set during signInWithOtp (line 91) and stored securely by Supabase
+        // The role was set during signInWithOtp and stored securely by Supabase
         const roleFromMetadata = data.user.user_metadata?.role as UserRole | undefined;
 
         // Validate that role exists and is valid
-        if (!roleFromMetadata || (roleFromMetadata !== 'judge' && roleFromMetadata !== 'participant')) {
+        if (
+          !roleFromMetadata ||
+          (roleFromMetadata !== 'judge' && roleFromMetadata !== 'participant')
+        ) {
           console.error('Invalid or missing role in user metadata:', roleFromMetadata);
           throw new Error('Invalid role configuration. Please try signing up again.');
         }
@@ -136,7 +138,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
         const { error: insertError } = await supabase.from('users').insert({
           id: data.user.id,
           email: data.user.email,
-          role: roleFromMetadata, // ✅ Using server-side metadata, not client variable
+          role: roleFromMetadata, // Using server-side metadata, not client variable
         });
 
         // Ignore conflict errors (user already exists)
@@ -184,9 +186,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                   <Label htmlFor="role-participant" className="flex-1 cursor-pointer">
                     <div>
                       <p className="font-medium">Participant</p>
-                      <p className="text-xs text-muted-foreground">
-                        Join events and create teams
-                      </p>
+                      <p className="text-xs text-muted-foreground">Join events and create teams</p>
                     </div>
                   </Label>
                 </div>
@@ -279,7 +279,11 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                     </div>
                     {error && <p className="text-sm text-red-500">{error}</p>}
                     <div className="space-y-2">
-                      <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isLoading || otp.length !== 6}
+                      >
                         {isLoading ? 'Verifying...' : 'Verify and create account'}
                       </Button>
                       <Button

@@ -11,29 +11,20 @@ export async function POST(request: NextRequest) {
     const { token } = await request.json();
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Token is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
     // Get invitation
     const invitation = await getInvitationByToken(token);
 
     if (!invitation) {
-      return NextResponse.json(
-        { error: 'Invalid invitation' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
     }
 
     // Validate invitation
     const validationResult = isInvitationValid(invitation);
     if (!validationResult.valid) {
-      return NextResponse.json(
-        { error: validationResult.reason },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
     }
 
     // Trigger OTP code email via Supabase
@@ -54,10 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('OTP send error:', error);
-      return NextResponse.json(
-        { error: 'Failed to send verification code' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to send verification code' }, { status: 500 });
     }
 
     // Return invitation details (without sensitive data)
@@ -71,9 +59,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Invitation validation error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

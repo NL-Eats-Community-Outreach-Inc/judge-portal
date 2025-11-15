@@ -277,9 +277,7 @@ export default function UserManagement() {
                     {roleType !== 'participant' && (
                       <Select
                         value={user.role}
-                        onValueChange={(role: 'admin' | 'judge') =>
-                          updateUserRole(user.id, role)
-                        }
+                        onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
                         disabled={updatingRoles.has(user.id)}
                       >
                         <SelectTrigger className="w-32">
@@ -302,11 +300,7 @@ export default function UserManagement() {
                     {(user.role === 'judge' || user.role === 'participant') && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={deletingUsers.has(user.id)}
-                          >
+                          <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
                             {deletingUsers.has(user.id) ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (

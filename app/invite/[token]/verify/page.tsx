@@ -114,9 +114,7 @@ export default function InviteVerifyPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Verify Your Email</CardTitle>
-          <CardDescription>
-            Enter the 6-digit code we sent to your email
-          </CardDescription>
+          <CardDescription>Enter the 6-digit code we sent to your email</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex justify-center">
@@ -141,12 +139,7 @@ export default function InviteVerifyPage() {
             </Button>
 
             <div className="text-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResend}
-                disabled={isResending}
-              >
+              <Button variant="ghost" size="sm" onClick={handleResend} disabled={isResending}>
                 {isResending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 {isResending ? 'Sending...' : "Didn't receive a code? Resend"}
               </Button>

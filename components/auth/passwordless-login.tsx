@@ -32,14 +32,12 @@ export function PasswordlessLogin() {
       });
 
       if (error) {
-        // Better error messages for common scenarios
         if (
           error.message.includes('User not found') ||
           error.message.includes('Signups not allowed')
         ) {
           toast.error('Account not found', {
-            description:
-              'Please check your invitation email or contact an admin.',
+            description: 'Please check your invitation email or contact an admin.',
           });
         } else {
           toast.error('Failed to send verification code', {
@@ -126,9 +124,7 @@ export function PasswordlessLogin() {
       <div className="space-y-4">
         {/* Info Banner */}
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-          <h3 className="font-semibold text-green-900 dark:text-green-100">
-            Check your email
-          </h3>
+          <h3 className="font-semibold text-green-900 dark:text-green-100">Check your email</h3>
           <p className="mt-1 text-sm text-green-700 dark:text-green-300">
             We sent a 6-digit verification code to <strong>{email}</strong>
           </p>
@@ -139,9 +135,7 @@ export function PasswordlessLogin() {
           <div className="space-y-2">
             <Label htmlFor="otp">Enter Verification Code</Label>
             <OTPInput value={otp} onChange={setOtp} />
-            <p className="text-xs text-muted-foreground">
-              The code will expire in 1 hour
-            </p>
+            <p className="text-xs text-muted-foreground">The code will expire in 1 hour</p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>

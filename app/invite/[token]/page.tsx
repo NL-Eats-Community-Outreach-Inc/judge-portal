@@ -88,52 +88,47 @@ export default function InviteLandingPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
-                  <User className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Judge Account</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      You've been invited to join as a judge. No password required!
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
-                  <Mail className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Email Verification</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      We'll send a 6-digit code to verify your email address
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
-                  <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">After Registration</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      An admin will assign you to events once your account is created
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleContinue}
-                  disabled={isSendingOTP}
-                >
-                  {isSendingOTP && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isSendingOTP ? 'Sending...' : 'Continue with Email Verification'}
-                </Button>
-
-                <p className="text-center text-xs text-muted-foreground">
-                  We'll send a verification code to your email
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
+              <User className="h-5 w-5 mt-0.5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Judge Account</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You've been invited to join as a judge. No password required!
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
+              <Mail className="h-5 w-5 mt-0.5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Email Verification</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  We'll send a 6-digit code to verify your email address
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
+              <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">After Registration</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  An admin will assign you to events once your account is created
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Button className="w-full" size="lg" onClick={handleContinue} disabled={isSendingOTP}>
+              {isSendingOTP && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSendingOTP ? 'Sending...' : 'Continue with Email Verification'}
+            </Button>
+
+            <p className="text-center text-xs text-muted-foreground">
+              We'll send a verification code to your email
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

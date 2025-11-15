@@ -16,7 +16,12 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant'
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
 export const invitationRoleEnum = pgEnum('invitation_role', ['judge', 'participant']);
-export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'revoked', 'expired']);
+export const invitationStatusEnum = pgEnum('invitation_status', [
+  'pending',
+  'accepted',
+  'revoked',
+  'expired',
+]);
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),

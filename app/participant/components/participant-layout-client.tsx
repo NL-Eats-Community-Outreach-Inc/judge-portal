@@ -34,7 +34,10 @@ export function ParticipantLayoutClient({ user, children }: ParticipantLayoutCli
         {/* Main content area */}
         <div className="md:ml-64 lg:ml-80">
           <div className="sticky top-0 z-30 bg-background">
-            <ParticipantHeader user={user} onMobileMenuToggle={() => setIsMobileSidebarOpen(true)} />
+            <ParticipantHeader
+              user={user}
+              onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
+            />
           </div>
           <main>{children}</main>
         </div>

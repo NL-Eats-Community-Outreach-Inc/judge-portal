@@ -88,7 +88,7 @@ export async function createBatchInvitations(data: {
 }): Promise<Invitation[]> {
   const expiresAt = calculateExpirationDate(data.expiresInDays || 7);
 
-  const invitationData = data.emails.map(email => ({
+  const invitationData = data.emails.map((email) => ({
     token: generateInvitationToken(),
     email,
     role: data.role,
@@ -97,10 +97,7 @@ export async function createBatchInvitations(data: {
     createdBy: data.createdBy,
   }));
 
-  const result = await db
-    .insert(invitations)
-    .values(invitationData)
-    .returning();
+  const result = await db.insert(invitations).values(invitationData).returning();
 
   return result;
 }
@@ -108,14 +105,8 @@ export async function createBatchInvitations(data: {
 /**
  * Get invitation by token
  */
-export async function getInvitationByToken(
-  token: string
-): Promise<Invitation | null> {
-  const result = await db
-    .select()
-    .from(invitations)
-    .where(eq(invitations.token, token))
-    .limit(1);
+export async function getInvitationByToken(token: string): Promise<Invitation | null> {
+  const result = await db.select().from(invitations).where(eq(invitations.token, token)).limit(1);
 
   return result[0] || null;
 }
@@ -124,27 +115,17 @@ export async function getInvitationByToken(
  * Get all invitations
  */
 export async function getAllInvitations(): Promise<Invitation[]> {
-  return db
-    .select()
-    .from(invitations)
-    .orderBy(desc(invitations.createdAt));
+  return db.select().from(invitations).orderBy(desc(invitations.createdAt));
 }
 
 /**
  * Check if pending invitation exists for email
  */
-export async function getExistingInvitation(
-  email: string
-): Promise<Invitation | null> {
+export async function getExistingInvitation(email: string): Promise<Invitation | null> {
   const result = await db
     .select()
     .from(invitations)
-    .where(
-      and(
-        eq(invitations.email, email),
-        eq(invitations.status, 'pending')
-      )
-    )
+    .where(and(eq(invitations.email, email), eq(invitations.status, 'pending')))
     .limit(1);
 
   return result[0] || null;
@@ -153,10 +134,7 @@ export async function getExistingInvitation(
 /**
  * Accept an invitation (mark as accepted)
  */
-export async function acceptInvitation(
-  invitationId: string,
-  userId: string
-): Promise<void> {
+export async function acceptInvitation(invitationId: string, userId: string): Promise<void> {
   const invitation = await db
     .select()
     .from(invitations)
@@ -181,8 +159,6 @@ export async function acceptInvitation(
       updatedAt: new Date().toISOString(),
     })
     .where(eq(invitations.id, invitationId));
-
-  // Note: Event assignment is now handled separately by admins through the event management UI
 }
 
 /**

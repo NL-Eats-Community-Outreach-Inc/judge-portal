@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
         if (existingUser.length === 0) {
           // Try to get role from: 1) URL param, 2) user metadata, 3) default to judge
           const userRole =
-            roleParam || (data.user.user_metadata?.role as 'admin' | 'judge' | 'participant') || 'judge';
+            roleParam ||
+            (data.user.user_metadata?.role as 'admin' | 'judge' | 'participant') ||
+            'judge';
 
           await db.insert(users).values({
             id: data.user.id,
