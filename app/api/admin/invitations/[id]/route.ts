@@ -8,12 +8,12 @@ import { eq } from 'drizzle-orm';
  * PATCH /api/admin/invitations/[id]
  * Revoke an invitation
  */
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify admin role
     await authServer.requireAdmin();
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
@@ -41,12 +41,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
  * DELETE /api/admin/invitations/[id]
  * Delete an invitation (alternative to revoke)
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify admin role
     await authServer.requireAdmin();
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
