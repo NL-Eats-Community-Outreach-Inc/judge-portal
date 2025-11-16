@@ -32,7 +32,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await page.getByLabel('Judge').check();
 
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
-    await page.getByRole('tab', { name: 'Password' }).click();
+    await page.getByRole('tab', { name: 'Password', exact: true }).click();
 
     await emailInput.fill(user.email);
     await page.locator('input[id="password"]').fill(user.password);
