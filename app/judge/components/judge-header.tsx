@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Calendar, Menu, UserX } from 'lucide-react';
+import { LogOut, User, Calendar, Menu, UserX, Settings } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { useRouter } from 'next/navigation';
 import type { UserWithRole } from '@/lib/auth';
@@ -155,6 +155,10 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
               <DropdownMenuItem className="sm:hidden" disabled>
                 <User className="h-4 w-4 mr-2" />
                 {getDisplayEmail(user.email || '', 20)}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/judge/settings')}>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />

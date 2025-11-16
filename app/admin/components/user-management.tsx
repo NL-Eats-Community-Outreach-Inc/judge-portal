@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAdminEvent } from '../contexts/admin-event-context';
+import { InviteJudgesDialog } from './invite-judges-dialog';
+import { InvitationsList } from './invitations-list';
 import {
   Select,
   SelectContent,
@@ -30,23 +33,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Users, UserCheck, Crown, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Loader2, Users, UserCheck, Crown, RefreshCw, Trash2, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
   id: string;
   email: string;
-  role: 'admin' | 'judge';
+  role: 'admin' | 'judge' | 'participant';
   createdAt: string;
   updatedAt: string;
 }
 
 export default function UserManagement() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { selectedEvent } = useAdminEvent();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>());
   const [deletingUsers, setDeletingUsers] = useState(new Set<string>());
+  const [invitationRefreshTrigger, setInvitationRefreshTrigger] = useState(0);
 
   // Use useCallback to ensure stable reference for real-time sync
   const fetchUsers = useCallback(async () => {
@@ -127,7 +139,7 @@ export default function UserManagement() {
 
       setUsers((prev) => prev.filter((user) => user.id !== userId));
       toast.success('Success', {
-        description: 'Judge deleted successfully',
+        description: 'User deleted successfully',
       });
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -144,25 +156,37 @@ export default function UserManagement() {
   };
 
   const getRoleBadge = (role: string) => {
-    return role === 'admin' ? (
-      <Badge variant="default" className="flex items-center gap-1">
-        <Crown className="h-3 w-3" />
-        Admin
-      </Badge>
-    ) : (
-      <Badge variant="secondary" className="flex items-center gap-1">
-        <UserCheck className="h-3 w-3" />
-        Judge
-      </Badge>
-    );
+    if (role === 'admin') {
+      return (
+        <Badge variant="default" className="flex items-center gap-1">
+          <Crown className="h-3 w-3" />
+          Admin
+        </Badge>
+      );
+    } else if (role === 'judge') {
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <UserCheck className="h-3 w-3" />
+          Judge
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <GraduationCap className="h-3 w-3" />
+          Participant
+        </Badge>
+      );
+    }
   };
 
   const getStatsCards = () => {
     const adminCount = users.filter((u) => u.role === 'admin').length;
     const judgeCount = users.filter((u) => u.role === 'judge').length;
+    const participantCount = users.filter((u) => u.role === 'participant').length;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="flex items-center p-6">
             <div className="flex items-center justify-center w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg mr-4 shadow-sm">
@@ -198,6 +222,120 @@ export default function UserManagement() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-4 shadow-sm">
+              <GraduationCap className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{participantCount}</p>
+              <p className="text-muted-foreground text-sm">Participants</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  // Helper function to split users by role
+  const getUsersByRole = (role: 'admin' | 'judge' | 'participant') => {
+    return users.filter((u) => u.role === role);
+  };
+
+  // Render user table with role-specific actions
+  const renderUserTable = (roleUsers: User[], roleType: 'admin' | 'judge' | 'participant') => {
+    if (roleUsers.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">No users in this role</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[35%]">Email</TableHead>
+              <TableHead className="w-[25%]">Role</TableHead>
+              <TableHead className="w-[20%]">Joined</TableHead>
+              <TableHead className="w-[20%]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {roleUsers.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium w-[35%]">{user.email}</TableCell>
+                <TableCell className="w-[25%]">{getRoleBadge(user.role)}</TableCell>
+                <TableCell className="text-muted-foreground w-[20%]">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="w-[20%]">
+                  <div className="flex items-center gap-2">
+                    {/* Show role change dropdown only for admin/judge */}
+                    {roleType !== 'participant' && (
+                      <Select
+                        value={user.role}
+                        onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
+                        disabled={updatingRoles.has(user.id)}
+                      >
+                        <SelectTrigger className="w-32">
+                          {updatingRoles.has(user.id) ? (
+                            <div className="flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="text-xs">•••</span>
+                            </div>
+                          ) : (
+                            <SelectValue />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="judge">Judge</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {/* Show delete button for judges and participants */}
+                    {(user.role === 'judge' || user.role === 'participant') && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
+                            {deletingUsers.has(user.id) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the{' '}
+                              {user.role} &quot;{user.email}&quot;
+                              {user.role === 'judge' && ' and all their associated scores'}.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(user.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete {user.role === 'judge' ? 'Judge' : 'Participant'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   };
@@ -219,6 +357,16 @@ export default function UserManagement() {
       >
         {getStatsCards()}
       </div>
+
+      {/* Judge Invitations Section */}
+      <InvitationsList
+        refreshTrigger={invitationRefreshTrigger}
+        actionButton={
+          <InviteJudgesDialog
+            onInvitesSent={() => setInvitationRefreshTrigger((prev) => prev + 1)}
+          />
+        }
+      />
 
       <Card
         className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
@@ -262,89 +410,66 @@ export default function UserManagement() {
               <p className="text-sm">Users will appear here after they sign up</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={user.role}
-                            onValueChange={(role: 'admin' | 'judge') =>
-                              updateUserRole(user.id, role)
-                            }
-                            disabled={updatingRoles.has(user.id)}
-                          >
-                            <SelectTrigger className="w-32">
-                              {updatingRoles.has(user.id) ? (
-                                <div className="flex items-center gap-1">
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span className="text-xs">•••</span>
-                                </div>
-                              ) : (
-                                <SelectValue />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="judge">Judge</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {user.role === 'judge' && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  disabled={deletingUsers.has(user.id)}
-                                >
-                                  {deletingUsers.has(user.id) ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the
-                                    judge &quot;{user.email}&quot; and all their associated scores.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDelete(user.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete Judge
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-4">
+              {/* Administrators Section */}
+              <div className="border rounded-lg overflow-hidden">
+                <Accordion type="multiple" defaultValue={['admins']}>
+                  <AccordionItem value="admins" className="border-0">
+                    <AccordionTrigger className="hover:no-underline px-4">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Administrators</span>
+                        <Badge variant="secondary" className="ml-2">
+                          {getUsersByRole('admin').length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      {renderUserTable(getUsersByRole('admin'), 'admin')}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+
+              {/* Judges Section */}
+              <div className="border rounded-lg overflow-hidden">
+                <Accordion type="multiple" defaultValue={['judges']}>
+                  <AccordionItem value="judges" className="border-0">
+                    <AccordionTrigger className="hover:no-underline px-4">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Judges</span>
+                        <Badge variant="secondary" className="ml-2">
+                          {getUsersByRole('judge').length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      {renderUserTable(getUsersByRole('judge'), 'judge')}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
+
+              {/* Participants Section */}
+              <div className="border rounded-lg overflow-hidden">
+                <Accordion type="multiple" defaultValue={['participants']}>
+                  <AccordionItem value="participants" className="border-0">
+                    <AccordionTrigger className="hover:no-underline px-4">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Participants</span>
+                        <Badge variant="secondary" className="ml-2">
+                          {getUsersByRole('participant').length}
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      {renderUserTable(getUsersByRole('participant'), 'participant')}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
             </div>
           )}
         </CardContent>

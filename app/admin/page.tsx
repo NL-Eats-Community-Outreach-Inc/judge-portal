@@ -2,9 +2,17 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Settings, Users, Trophy, Target, BarChart3 } from 'lucide-react';
 import { AdminEventProvider } from './contexts/admin-event-context';
 import { AdminHeader } from './components/admin-header';
+import { SettingsPanel } from './components/settings-panel';
 import EventSelector from './components/event-selector';
 import EventManagement from './components/event-management';
 import UserManagement from './components/user-management';
@@ -14,11 +22,12 @@ import ResultsDashboard from './components/results-dashboard';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('event');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <AdminEventProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-50/30 via-background to-slate-50/20 dark:from-gray-950/50 dark:via-background dark:to-gray-900/20">
-        <AdminHeader />
+        <AdminHeader onOpenSettings={() => setSettingsOpen(true)} />
 
         {/* Event Selector */}
         <div className="container mx-auto px-6 pt-6">
@@ -87,6 +96,20 @@ export default function AdminDashboard() {
             </TabsContent>
           </Tabs>
         </main>
+
+        {/* Settings Dialog */}
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent
+            className="max-w-3xl max-h-[90vh] overflow-y-auto"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle className="text-2xl md:text-3xl font-bold">Settings</DialogTitle>
+              <DialogDescription>Manage your account settings and preferences</DialogDescription>
+            </DialogHeader>
+            <SettingsPanel onPasswordChangeSuccess={() => setSettingsOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminEventProvider>
   );
