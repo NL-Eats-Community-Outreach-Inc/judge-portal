@@ -28,6 +28,12 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     const emailInput = page.locator('input[id="email"]');
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
 
+    // Explicitly select Judge role (it's the default, but being explicit is safer)
+    await page.getByLabel('Judge').check();
+
+    // Ensure Password tab is selected (it's the default, but being explicit is safer)
+    await page.getByRole('tab', { name: 'Password' }).click();
+
     await emailInput.fill(user.email);
     await page.locator('input[id="password"]').fill(user.password);
     await page.locator('input[id="repeat-password"]').fill(user.password);
@@ -53,7 +59,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
 
     await Promise.all([
       // Click triggers the signup network call
-      page.getByRole('button', { name: 'Sign up' }).click(),
+      page.getByRole('button', { name: 'Create account with password' }).click(),
       // Wait for navigation to the judge dashboard (increased timeout for CI)
       page.waitForURL(/\/judge/, { timeout: 60000 }),
     ]);
