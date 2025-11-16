@@ -233,7 +233,9 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
           <div className="text-center py-8 text-muted-foreground">
             <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p>No invitations sent yet</p>
-            <p className="text-sm">Use the &quot;Invite Judges&quot; button above to send invitations</p>
+            <p className="text-sm">
+              Use the &quot;Invite Judges&quot; button above to send invitations
+            </p>
           </div>
         ) : (
           <div className="rounded-md border">

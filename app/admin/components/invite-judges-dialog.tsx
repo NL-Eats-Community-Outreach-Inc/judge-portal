@@ -169,8 +169,8 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         <DialogHeader>
           <DialogTitle>Invite Judges</DialogTitle>
           <DialogDescription>
-            Send invitation links to judges via email. They&apos;ll be able to register without creating
-            a password.
+            Send invitation links to judges via email. They&apos;ll be able to register without
+            creating a password.
           </DialogDescription>
         </DialogHeader>
 

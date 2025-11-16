@@ -41,7 +41,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
  * DELETE /api/admin/invitations/[id]
  * Delete an invitation (alternative to revoke)
  */
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     // Verify admin role
     await authServer.requireAdmin();

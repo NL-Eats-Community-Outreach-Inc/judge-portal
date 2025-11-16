@@ -141,7 +141,7 @@ export default function InviteVerifyPage() {
             <div className="text-center">
               <Button variant="ghost" size="sm" onClick={handleResend} disabled={isResending}>
                 {isResending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                {isResending ? 'Sending...' : "Didn\u0027t receive a code? Resend"}
+                {isResending ? 'Sending...' : 'Didn\u0027t receive a code? Resend'}
               </Button>
             </div>
           </div>
