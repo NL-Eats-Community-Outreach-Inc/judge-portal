@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
-import { Home } from 'lucide-react';
+import { Home, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
@@ -53,6 +53,19 @@ export function ParticipantSidebar({
           <div className="flex items-center gap-3">
             <Home className="h-5 w-5 text-primary" />
             <span className="font-medium text-sm">Dashboard</span>
+          </div>
+        </Card>
+        <Card
+          className={cn(
+            'p-4 cursor-pointer transition-all duration-200 border hover:bg-muted/50',
+            pathname === '/participant/knowledge-hub' &&
+              'ring-2 ring-primary ring-offset-2 ring-offset-background'
+          )}
+          onClick={() => handleNavigation('/participant/knowledge-hub')}
+        >
+          <div className="flex items-center gap-3">
+            <GraduationCap className="h-5 w-5 text-primary" />
+            <span className="font-medium text-sm">Knowledge Hub</span>
           </div>
         </Card>
       </div>
