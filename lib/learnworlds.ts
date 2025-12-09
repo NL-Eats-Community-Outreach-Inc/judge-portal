@@ -26,11 +26,11 @@ export const api = {
     const data = await res.json();
 
     // Map the LearnWorlds payload to something our UI can consume
-    const courses: Course[] = data.results.map((c: any) => ({
+    const courses: Course[] = data.results.map((c: Course) => ({
       id: c.id,
       title: c.title,
       description: c.description,
-      thumbnailUrl: c.thumbnail_url,
+      thumbnailUrl: c.thumbnailUrl,
     }));
 
     return {

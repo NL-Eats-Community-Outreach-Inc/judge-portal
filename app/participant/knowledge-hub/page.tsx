@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { CourseGrid } from './components/course-grid';
 import { Card } from '@/components/ui/card';
-import { GraduationCap, BookOpenText, ListChecks } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Knowledge Hub - JudgePortal',
@@ -60,7 +60,7 @@ export default async function KnowledgeHubPage() {
         {/* Footer CTA */}
         <footer className="text-center">
           <p className="text-muted-foreground text-sm md:text-base px-4 md:px-0">
-            We're working hard to bring these features to you. Thank you for your patience!
+            We&apos;re working hard to bring these features to you. Thank you for your patience!
           </p>
         </footer>
       </div>

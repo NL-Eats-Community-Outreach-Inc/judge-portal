@@ -5,7 +5,7 @@ import { CourseCard } from './course-card';
 import { api } from '@/lib/learnworlds';
 import { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowRight, ArrowRightIcon } from 'lucide-react';
+import { ArrowRightIcon } from 'lucide-react';
 
 export function CourseGrid() {
   const [courses, setCourses] = useState<Array<Course>>([]);
@@ -16,7 +16,7 @@ export function CourseGrid() {
   // Load initial data on mount
   useEffect(() => {
     fetchPage(page);
-  }, []);
+  }, [page]);
 
   const fetchPage = async (p: number) => {
     setLoading(true);
