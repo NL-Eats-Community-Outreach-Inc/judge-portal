@@ -45,9 +45,7 @@ export function CourseGrid() {
 
       {/* Skeleton placeholders while fetching */}
       {loading &&
-        Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-48 rounded-lg" />
-        ))}
+        Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
 
       {/* Load‑more button */}
       {hasMore && !loading && (

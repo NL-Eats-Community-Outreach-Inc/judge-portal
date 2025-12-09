@@ -27,12 +27,8 @@ export function CourseCard({ course }: { course: Course }) {
             <BookOpenText className="h-10 w-10 text-primary" />
           </div>
         )}
-        <h3 className="font-semibold text-foreground text-sm md:text-base mb-2">
-          {course.title}
-        </h3>
-        <p className="text-muted-foreground text-xs md:text-sm">
-          {course.description}
-        </p>
+        <h3 className="font-semibold text-foreground text-sm md:text-base mb-2">{course.title}</h3>
+        <p className="text-muted-foreground text-xs md:text-sm">{course.description}</p>
       </Card>
     </Link>
   );

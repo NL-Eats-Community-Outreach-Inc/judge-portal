@@ -7,7 +7,7 @@ import { GraduationCap } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Knowledge Hub - JudgePortal',
   description:
-    'Explore courses, track progress, and build your ideas with JudgePortal\'s Knowledge Hub.',
+    "Explore courses, track progress, and build your ideas with JudgePortal's Knowledge Hub.",
 };
 
 export default async function KnowledgeHubPage() {
@@ -18,21 +18,16 @@ export default async function KnowledgeHubPage() {
         <header className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 mx-auto">
             <GraduationCap className="h-10 w-10 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              Knowledge Hub
-            </h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Knowledge Hub</h1>
           </div>
           <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2 md:px-0">
-            Your one-stop shop for JudgePortal courses, progress tracking,
-            and more.
+            Your one-stop shop for JudgePortal courses, progress tracking, and more.
           </p>
         </header>
 
         {/* Coming‑soon card */}
         <Card className="p-4 md:p-6 text-center bg-muted/30">
-          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-3">
-            Stay tuned!
-          </h2>
+          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-3">Stay tuned!</h2>
           <p className="text-muted-foreground text-base md:text-lg">
             Browse courses, track progress, and earn badges as you learn. Features coming soon.
           </p>
