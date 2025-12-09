@@ -1,67 +1,80 @@
+import { Metadata } from 'next';
+import { Suspense } from 'react';
+import { CourseGrid } from './components/course-grid';
 import { Card } from '@/components/ui/card';
-import { BookOpenText, ListChecks, GraduationCap } from 'lucide-react';
+import { GraduationCap, BookOpenText, ListChecks } from 'lucide-react';
 
-export default function KnowledgeHubPage() {
+export const metadata: Metadata = {
+  title: 'Knowledge Hub - JudgePortal',
+  description:
+    'Explore courses, track progress, and build your ideas with JudgePortal\'s Knowledge Hub.',
+};
+
+export default async function KnowledgeHubPage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
-      <div className="space-y-4 md:space-y-6">
-        {/* Welcome section */}
-        <div className="text-center space-y-3 md:space-y-4">
-          <div className="w-20 h-20 md:w-24 md:h-24 mx-auto bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-            <GraduationCap className="h-10 w-10 md:h-12 md:w-12 text-primary" />
+      <div className="space-y-6">
+        {/* Header */}
+        <header className="text-center space-y-4">
+          <div className="inline-flex items-center gap-3 mx-auto">
+            <GraduationCap className="h-10 w-10 text-primary" />
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              Knowledge Hub
+            </h1>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            Welcome to the Knowledge Hub
-          </h1>
-          <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-2 md:px-0">
-            The Knowledge Hub is currently under construction.
-            As such, this is just a placeholder page while we work.
-            Stay tuned for exciting features!
+          <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto px-2 md:px-0">
+            Your one-stop shop for JudgePortal courses, progress tracking,
+            and more.
           </p>
-        </div>
+        </header>
 
-        {/* Coming soon features */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-          <Card className="p-4 md:p-6 text-center">
-            <BookOpenText className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">
-              LearnWorlds Integration
-            </h3>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">
-              Browse custom hand-crafted courses
-            </p>
-          </Card>
-
-          <Card className="p-4 md:p-6 text-center">
-            <ListChecks className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">View Results</h3>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">
-              Track your progress
-            </p>
-          </Card>
-        </div>
-
-        {/* Info card */}
-        <Card className="p-4 md:p-6 bg-muted/30">
-          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-3 md:mb-4">
+        {/* Coming‑soon card */}
+        <Card className="p-4 md:p-6 text-center bg-muted/30">
+          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-3">
             Stay tuned!
           </h2>
-          <div className="space-y-2.5 md:space-y-3">
-            <div className="flex items-center gap-2.5 md:gap-3">
-              <p className="text-muted-foreground text-sm md:text-base">
-                Browse available courses and material to build your knowledge and assist you in your endeavours
-              </p>
-            </div>
-          </div>
+          <p className="text-muted-foreground text-base md:text-lg">
+            Browse courses, track progress, and earn badges as you learn. Features coming soon.
+          </p>
         </Card>
 
-        {/* CTA */}
-        <div className="text-center">
+        {/* Courses (server‑side data fetch) */}
+        <section aria-labelledby="courses-heading" className="space-y-4">
+          <h2 id="courses-heading" className="sr-only">
+            Courses
+          </h2>
+
+          <Suspense
+            fallback={
+              <div className="grid gap-4 md:gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CourseSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <CourseGrid />
+          </Suspense>
+        </section>
+
+        {/* Footer CTA */}
+        <footer className="text-center">
           <p className="text-muted-foreground text-sm md:text-base px-4 md:px-0">
-            We&apos;re working hard to bring these features to you. Thank you for your patience!
+            We're working hard to bring these features to you. Thank you for your patience!
           </p>
-        </div>
+        </footer>
       </div>
     </div>
+  );
+}
+
+/** Simple skeleton for loading state */
+function CourseSkeleton() {
+  return (
+    <Card className="p-4 md:p-6 animate-pulse">
+      <div className="h-6 w-6 bg-muted rounded-md mb-2"></div>
+      <div className="h-4 w-48 bg-muted rounded-md mb-1"></div>
+      <div className="h-3 w-64 bg-muted rounded-md"></div>
+    </Card>
   );
 }
