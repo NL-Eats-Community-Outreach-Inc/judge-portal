@@ -243,13 +243,15 @@ export function TeamScoringInterface({
 
   // Clean up timeouts on component unmount
   useEffect(() => {
+    const savesRef = pendingSaves.current;
+    const dataRef = pendingData.current;
     return () => {
       // Clear pending timeouts to prevent memory leaks
-      pendingSaves.current.forEach((timeout) => {
+      savesRef.forEach((timeout) => {
         clearTimeout(timeout);
       });
-      pendingSaves.current.clear();
-      pendingData.current.clear();
+      savesRef.clear();
+      dataRef.clear();
     };
   }, []);
 

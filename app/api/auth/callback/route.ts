@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/judge';
+  const roleParam = searchParams.get('role') as 'admin' | 'judge' | 'participant' | null;
 
   if (code) {
     const supabase = await createClient();
@@ -27,14 +28,20 @@ export async function GET(request: NextRequest) {
           .where(eq(users.id, data.user.id))
           .limit(1);
 
-        // If user doesn't exist, create them with default judge role
+        // If user doesn't exist, create them with role from URL or user metadata or default to judge
         if (existingUser.length === 0) {
+          // Try to get role from: 1) URL param, 2) user metadata, 3) default to judge
+          const userRole =
+            roleParam ||
+            (data.user.user_metadata?.role as 'admin' | 'judge' | 'participant') ||
+            'judge';
+
           await db.insert(users).values({
             id: data.user.id,
             email: data.user.email!,
-            role: 'judge',
+            role: userRole,
           });
-          console.log('Created user record for:', data.user.email);
+          console.log('Created user record for:', data.user.email, 'with role:', userRole);
         }
 
         await client.end();
