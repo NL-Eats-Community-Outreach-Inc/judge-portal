@@ -61,6 +61,11 @@ export async function updateSession(request: NextRequest) {
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
+    // Preserve query params for participant routes (for demo deep linking)
+    if (pathname.startsWith('/participant')) {
+      const originalUrl = pathname + request.nextUrl.search;
+      url.searchParams.set('next', originalUrl);
+    }
     return NextResponse.redirect(url);
   }
 
