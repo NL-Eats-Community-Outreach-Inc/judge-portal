@@ -19,14 +19,14 @@ export interface Challenge {
 
 export const DEMO_CHALLENGES: Challenge[] = [
   {
-    id: 'sustainable-packaging',
-    name: 'Sustainable Packaging Innovation',
-    organizer: 'EcoVentures Accelerator',
+    id: 'zero-waste-packaging',
+    name: 'Zero-Waste Packaging Challenge',
+    organizer: 'Circular Economy Incubator',
     description:
-      'Design a biodegradable or reusable packaging solution for fresh produce that extends shelf life while minimizing environmental impact. Solutions should be cost-effective and scalable for small-to-medium businesses.',
-    prize: '$10,000 + Mentorship',
+      'Design a biodegradable packaging solution for fresh produce that extends shelf life.',
+    prize: '$10,000',
     status: 'Open',
-    tags: ['Sustainability', 'Materials', 'Design', 'Environment'],
+    tags: ['Sustainability', 'Materials Science', 'Design'],
     teamsCount: 12,
     deadline: '2026-02-28',
     criteria: [
@@ -37,14 +37,13 @@ export const DEMO_CHALLENGES: Challenge[] = [
     ],
   },
   {
-    id: 'smart-agriculture',
-    name: 'Smart Agriculture IoT Challenge',
-    organizer: 'AgriTech Hub',
-    description:
-      'Develop a low-cost IoT sensor network for monitoring soil health, water usage, and crop conditions. Focus on solutions that can be deployed in resource-limited settings to help smallholder farmers.',
-    prize: '$7,500 + Pilot Program',
+    id: 'urban-farming-iot',
+    name: 'Urban Farming IoT Hackathon',
+    organizer: 'CityGrow Hub',
+    description: 'Develop a low-cost IoT sensor network for vertical farms.',
+    prize: '$5,000 + Mentorship',
     status: 'Open',
-    tags: ['IoT', 'Hardware', 'Agriculture', 'Data'],
+    tags: ['IoT', 'Hardware', 'Urban Ag'],
     teamsCount: 8,
     deadline: '2026-03-15',
     criteria: [

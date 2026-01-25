@@ -21,8 +21,7 @@ import { getAllChallenges, getChallengeById, type Challenge } from './data/chall
 function ChallengeCard({ challenge }: { challenge: Challenge }) {
   const statusColors: Record<string, string> = {
     Open: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
-    'Closing Soon':
-      'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+    'Closing Soon': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
     Closed: 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20',
   };
 
@@ -61,9 +60,7 @@ function ChallengeCard({ challenge }: { challenge: Challenge }) {
         </div>
 
         {/* Description */}
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-          {challenge.description}
-        </p>
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{challenge.description}</p>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mb-4">
@@ -188,9 +185,7 @@ function ParticipantContent() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
               <Clock className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No Active Challenges
-            </h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Active Challenges</h3>
             <p className="text-muted-foreground max-w-md mx-auto">
               There are currently no innovation challenges available. Check back soon for new
               opportunities!

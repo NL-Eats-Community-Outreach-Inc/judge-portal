@@ -116,7 +116,6 @@ export function ParticipantSidebar({
           </div>
         </div>
       </div>
-
     </aside>
   );
 

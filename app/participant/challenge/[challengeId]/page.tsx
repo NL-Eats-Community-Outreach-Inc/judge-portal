@@ -35,8 +35,7 @@ export default function ChallengeDetailPage({
 
   const statusColors: Record<string, string> = {
     Open: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
-    'Closing Soon':
-      'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+    'Closing Soon': 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
     Closed: 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20',
   };
 
@@ -141,9 +140,7 @@ export default function ChallengeDetailPage({
                 {challenge.criteria.map((criterion) => (
                   <div key={criterion.name}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {criterion.name}
-                      </span>
+                      <span className="text-sm font-medium text-foreground">{criterion.name}</span>
                       <span className="text-sm text-muted-foreground">{criterion.weight}%</span>
                     </div>
                     <Progress value={criterion.weight} className="h-2" />
