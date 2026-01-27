@@ -42,6 +42,14 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
         router.push('/'); // Let middleware handle the redirect
       } else {
         const userRole = roleData?.[0]?.role;
+
+        // Check for 'next' param for participant deep linking
+        const nextUrl = new URLSearchParams(window.location.search).get('next');
+        if (userRole === 'participant' && nextUrl?.startsWith('/participant')) {
+          router.push(nextUrl);
+          return;
+        }
+
         if (userRole === 'admin') {
           router.push('/admin');
         } else if (userRole === 'judge') {
