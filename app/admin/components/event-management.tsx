@@ -53,7 +53,7 @@ interface Event {
   id: string;
   name: string;
   description: string | null;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'open' | 'active' | 'completed';
   createdAt: string;
   updatedAt: string;
 }
@@ -77,7 +77,7 @@ export default function EventManagement() {
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
-    status: 'setup' | 'active' | 'completed';
+    status: 'setup' | 'open' | 'active' | 'completed';
   }>({
     name: '',
     description: '',
@@ -286,7 +286,7 @@ export default function EventManagement() {
                   <Label htmlFor="event-status">Status</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value: 'setup' | 'active' | 'completed') =>
+                    onValueChange={(value: 'setup' | 'open' | 'active' | 'completed') =>
                       setFormData((prev) => ({ ...prev, status: value }))
                     }
                   >

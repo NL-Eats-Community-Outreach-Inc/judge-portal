@@ -7,7 +7,7 @@ interface Event {
   id: string;
   name: string;
   description: string | null;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'open' | 'active' | 'completed';
 }
 
 interface Team {

@@ -11,6 +11,7 @@ export * from './invitation';
 
 export interface UserWithRole extends User {
   role?: UserRole;
+  organizationId?: string | null;
 }
 
 // Server-side authentication utilities
@@ -24,12 +25,17 @@ export const authServer = {
 
     if (error || !user) return null;
 
-    // Get user role from our users table
-    const userRecord = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
+    // Get user role and org from our users table
+    const userRecord = await db
+      .select({ role: users.role, organizationId: users.organizationId })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
 
     return {
       ...user,
       role: userRecord[0]?.role as UserRole,
+      organizationId: userRecord[0]?.organizationId as string | null,
     };
   },
 
@@ -55,6 +61,10 @@ export const authServer = {
 
   async requireJudge() {
     return await this.requireRole('judge');
+  },
+
+  async requireSuperAdmin() {
+    return await this.requireRole('super_admin');
   },
 };
 

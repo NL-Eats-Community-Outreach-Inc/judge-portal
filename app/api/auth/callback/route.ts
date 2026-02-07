@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/judge';
-  const roleParam = searchParams.get('role') as 'admin' | 'judge' | 'participant' | null;
+  const roleParam = searchParams.get('role') as 'super_admin' | 'admin' | 'judge' | 'participant' | null;
 
   if (code) {
     const supabase = await createClient();
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
           // Try to get role from: 1) URL param, 2) user metadata, 3) default to judge
           const userRole =
             roleParam ||
-            (data.user.user_metadata?.role as 'admin' | 'judge' | 'participant') ||
+            (data.user.user_metadata?.role as 'super_admin' | 'admin' | 'judge' | 'participant') ||
             'judge';
 
           await db.insert(users).values({
