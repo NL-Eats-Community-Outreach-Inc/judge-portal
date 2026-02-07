@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { teams, events } from '@/lib/db/schema';
-import { eq, max } from 'drizzle-orm';
+import { teams, events, teamMembers, users } from '@/lib/db/schema';
+import { eq, max, inArray } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { generateJoinCode } from '@/lib/utils/join-code';
 
@@ -49,7 +49,36 @@ export async function GET(request: NextRequest) {
         .orderBy(teams.presentationOrder);
     }
 
-    return NextResponse.json({ teams: allTeams });
+    // Fetch members for all teams
+    const teamIds = allTeams.map((t) => t.id);
+    const members =
+      teamIds.length > 0
+        ? await db
+            .select({
+              teamId: teamMembers.teamId,
+              participantId: teamMembers.participantId,
+              email: users.email,
+              isCreator: teamMembers.isCreator,
+              joinedAt: teamMembers.joinedAt,
+            })
+            .from(teamMembers)
+            .innerJoin(users, eq(users.id, teamMembers.participantId))
+            .where(inArray(teamMembers.teamId, teamIds))
+        : [];
+
+    // Group members by teamId
+    const membersByTeam = new Map<string, typeof members>();
+    for (const m of members) {
+      if (!membersByTeam.has(m.teamId)) membersByTeam.set(m.teamId, []);
+      membersByTeam.get(m.teamId)!.push(m);
+    }
+
+    const teamsWithMembers = allTeams.map((t) => ({
+      ...t,
+      members: membersByTeam.get(t.id) || [],
+    }));
+
+    return NextResponse.json({ teams: teamsWithMembers });
   } catch (error) {
     console.error('Error fetching teams:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
