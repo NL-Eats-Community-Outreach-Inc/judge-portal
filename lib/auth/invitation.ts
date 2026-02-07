@@ -4,7 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export type InvitationRole = 'judge' | 'participant';
+export type InvitationRole = 'admin' | 'judge' | 'participant';
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 /**

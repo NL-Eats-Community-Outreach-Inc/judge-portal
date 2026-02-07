@@ -19,6 +19,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
 
+    // Validate role
+    const validRoles = ['admin', 'judge', 'participant'];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
     // Validation
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });

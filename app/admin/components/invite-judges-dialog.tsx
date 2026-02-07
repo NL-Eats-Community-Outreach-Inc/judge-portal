@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Mail, Copy, Check } from 'lucide-react';
+import { Loader2, Mail, Copy, Check, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InviteJudgesDialogProps {
@@ -29,6 +29,7 @@ interface InviteJudgesDialogProps {
 export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
   const [open, setOpen] = useState(false);
   const [emails, setEmails] = useState('');
+  const [role, setRole] = useState<'admin' | 'judge' | 'participant'>('judge');
   const [customMessage, setCustomMessage] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('7');
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +57,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           emails: emailList,
-          role: 'judge',
+          role,
           customMessage: customMessage || undefined,
           expiresInDays: parseInt(expiresInDays),
         }),
@@ -143,6 +144,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
 
   const handleReset = () => {
     setEmails('');
+    setRole('judge');
     setCustomMessage('');
     setExpiresInDays('7');
     setInviteLinks([]);
@@ -162,14 +164,14 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Mail className="mr-2 h-4 w-4" />
-          Invite Judges
+          Invite Users
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Invite Judges</DialogTitle>
+          <DialogTitle>Invite Users</DialogTitle>
           <DialogDescription>
-            Send invitation links to judges via email. They&apos;ll be able to register without
+            Send invitation links via email. Invitees will be able to register without
             creating a password.
           </DialogDescription>
         </DialogHeader>
@@ -181,7 +183,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
                 Invitations Created!
               </h4>
               <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                Share these links with your judges
+                Share these links with the invitees
               </p>
             </div>
 
@@ -215,7 +217,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
                 }}
                 className="flex-1"
               >
-                Invite More Judges
+                Invite More
               </Button>
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Done
@@ -239,6 +241,28 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
               <p className="text-xs text-muted-foreground">
                 Separate multiple emails with commas or new lines
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'judge' | 'participant')} disabled={isLoading}>
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="judge">Judge</SelectItem>
+                  <SelectItem value="participant">Participant</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              {role === 'admin' && (
+                <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-800 dark:bg-blue-950">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Admin users will be assigned to your organization with full management access.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
