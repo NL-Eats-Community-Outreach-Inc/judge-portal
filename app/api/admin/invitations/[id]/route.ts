@@ -3,6 +3,7 @@ import { authServer, revokeInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { invitations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 /**
  * PATCH /api/admin/invitations/[id]
@@ -11,12 +12,31 @@ import { eq } from 'drizzle-orm';
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Verify admin role
-    await authServer.requireAdmin();
+    const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+    }
+
+    // Verify invitation belongs to org
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.id, id))
+      .limit(1);
+
+    if (!invitation) {
+      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+    }
+
+    if (invitation.organizationId !== orgId) {
+      return NextResponse.json(
+        { error: 'Invitation does not belong to your organization' },
+        { status: 403 }
+      );
     }
 
     // Revoke invitation
@@ -47,12 +67,31 @@ export async function DELETE(
 ) {
   try {
     // Verify admin role
-    await authServer.requireAdmin();
+    const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
     const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+    }
+
+    // Verify invitation belongs to org
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.id, id))
+      .limit(1);
+
+    if (!invitation) {
+      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+    }
+
+    if (invitation.organizationId !== orgId) {
+      return NextResponse.json(
+        { error: 'Invitation does not belong to your organization' },
+        { status: 403 }
+      );
     }
 
     // Delete invitation

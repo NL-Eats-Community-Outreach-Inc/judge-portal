@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
-import { createBatchInvitations, getAllInvitations, getExistingInvitation } from '@/lib/auth';
+import { createBatchInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, invitations } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 /**
  * POST /api/admin/invitations
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin role
     const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
     const body = await request.json();
     const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = emails.filter((email) => !emailRegex.test(email));
+    const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
       return NextResponse.json(
         { error: 'Invalid email addresses', invalidEmails },
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     // Filter out emails with existing invitations or registered users
     const registeredEmails = alreadyRegistered.map((u) => u.email);
     const newEmails = emails.filter(
-      (email) => !existingInvites.includes(email) && !registeredEmails.includes(email)
+      (email: string) => !existingInvites.includes(email) && !registeredEmails.includes(email)
     );
 
     if (newEmails.length === 0) {
@@ -75,18 +77,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create invitations
-    const invitations = await createBatchInvitations({
+    // Create invitations with org assignment
+    const createdInvitations = await createBatchInvitations({
       emails: newEmails,
       role,
       customMessage,
       expiresInDays,
       createdBy: user.id,
+      organizationId: orgId,
     });
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map((invite) => ({
+    const invitesWithLinks = createdInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,
@@ -114,18 +117,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/admin/invitations
- * List all invitations
+ * List invitations for admin's organization
  */
 export async function GET(request: NextRequest) {
   try {
     // Verify admin role
-    await authServer.requireAdmin();
+    const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
-    const invitations = await getAllInvitations();
+    // Get org-scoped invitations
+    const orgInvitations = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.organizationId, orgId))
+      .orderBy(desc(invitations.createdAt));
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map((invite) => ({
+    const invitesWithLinks = orgInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,

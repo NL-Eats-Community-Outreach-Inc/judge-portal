@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { teams, events } from '@/lib/db/schema';
 import { eq, max } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,42 +13,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
 
-    // Build query with conditions
-    const allTeams = eventId
-      ? await db
-          .select({
-            id: teams.id,
-            name: teams.name,
-            description: teams.description,
-            demoUrl: teams.demoUrl,
-            repoUrl: teams.repoUrl,
-            presentationOrder: teams.presentationOrder,
-            awardType: teams.awardType,
-            createdAt: teams.createdAt,
-            updatedAt: teams.updatedAt,
-            eventId: teams.eventId,
-          })
-          .from(teams)
-          .where(eq(teams.eventId, eventId))
-          .orderBy(teams.presentationOrder)
-      : await db
-          .select({
-            id: teams.id,
-            name: teams.name,
-            description: teams.description,
-            demoUrl: teams.demoUrl,
-            repoUrl: teams.repoUrl,
-            presentationOrder: teams.presentationOrder,
-            awardType: teams.awardType,
-            createdAt: teams.createdAt,
-            updatedAt: teams.updatedAt,
-            eventId: teams.eventId,
-          })
-          .from(teams)
-          .orderBy(teams.presentationOrder);
+    const teamFields = {
+      id: teams.id,
+      name: teams.name,
+      description: teams.description,
+      demoUrl: teams.demoUrl,
+      repoUrl: teams.repoUrl,
+      presentationOrder: teams.presentationOrder,
+      awardType: teams.awardType,
+      createdAt: teams.createdAt,
+      updatedAt: teams.updatedAt,
+      eventId: teams.eventId,
+    };
+
+    // Build query with org-scoped conditions
+    let allTeams;
+    if (eventId) {
+      await requireEventInOrg(eventId, orgId);
+      allTeams = await db
+        .select(teamFields)
+        .from(teams)
+        .where(eq(teams.eventId, eventId))
+        .orderBy(teams.presentationOrder);
+    } else {
+      allTeams = await db
+        .select(teamFields)
+        .from(teams)
+        .innerJoin(events, eq(teams.eventId, events.id))
+        .where(eq(events.organizationId, orgId))
+        .orderBy(teams.presentationOrder);
+    }
 
     return NextResponse.json({ teams: allTeams });
   } catch (error) {
@@ -64,6 +63,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId, name, description, demoUrl, repoUrl, awardType } = await request.json();
 
     if (!eventId) {
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
     }
 
-    // Verify event exists
+    // Verify event exists and belongs to org
+    await requireEventInOrg(eventId, orgId);
     const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
 
     if (event.length === 0) {

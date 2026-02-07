@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function PUT(
   request: NextRequest,
@@ -15,16 +16,22 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId } = await params;
+    await requireEventInOrg(eventId, orgId);
+
     const { name, description, status } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
     }
 
-    // If setting event to active, ensure no other event is active
+    // If setting event to active, ensure no other event in this org is active
     if (status === 'active') {
-      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'));
+      const activeEvents = await db
+        .select()
+        .from(events)
+        .where(and(eq(events.status, 'active'), eq(events.organizationId, orgId)));
 
       // Check if there's an active event that's not the current one being updated
       const otherActiveEvent = activeEvents.find((event) => event.id !== eventId);
@@ -71,7 +78,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId } = await params;
+    await requireEventInOrg(eventId, orgId);
 
     // Check if event exists before deletion
     const existingEvent = await db.select().from(events).where(eq(events.id, eventId)).limit(1);

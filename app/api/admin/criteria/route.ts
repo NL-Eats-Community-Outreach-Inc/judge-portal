@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { criteria, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,17 +13,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
 
-    // Build query with conditions
-    const allCriteria = eventId
-      ? await db
-          .select()
-          .from(criteria)
-          .where(eq(criteria.eventId, eventId))
-          .orderBy(criteria.displayOrder)
-      : await db.select().from(criteria).orderBy(criteria.displayOrder);
+    // Build query with org-scoped conditions
+    let allCriteria;
+    if (eventId) {
+      await requireEventInOrg(eventId, orgId);
+      allCriteria = await db
+        .select()
+        .from(criteria)
+        .where(eq(criteria.eventId, eventId))
+        .orderBy(criteria.displayOrder);
+    } else {
+      allCriteria = await db
+        .select({
+          id: criteria.id,
+          eventId: criteria.eventId,
+          name: criteria.name,
+          description: criteria.description,
+          minScore: criteria.minScore,
+          maxScore: criteria.maxScore,
+          displayOrder: criteria.displayOrder,
+          weight: criteria.weight,
+          category: criteria.category,
+          createdAt: criteria.createdAt,
+          updatedAt: criteria.updatedAt,
+        })
+        .from(criteria)
+        .innerJoin(events, eq(criteria.eventId, events.id))
+        .where(eq(events.organizationId, orgId))
+        .orderBy(criteria.displayOrder);
+    }
 
     return NextResponse.json({ criteria: allCriteria });
   } catch (error) {
@@ -45,6 +68,9 @@ export async function POST(request: NextRequest) {
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
+
+    const orgId = await getAdminOrgId(user.id);
+    await requireEventInOrg(eventId, orgId);
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Criteria name is required' }, { status: 400 });

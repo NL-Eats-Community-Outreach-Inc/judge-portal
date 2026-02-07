@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { teams } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function PUT(
   request: NextRequest,
@@ -15,7 +16,22 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { teamId } = await params;
+
+    // Verify team belongs to org
+    const [existingTeam] = await db
+      .select({ eventId: teams.eventId })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!existingTeam) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    await requireEventInOrg(existingTeam.eventId, orgId);
+
     const { name, description, demoUrl, repoUrl, presentationOrder, awardType } =
       await request.json();
 
@@ -80,7 +96,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { teamId } = await params;
+
+    // Verify team belongs to org
+    const [existingTeam] = await db
+      .select({ eventId: teams.eventId })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!existingTeam) {
+      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    await requireEventInOrg(existingTeam.eventId, orgId);
 
     // Delete team (cascade will handle related scores)
     const [deletedTeam] = await db.delete(teams).where(eq(teams.id, teamId)).returning();

@@ -1,33 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eventJudges, users } from '@/lib/db/schema';
-import { createClient } from '@/lib/supabase/server';
+import { getUserFromSession } from '@/lib/auth/server';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { eq, and } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const user = await getUserFromSession();
 
-    if (!session) {
+    if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin role
-    const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
-
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
+
+    await requireEventInOrg(eventId, orgId);
 
     // Get all assigned judges for this event
     const assignedJudges = await db
@@ -62,28 +56,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const user = await getUserFromSession();
 
-    if (!session) {
+    if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin role
-    const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
-
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
+    const orgId = await getAdminOrgId(user.id);
     const body = await request.json();
     const { eventId, judgeIds } = body;
 
     if (!eventId || !Array.isArray(judgeIds)) {
       return NextResponse.json({ error: 'Event ID and judge IDs are required' }, { status: 400 });
     }
+
+    // CRITICAL: Verify event belongs to org BEFORE the delete-all-then-reinsert transaction
+    await requireEventInOrg(eventId, orgId);
 
     // Start a transaction
     await db.transaction(async (tx) => {
@@ -113,22 +101,13 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const user = await getUserFromSession();
 
-    if (!session) {
+    if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin role
-    const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
-
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
     const judgeId = searchParams.get('judgeId');
@@ -136,6 +115,8 @@ export async function DELETE(request: NextRequest) {
     if (!eventId || !judgeId) {
       return NextResponse.json({ error: 'Event ID and judge ID are required' }, { status: 400 });
     }
+
+    await requireEventInOrg(eventId, orgId);
 
     // Remove specific assignment
     await db

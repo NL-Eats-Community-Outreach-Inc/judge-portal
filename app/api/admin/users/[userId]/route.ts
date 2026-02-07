@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function DELETE(
   request: NextRequest,
@@ -16,6 +17,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { userId } = await params;
 
     // Check if the user exists and get their role
@@ -25,9 +27,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Prevent deletion of admin users
-    if (targetUser.role === 'admin') {
-      return NextResponse.json({ error: 'Cannot delete admin users' }, { status: 403 });
+    // Prevent deletion of super_admin users
+    if (targetUser.role === 'super_admin') {
+      return NextResponse.json({ error: 'Cannot delete super admin users' }, { status: 403 });
+    }
+
+    // Prevent deletion of admins from other organizations
+    if (targetUser.role === 'admin' && targetUser.organizationId !== orgId) {
+      return NextResponse.json(
+        { error: 'Cannot delete admins from other organizations' },
+        { status: 403 }
+      );
     }
 
     // First delete from users table (this will CASCADE delete scores)

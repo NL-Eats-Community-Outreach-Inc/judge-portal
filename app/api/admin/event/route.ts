@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function GET() {
   try {
@@ -12,8 +13,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all events, ordered by created date (newest first)
-    const allEvents = await db.select().from(events).orderBy(desc(events.createdAt));
+    const orgId = await getAdminOrgId(user.id);
+
+    // Get org's events, ordered by created date (newest first)
+    const allEvents = await db
+      .select()
+      .from(events)
+      .where(eq(events.organizationId, orgId))
+      .orderBy(desc(events.createdAt));
 
     return NextResponse.json({ events: allEvents });
   } catch (error) {
@@ -30,6 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { name, description, status } = await request.json();
 
     if (!name || !name.trim()) {
@@ -38,9 +46,12 @@ export async function POST(request: NextRequest) {
 
     const eventStatus = status || 'setup';
 
-    // If setting event to active, ensure no other event is active
+    // If setting event to active, ensure no other event in this org is active
     if (eventStatus === 'active') {
-      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'));
+      const activeEvents = await db
+        .select()
+        .from(events)
+        .where(and(eq(events.status, 'active'), eq(events.organizationId, orgId)));
       if (activeEvents.length > 0) {
         return NextResponse.json(
           {
@@ -58,6 +69,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         status: eventStatus,
+        organizationId: orgId,
       })
       .returning();
 
