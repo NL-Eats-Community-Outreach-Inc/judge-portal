@@ -4,41 +4,67 @@ import { db } from '@/lib/db';
 import { scores, criteria, teams, events, eventJudges } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
+// Helper: resolve the event for this judge (shared by GET and POST)
+async function resolveJudgeEvent(userId: string, eventId: string | null) {
+  const assignedEvents = await db
+    .select({ id: events.id })
+    .from(eventJudges)
+    .innerJoin(events, eq(eventJudges.eventId, events.id))
+    .where(
+      and(
+        eq(eventJudges.judgeId, userId),
+        eq(events.status, 'active')
+      )
+    );
+
+  if (assignedEvents.length === 0) {
+    return { error: 'No active event', status: 400, resolvedEventId: null };
+  }
+
+  if (eventId) {
+    const selected = assignedEvents.find((e) => e.id === eventId);
+    if (!selected) {
+      return { error: 'NOT_ASSIGNED', status: 403, resolvedEventId: null };
+    }
+    return { error: null, status: 200, resolvedEventId: eventId };
+  }
+
+  if (assignedEvents.length === 1) {
+    return { error: null, status: 200, resolvedEventId: assignedEvents[0].id };
+  }
+
+  return { error: 'SELECT_EVENT', status: 300, resolvedEventId: null };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await authServer.requireAuth();
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('teamId');
+    const eventId = searchParams.get('eventId');
 
     if (!teamId) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
     }
 
-    // Get the currently active event
-    const activeEvent = await db.select().from(events).where(eq(events.status, 'active')).limit(1);
-
-    if (!activeEvent.length) {
-      return NextResponse.json({ error: 'No active event' }, { status: 400 });
+    const { error, status, resolvedEventId } = await resolveJudgeEvent(user.id, eventId);
+    if (!resolvedEventId) {
+      if (error === 'NOT_ASSIGNED') {
+        return NextResponse.json(
+          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
+          { status }
+        );
+      }
+      if (error === 'SELECT_EVENT') {
+        return NextResponse.json(
+          { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
+          { status }
+        );
+      }
+      return NextResponse.json({ error }, { status });
     }
 
-    // Check if judge is assigned to this event
-    const assignment = await db
-      .select()
-      .from(eventJudges)
-      .where(and(eq(eventJudges.eventId, activeEvent[0].id), eq(eventJudges.judgeId, user.id)))
-      .limit(1);
-
-    if (!assignment.length) {
-      return NextResponse.json(
-        {
-          error: 'You are not assigned to the current active event',
-          errorType: 'NOT_ASSIGNED',
-        },
-        { status: 403 }
-      );
-    }
-
-    // Get all scores for this judge and team in the active event
+    // Get all scores for this judge and team in the resolved event
     const judgeScores = await db
       .select({
         id: scores.id,
@@ -51,7 +77,7 @@ export async function GET(request: NextRequest) {
         and(
           eq(scores.judgeId, user.id),
           eq(scores.teamId, teamId),
-          eq(scores.eventId, activeEvent[0].id)
+          eq(scores.eventId, resolvedEventId)
         )
       );
 
@@ -79,52 +105,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { teamId, criterionId, score, comment } = body || {};
+    const { teamId, criterionId, score, comment, eventId: bodyEventId } = body || {};
 
     // Validate required fields
     if (!teamId || !criterionId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get the currently active event
-    const activeEvent = await db.select().from(events).where(eq(events.status, 'active')).limit(1);
-
-    if (!activeEvent.length) {
-      return NextResponse.json({ error: 'No active event' }, { status: 400 });
+    const { error: resolveError, status: resolveStatus, resolvedEventId } =
+      await resolveJudgeEvent(user.id, bodyEventId || null);
+    if (!resolvedEventId) {
+      if (resolveError === 'NOT_ASSIGNED') {
+        return NextResponse.json(
+          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
+          { status: resolveStatus }
+        );
+      }
+      if (resolveError === 'SELECT_EVENT') {
+        return NextResponse.json(
+          { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
+          { status: resolveStatus }
+        );
+      }
+      return NextResponse.json({ error: resolveError }, { status: resolveStatus });
     }
 
-    // Check if judge is assigned to this event
-    const assignment = await db
-      .select()
-      .from(eventJudges)
-      .where(and(eq(eventJudges.eventId, activeEvent[0].id), eq(eventJudges.judgeId, user.id)))
-      .limit(1);
-
-    if (!assignment.length) {
-      return NextResponse.json(
-        {
-          error: 'You are not assigned to the current active event',
-          errorType: 'NOT_ASSIGNED',
-        },
-        { status: 403 }
-      );
-    }
-
-    // Verify the team belongs to the active event
+    // Verify the team belongs to the resolved event
     const team = await db
       .select({
         id: teams.id,
         eventId: teams.eventId,
       })
       .from(teams)
-      .where(and(eq(teams.id, teamId), eq(teams.eventId, activeEvent[0].id)))
+      .where(and(eq(teams.id, teamId), eq(teams.eventId, resolvedEventId)))
       .limit(1);
 
     if (!team.length) {
       return NextResponse.json({ error: 'Team not found in active event' }, { status: 400 });
     }
 
-    // Get the criterion to validate score range and ensure it belongs to active event
+    // Get the criterion to validate score range and ensure it belongs to the event
     const criterion = await db
       .select({
         minScore: criteria.minScore,
@@ -132,7 +152,7 @@ export async function POST(request: NextRequest) {
         eventId: criteria.eventId,
       })
       .from(criteria)
-      .where(and(eq(criteria.id, criterionId), eq(criteria.eventId, activeEvent[0].id)))
+      .where(and(eq(criteria.id, criterionId), eq(criteria.eventId, resolvedEventId)))
       .limit(1);
 
     if (!criterion.length) {
@@ -163,7 +183,7 @@ export async function POST(request: NextRequest) {
     const result = await db
       .insert(scores)
       .values({
-        eventId: activeEvent[0].id,
+        eventId: resolvedEventId,
         judgeId: user.id,
         teamId,
         criterionId,
@@ -173,7 +193,7 @@ export async function POST(request: NextRequest) {
       .onConflictDoUpdate({
         target: [scores.judgeId, scores.teamId, scores.criterionId],
         set: {
-          eventId: activeEvent[0].id,
+          eventId: resolvedEventId,
           score,
           comment: comment || null,
           updatedAt: new Date().toISOString(),

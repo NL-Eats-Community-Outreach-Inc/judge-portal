@@ -75,6 +75,20 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 <div className="h-4 w-32 md:w-48 bg-muted animate-pulse rounded" />
                 <div className="h-3 w-24 md:w-32 bg-muted animate-pulse rounded" />
               </div>
+            ) : status === 'select-event' ? (
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                <Calendar className="h-4 md:h-5 w-4 md:w-5 text-primary shrink-0" />
+                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
+                      Select an Event
+                    </h1>
+                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                      Choose an event to start judging
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : status === 'not-assigned' ? (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <UserX className="h-4 md:h-5 w-4 md:w-5 text-amber-600 dark:text-amber-400 shrink-0" />

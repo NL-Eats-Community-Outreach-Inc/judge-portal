@@ -15,14 +15,30 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const { teamId } = await params;
   const user = await authServer.requireAuth();
 
-  // Get currently active event
-  const currentEvent = await db.select().from(events).where(eq(events.status, 'active')).limit(1);
+  // Get team and its event in one query
+  const team = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
 
-  if (!currentEvent.length) {
-    redirect('/judge');
+  if (!team.length) {
+    notFound();
   }
 
-  const eventId = currentEvent[0].id;
+  const teamData = team[0];
+  const eventId = teamData.eventId;
+
+  // Verify the team's event is active
+  const teamEvent = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.status, 'active')))
+    .limit(1);
+
+  if (!teamEvent.length) {
+    redirect('/judge');
+  }
 
   // Check if judge is assigned to this event
   const assignment = await db
@@ -35,19 +51,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     redirect('/judge');
   }
 
-  // Get team details
-  const team = await db
-    .select()
-    .from(teams)
-    .where(and(eq(teams.id, teamId), eq(teams.eventId, eventId)))
-    .limit(1);
-
-  if (!team.length) {
-    notFound();
-  }
-
   // Get criteria for this event based on team's award type
-  const teamData = team[0];
   let criteriaFilter;
 
   if (teamData.awardType === 'technical') {

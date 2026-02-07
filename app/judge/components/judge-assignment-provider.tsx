@@ -8,6 +8,7 @@ interface Event {
   name: string;
   description: string | null;
   status: 'setup' | 'open' | 'active' | 'completed';
+  organizationName?: string | null;
 }
 
 interface Team {
@@ -32,6 +33,10 @@ interface JudgeAssignmentContextType {
   isFullyComplete: boolean;
   hasShownCompletionConfetti: boolean;
   setHasShownCompletionConfetti: (shown: boolean) => void;
+  availableEvents: Event[];
+  selectedEventId: string | null;
+  selectEvent: (eventId: string) => void;
+  clearEventSelection: () => void;
   refresh: () => Promise<void>;
   refreshScoreCompletion: () => Promise<void>;
 }

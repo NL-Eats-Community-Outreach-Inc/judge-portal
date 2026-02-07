@@ -37,7 +37,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Save,
   Loader2,
-  CheckCircle,
   Plus,
   Edit2,
   Trash2,
@@ -240,8 +239,6 @@ export default function EventManagement() {
     return <Badge variant={variants[status] || 'outline'}>{labels[status] || status.toUpperCase()}</Badge>;
   };
 
-  const activeEvent = events.find((event) => event.status === 'active');
-
   if (isLoading) {
     return (
       <Card>
@@ -320,14 +317,6 @@ export default function EventManagement() {
                       <SelectItem value="completed">Completed - Event finished</SelectItem>
                     </SelectContent>
                   </Select>
-                  {formData.status === 'active' &&
-                    activeEvent &&
-                    activeEvent.id !== editingEvent?.id && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Warning: Setting this event to active will deactivate &quot;
-                        {activeEvent.name}&quot;
-                      </p>
-                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -372,48 +361,6 @@ export default function EventManagement() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Active Event Card */}
-        {activeEvent && (
-          <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-green-900 dark:text-green-100">
-                      Active Event
-                    </CardTitle>
-                    <CardDescription className="text-green-700 dark:text-green-300">
-                      {activeEvent.name}
-                    </CardDescription>
-                  </div>
-                </div>
-                {getStatusBadge(activeEvent.status)}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-green-900 dark:text-green-100">Created:</span>
-                  <p className="text-green-700 dark:text-green-300">
-                    {new Date(activeEvent.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-medium text-green-900 dark:text-green-100">
-                    Last Updated:
-                  </span>
-                  <p className="text-green-700 dark:text-green-300">
-                    {new Date(activeEvent.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Events List */}
         <Card

@@ -4,7 +4,8 @@ import { useEffect, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Circle, Clock, UserX, Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2, Circle, Clock, UserX, Home, ArrowLeftRight, Calendar, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useJudgeAssignmentContext } from './judge-assignment-provider';
@@ -18,7 +19,15 @@ interface JudgeSidebarProps {
 export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: JudgeSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { status, teams, scoreCompletion, refreshScoreCompletion } = useJudgeAssignmentContext();
+  const {
+    status,
+    teams,
+    event,
+    scoreCompletion,
+    refreshScoreCompletion,
+    availableEvents,
+    clearEventSelection,
+  } = useJudgeAssignmentContext();
 
   // Extract current team ID from pathname
   const currentTeamId = pathname?.split('/').pop();
@@ -207,6 +216,92 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
     </aside>
   );
 
+  // Create "SELECT EVENT" content
+  const selectEventContent = (
+    <aside
+      className={cn(
+        'bg-muted/30 border-r border-border flex flex-col h-full',
+        !isMobile && 'w-64 lg:w-80'
+      )}
+    >
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <button
+            className="p-1.5 rounded-md hover:bg-muted/60 transition-colors"
+            onClick={() => {
+              router.push('/judge');
+              if (isMobile && onClose) {
+                onClose();
+              }
+            }}
+            aria-label="Back to Event Selection"
+          >
+            <Home className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
+          <h2 className="font-semibold text-foreground">Teams</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">Select an event first</p>
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+            <Calendar className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Choose an Event</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Select an event from the main page to see teams.
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+
+  // Create "NO TEAMS" content (event assigned but no teams yet)
+  const noTeamsContent = (
+    <aside
+      className={cn(
+        'bg-muted/30 border-r border-border flex flex-col h-full',
+        !isMobile && 'w-64 lg:w-80'
+      )}
+    >
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <button
+            className="p-1.5 rounded-md hover:bg-muted/60 transition-colors"
+            onClick={() => {
+              router.push('/judge');
+              if (isMobile && onClose) {
+                onClose();
+              }
+            }}
+            aria-label="Back to Teams Overview"
+          >
+            <Home className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+          </button>
+          <h2 className="font-semibold text-foreground">Teams</h2>
+        </div>
+        {event && (
+          <p className="text-sm text-muted-foreground mt-1 truncate">{event.name}</p>
+        )}
+      </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+            <Users className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">No Teams Yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Teams haven&apos;t been added to this event yet. Contact an administrator.
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+
   // Handle different states
   if (status === 'loading') {
     if (isMobile) {
@@ -222,6 +317,22 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
       );
     }
     return loadingContent;
+  }
+
+  if (status === 'select-event') {
+    if (isMobile) {
+      return (
+        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Teams Navigation</SheetTitle>
+            </SheetHeader>
+            {selectEventContent}
+          </SheetContent>
+        </Sheet>
+      );
+    }
+    return selectEventContent;
   }
 
   if (status === 'not-assigned') {
@@ -240,7 +351,7 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
     return notAssignedContent;
   }
 
-  if (status === 'no-event' || teams.length === 0) {
+  if (status === 'no-event') {
     if (isMobile) {
       return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
@@ -254,6 +365,22 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
       );
     }
     return noEventContent;
+  }
+
+  if (teams.length === 0) {
+    if (isMobile) {
+      return (
+        <Sheet open={isOpen} onOpenChange={(open) => !open && onClose?.()}>
+          <SheetContent side="left" className="w-80 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Teams Navigation</SheetTitle>
+            </SheetHeader>
+            {noTeamsContent}
+          </SheetContent>
+        </Sheet>
+      );
+    }
+    return noTeamsContent;
   }
 
   const sidebarContent = (
@@ -285,7 +412,33 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
             {teams.length} teams
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">Select a team to start judging</p>
+        {event && (
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
+              {event.name}
+            </p>
+            {availableEvents.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 px-2 shrink-0 ml-2"
+                onClick={() => {
+                  clearEventSelection();
+                  router.push('/judge');
+                  if (isMobile && onClose) {
+                    onClose();
+                  }
+                }}
+              >
+                <ArrowLeftRight className="h-3 w-3 mr-1" />
+                Switch
+              </Button>
+            )}
+          </div>
+        )}
+        {!event && (
+          <p className="text-sm text-muted-foreground mt-1">Select a team to start judging</p>
+        )}
       </div>
 
       {/* Team list */}

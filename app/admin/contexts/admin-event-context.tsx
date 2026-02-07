@@ -41,22 +41,19 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
         setEvents(data.events || []);
         setOrganizationName(data.organizationName ?? null);
 
-        // Smart event selection logic
+        // Smart event selection logic (supports multiple active events)
         if (data.events?.length > 0) {
-          const activeEvent = data.events.find((e: Event) => e.status === 'active');
           const currentEventStillExists = selectedEvent
             ? data.events.find((e: Event) => e.id === selectedEvent.id)
             : null;
 
-          if (activeEvent) {
-            // Always prefer active event
-            setSelectedEvent(activeEvent);
-          } else if (currentEventStillExists) {
-            // Keep current selection if it still exists and no active event
+          if (currentEventStillExists) {
+            // Keep current selection if it still exists
             setSelectedEvent(currentEventStillExists);
           } else {
-            // Fallback to first event if no active event and current selection is invalid/missing
-            setSelectedEvent(data.events[0]);
+            // Auto-select first active event, or fallback to first event
+            const activeEvent = data.events.find((e: Event) => e.status === 'active');
+            setSelectedEvent(activeEvent || data.events[0]);
           }
         }
       } else {

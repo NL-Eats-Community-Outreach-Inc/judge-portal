@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { events, organizations } from '@/lib/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function GET() {
@@ -52,22 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     const eventStatus = status || 'setup';
-
-    // If setting event to active, ensure no other event in this org is active
-    if (eventStatus === 'active') {
-      const activeEvents = await db
-        .select()
-        .from(events)
-        .where(and(eq(events.status, 'active'), eq(events.organizationId, orgId)));
-      if (activeEvents.length > 0) {
-        return NextResponse.json(
-          {
-            error: 'Another event is already active. Please deactivate it first.',
-          },
-          { status: 400 }
-        );
-      }
-    }
 
     // Create new event
     const [event] = await db

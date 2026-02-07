@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Target, Clock, AlertCircle, UserX, Shield, Mail } from 'lucide-react';
 import { useJudgeAssignmentContext } from './components/judge-assignment-provider';
+import { EventPicker } from './components/event-picker';
 
 export default function JudgePage() {
   const { status, teams, refresh } = useJudgeAssignmentContext();
@@ -25,6 +26,11 @@ export default function JudgePage() {
         </div>
       </div>
     );
+  }
+
+  // Show event picker when multiple events are available
+  if (status === 'select-event') {
+    return <EventPicker />;
   }
 
   // Show "NOT ASSIGNED" page when judge is not assigned to event
@@ -73,7 +79,7 @@ export default function JudgePage() {
                 </div>
               </div>
             </Card>
-            <Button onClick={refresh} className="mx-auto">
+            <Button onClick={() => refresh()} className="mx-auto">
               Check Again
             </Button>
           </div>
@@ -82,8 +88,8 @@ export default function JudgePage() {
     );
   }
 
-  // Show "NO EVENT" page when there are no teams
-  if (status === 'no-event' || teams.length === 0) {
+  // Show "NO EVENT" page when no active event exists
+  if (status === 'no-event') {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
         <div className="text-center space-y-4 md:space-y-6">
@@ -110,7 +116,44 @@ export default function JudgePage() {
                 </ul>
               </div>
             </Card>
-            <Button onClick={refresh} className="mx-auto">
+            <Button onClick={() => refresh()} className="mx-auto">
+              Check Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show "NO TEAMS" page when event is assigned but has no teams yet
+  if (teams.length === 0) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
+        <div className="text-center space-y-4 md:space-y-6">
+          <div className="w-20 h-20 md:w-24 md:h-24 mx-auto bg-muted rounded-full flex items-center justify-center">
+            <Users className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+          </div>
+          <div className="space-y-2 md:space-y-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">No Teams Yet</h1>
+            <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
+              The event is active but no teams have been added yet. An administrator needs to
+              configure teams and criteria before judging can begin.
+            </p>
+          </div>
+          <div className="space-y-4 md:space-y-6">
+            <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
+              <div className="space-y-2 md:space-y-3">
+                <h3 className="font-semibold text-foreground text-sm md:text-base">
+                  What happens next?
+                </h3>
+                <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
+                  <li>• An administrator needs to add teams to the event</li>
+                  <li>• Scoring criteria must be configured</li>
+                  <li>• You&apos;ll see teams appear in the sidebar once ready</li>
+                </ul>
+              </div>
+            </Card>
+            <Button onClick={() => refresh()} className="mx-auto">
               Check Again
             </Button>
           </div>
