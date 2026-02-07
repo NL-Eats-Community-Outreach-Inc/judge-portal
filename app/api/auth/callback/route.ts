@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from '@/lib/db/schema';
+import { users, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
@@ -42,6 +42,21 @@ export async function GET(request: NextRequest) {
             role: userRole,
           });
           console.log('Created user record for:', data.user.email, 'with role:', userRole);
+
+          // Create org memberships for judges from user metadata
+          if (userRole === 'judge') {
+            const orgIds = (data.user.user_metadata?.organization_ids as string[]) || [];
+            for (const orgId of orgIds) {
+              try {
+                await db
+                  .insert(organizationMembers)
+                  .values({ organizationId: orgId, userId: data.user.id })
+                  .onConflictDoNothing();
+              } catch (e) {
+                console.error('Error creating org membership:', e);
+              }
+            }
+          }
         }
 
         await client.end();

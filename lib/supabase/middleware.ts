@@ -54,7 +54,8 @@ export async function updateSession(request: NextRequest) {
       pathname === '/' ||
       pathname.startsWith('/auth') ||
       pathname.startsWith('/invite') ||
-      pathname.startsWith('/api/invite')
+      pathname.startsWith('/api/invite') ||
+      pathname.startsWith('/api/organizations/public')
     ) {
       return supabaseResponse;
     }

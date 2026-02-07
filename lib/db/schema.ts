@@ -294,6 +294,27 @@ export const teamMembers = pgTable(
   })
 );
 
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueOrgUser: unique().on(table.organizationId, table.userId),
+    orgIdx: index('idx_org_members_organization').on(table.organizationId),
+    userIdx: index('idx_org_members_user').on(table.userId),
+  })
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
@@ -314,3 +335,5 @@ export type EventParticipant = typeof eventParticipants.$inferSelect;
 export type NewEventParticipant = typeof eventParticipants.$inferInsert;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type NewTeamMember = typeof teamMembers.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type NewOrganizationMember = typeof organizationMembers.$inferInsert;

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession, type UserRole } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, organizationMembers } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function PUT(
@@ -61,6 +61,26 @@ export async function PUT(
     // When demoting from admin: remove org assignment
     if (currentTargetUser.role === 'admin' && role !== 'admin') {
       updateData.organizationId = null;
+    }
+
+    // When promoting to judge, create org membership
+    if (role === 'judge') {
+      await db
+        .insert(organizationMembers)
+        .values({ organizationId: adminOrgId, userId })
+        .onConflictDoNothing();
+    }
+
+    // When demoting from judge, remove org membership for this org
+    if (currentTargetUser.role === 'judge' && role !== 'judge') {
+      await db
+        .delete(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.userId, userId),
+            eq(organizationMembers.organizationId, adminOrgId)
+          )
+        );
     }
 
     // Update user role

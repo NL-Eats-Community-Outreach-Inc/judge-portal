@@ -336,6 +336,81 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_user_organization(uuid) TO authenticated, anon;
 
 -- ================================================================
+-- SECTION 8: ORGANIZATION MEMBERS (Judge-Org Many-to-Many)
+-- Enables judges to belong to multiple organizations.
+-- Admins see only judges who are members of their org.
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS organization_members (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(organization_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_members_organization ON organization_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id);
+
+-- Data migration: populate from accepted judge invitations
+INSERT INTO organization_members (organization_id, user_id)
+SELECT DISTINCT i.organization_id, u.id
+FROM invitations i
+INNER JOIN users u ON u.email = i.email
+WHERE i.status = 'accepted'
+  AND i.role = 'judge'
+  AND i.organization_id IS NOT NULL
+  AND u.role = 'judge'
+ON CONFLICT (organization_id, user_id) DO NOTHING;
+
+-- Also migrate judges who have users.organization_id set (legacy single-org field)
+INSERT INTO organization_members (organization_id, user_id)
+SELECT u.organization_id, u.id
+FROM users u
+WHERE u.role = 'judge'
+  AND u.organization_id IS NOT NULL
+ON CONFLICT (organization_id, user_id) DO NOTHING;
+
+-- Migrate remaining judges (no invitation, no org) to the default organization
+-- so they are not orphaned and invisible to all admins
+INSERT INTO organization_members (organization_id, user_id)
+SELECT
+  (SELECT id FROM organizations WHERE slug = 'default' LIMIT 1),
+  u.id
+FROM users u
+WHERE u.role = 'judge'
+  AND NOT EXISTS (
+    SELECT 1 FROM organization_members om WHERE om.user_id = u.id
+  )
+  AND EXISTS (SELECT 1 FROM organizations WHERE slug = 'default')
+ON CONFLICT (organization_id, user_id) DO NOTHING;
+
+-- RLS for organization_members
+ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own memberships" ON organization_members;
+CREATE POLICY "Users can view own memberships"
+  ON organization_members FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can create own memberships" ON organization_members;
+CREATE POLICY "Users can create own memberships"
+  ON organization_members FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can manage org members" ON organization_members;
+CREATE POLICY "Admins can manage org members"
+  ON organization_members FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role::text IN ('admin', 'super_admin')
+      AND users.organization_id = organization_members.organization_id
+    )
+  );
+
+-- ================================================================
 -- SUCCESS
 -- ================================================================
 
@@ -343,7 +418,7 @@ DO $$
 BEGIN
   RAISE NOTICE '========================================';
   RAISE NOTICE 'Feature "multi-tenant-participants" migration completed successfully!';
-  RAISE NOTICE 'Tables created: organizations, event_participants, team_members';
+  RAISE NOTICE 'Tables created: organizations, event_participants, team_members, organization_members';
   RAISE NOTICE 'Columns added: events.organization_id, events.max_team_size, teams.join_code, users.organization_id, invitations.organization_id';
   RAISE NOTICE 'Enums updated: event_status (+open), user_role (+super_admin), invitation_role (+admin)';
   RAISE NOTICE 'Default organization created and existing data migrated';

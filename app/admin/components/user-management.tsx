@@ -137,10 +137,18 @@ export default function UserManagement() {
         throw new Error(error.error || 'Failed to delete user');
       }
 
+      const data = await response.json();
       setUsers((prev) => prev.filter((user) => user.id !== userId));
-      toast.success('Success', {
-        description: 'User deleted successfully',
-      });
+
+      if (data.action === 'removed_from_org') {
+        toast.success('Success', {
+          description: data.message || 'Judge removed from your organization',
+        });
+      } else {
+        toast.success('Success', {
+          description: 'User deleted successfully',
+        });
+      }
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error('Error', {

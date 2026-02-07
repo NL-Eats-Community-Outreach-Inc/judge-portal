@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { eventJudges, users } from '@/lib/db/schema';
+import { eventJudges, users, organizationMembers } from '@/lib/db/schema';
 import { getUserFromSession } from '@/lib/auth/server';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,14 +34,17 @@ export async function GET(request: NextRequest) {
       .innerJoin(users, eq(users.id, eventJudges.judgeId))
       .where(eq(eventJudges.eventId, eventId));
 
-    // Get all judges (for selection) - sorted alphabetically
+    // Get judges who are members of this org (for selection) - sorted alphabetically
     const allJudges = await db
       .select({
         id: users.id,
         email: users.email,
       })
       .from(users)
-      .where(eq(users.role, 'judge'))
+      .innerJoin(organizationMembers, eq(organizationMembers.userId, users.id))
+      .where(
+        and(eq(users.role, 'judge'), eq(organizationMembers.organizationId, orgId))
+      )
       .orderBy(users.email);
 
     return NextResponse.json({
@@ -72,6 +75,27 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL: Verify event belongs to org BEFORE the delete-all-then-reinsert transaction
     await requireEventInOrg(eventId, orgId);
+
+    // Validate all judgeIds are members of this org
+    if (judgeIds.length > 0) {
+      const validMembers = await db
+        .select({ userId: organizationMembers.userId })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, orgId),
+            inArray(organizationMembers.userId, judgeIds)
+          )
+        );
+      const validIds = new Set(validMembers.map((m) => m.userId));
+      const invalidIds = judgeIds.filter((id: string) => !validIds.has(id));
+      if (invalidIds.length > 0) {
+        return NextResponse.json(
+          { error: 'Some judges are not members of your organization' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Start a transaction
     await db.transaction(async (tx) => {

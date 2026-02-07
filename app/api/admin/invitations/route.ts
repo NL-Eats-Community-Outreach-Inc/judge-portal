@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { createBatchInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, invitations } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { users, invitations, organizationMembers } from '@/lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 
 /**
@@ -44,19 +44,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for already registered users
+    // For judges: allow re-invite if they're not already in this org
     const alreadyRegistered: Array<{ email: string; role: string }> = [];
     for (const email of emails) {
       const existingUser = await db
-        .select({ email: users.email, role: users.role })
+        .select({ id: users.id, email: users.email, role: users.role })
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
 
       if (existingUser[0]) {
-        alreadyRegistered.push({
-          email: existingUser[0].email!,
-          role: existingUser[0].role!,
-        });
+        // If this is a judge invite and user is already a judge, check org membership
+        if (existingUser[0].role === 'judge' && role === 'judge') {
+          const existingMembership = await db
+            .select()
+            .from(organizationMembers)
+            .where(
+              and(
+                eq(organizationMembers.userId, existingUser[0].id),
+                eq(organizationMembers.organizationId, orgId)
+              )
+            )
+            .limit(1);
+
+          if (existingMembership[0]) {
+            // Already a member of this org
+            alreadyRegistered.push({
+              email: existingUser[0].email!,
+              role: existingUser[0].role! + ' (already in your org)',
+            });
+          }
+          // If NOT in this org, allow re-invite (don't add to alreadyRegistered)
+        } else {
+          alreadyRegistered.push({
+            email: existingUser[0].email!,
+            role: existingUser[0].role!,
+          });
+        }
       }
     }
 

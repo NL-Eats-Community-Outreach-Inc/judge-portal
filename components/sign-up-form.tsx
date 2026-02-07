@@ -9,13 +9,22 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OTPInput } from '@/components/auth/otp-input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UserRole = 'judge' | 'participant';
 type AuthMethod = 'password' | 'passwordless';
+
+interface OrgOption {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+}
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [role, setRole] = useState<UserRole>('judge');
@@ -27,7 +36,24 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
   const router = useRouter();
+
+  // Fetch orgs when role is judge
+  useEffect(() => {
+    if (role === 'judge') {
+      setOrgsLoading(true);
+      fetch('/api/organizations/public')
+        .then((res) => res.json())
+        .then((data) => setAvailableOrgs(data.organizations || []))
+        .catch(() => toast.error('Failed to load organizations'))
+        .finally(() => setOrgsLoading(false));
+    } else {
+      setSelectedOrgIds([]);
+    }
+  }, [role]);
 
   const handlePasswordSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +77,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
           emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${redirectPath}&role=${role}`,
           data: {
             role: role,
+            organization_ids: role === 'judge' ? selectedOrgIds : [],
           },
         },
       });
@@ -61,6 +88,22 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (data.user && data.session) {
         // User is auto-confirmed and logged in
         // User record is automatically created by database trigger with correct role from metadata
+
+        // Create org memberships for judges
+        if (role === 'judge' && selectedOrgIds.length > 0) {
+          for (const orgId of selectedOrgIds) {
+            const { error: memberError } = await supabase
+              .from('organization_members')
+              .insert({
+                organization_id: orgId,
+                user_id: data.user.id,
+              });
+            if (memberError && !memberError.message.includes('duplicate')) {
+              console.error('Error creating org membership:', memberError);
+            }
+          }
+        }
+
         router.push(redirectPath);
       } else {
         // User needs email confirmation
@@ -89,6 +132,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
             // The trigger will skip creation until OTP is verified
             invite_pending: true,
             role: role,
+            organization_ids: role === 'judge' ? selectedOrgIds : [],
           },
         },
       });
@@ -147,6 +191,21 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
           throw new Error('Failed to complete account setup');
         }
 
+        // Create org memberships for judges
+        if (roleFromMetadata === 'judge' && selectedOrgIds.length > 0) {
+          for (const orgId of selectedOrgIds) {
+            const { error: memberError } = await supabase
+              .from('organization_members')
+              .insert({
+                organization_id: orgId,
+                user_id: data.user.id,
+              });
+            if (memberError && !memberError.message.includes('duplicate')) {
+              console.error('Error creating org membership:', memberError);
+            }
+          }
+        }
+
         const redirectPath = roleFromMetadata === 'judge' ? '/judge' : '/participant';
         router.push(redirectPath);
       }
@@ -192,6 +251,55 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 </div>
               </RadioGroup>
             </div>
+
+            {/* Organization Selection (judges only) */}
+            {role === 'judge' && (
+              <div className="space-y-3">
+                <Label>Select Organization(s)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Choose which organization(s) you want to judge for
+                </p>
+                {orgsLoading ? (
+                  <div className="flex items-center gap-2 p-3 border rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading organizations...
+                    </span>
+                  </div>
+                ) : availableOrgs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3 border rounded-lg">
+                    No organizations available
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                    {availableOrgs.map((org) => (
+                      <div
+                        key={org.id}
+                        className="flex items-center space-x-2 hover:bg-muted/50 p-2 rounded transition-colors"
+                      >
+                        <Checkbox
+                          id={`org-${org.id}`}
+                          checked={selectedOrgIds.includes(org.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedOrgIds((prev) =>
+                              checked
+                                ? [...prev, org.id]
+                                : prev.filter((id) => id !== org.id)
+                            );
+                          }}
+                        />
+                        <Label
+                          htmlFor={`org-${org.id}`}
+                          className="cursor-pointer text-sm"
+                        >
+                          {org.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Authentication Method Tabs */}
             <Tabs value={authMethod} onValueChange={(value) => setAuthMethod(value as AuthMethod)}>
