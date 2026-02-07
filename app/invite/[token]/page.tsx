@@ -4,8 +4,39 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, Calendar, User } from 'lucide-react';
+import { Loader2, Mail, Calendar, User, Building2, Shield, UserCheck, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface InvitationInfo {
+  email: string;
+  role: string;
+  customMessage?: string;
+  organizationName?: string | null;
+}
+
+const ROLE_CONFIG: Record<string, { title: string; label: string; description: string; afterReg: string; icon: typeof User }> = {
+  admin: {
+    title: "You've Been Invited as an Admin!",
+    label: 'Admin Account',
+    description: "You've been invited to manage an organization. No password required!",
+    afterReg: 'You will have access to manage events and teams for your organization',
+    icon: Shield,
+  },
+  judge: {
+    title: "You've Been Invited as a Judge!",
+    label: 'Judge Account',
+    description: "You've been invited to join as a judge. No password required!",
+    afterReg: 'An admin will assign you to events once your account is created',
+    icon: UserCheck,
+  },
+  participant: {
+    title: "You've Been Invited as a Participant!",
+    label: 'Participant Account',
+    description: "You've been invited to join as a participant. No password required!",
+    afterReg: 'You can browse and register for events once your account is created',
+    icon: GraduationCap,
+  },
+};
 
 export default function InviteLandingPage() {
   const router = useRouter();
@@ -13,12 +44,37 @@ export default function InviteLandingPage() {
   const token = params.token as string;
 
   const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(true);
+  const [invitationInfo, setInvitationInfo] = useState<InvitationInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
       setError('Invalid invitation link');
+      setIsLoadingInfo(false);
+      return;
     }
+
+    // Fetch invitation info to display role-appropriate content
+    const fetchInfo = async () => {
+      try {
+        const response = await fetch(`/api/invite/validate?token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Invalid invitation');
+          return;
+        }
+
+        setInvitationInfo(data.invitation);
+      } catch {
+        setError('Failed to load invitation details');
+      } finally {
+        setIsLoadingInfo(false);
+      }
+    };
+
+    fetchInfo();
   }, [token]);
 
   const handleContinue = async () => {
@@ -77,26 +133,54 @@ export default function InviteLandingPage() {
     );
   }
 
+  if (isLoadingInfo) {
+    return (
+      <div className="flex items-center justify-center h-screen px-4">
+        <Card className="w-full max-w-lg">
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const role = invitationInfo?.role || 'judge';
+  const config = ROLE_CONFIG[role] || ROLE_CONFIG.judge;
+  const RoleIcon = config.icon;
+
   return (
     <div className="flex items-center justify-center h-screen px-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>You&apos;ve Been Invited as a Judge!</CardTitle>
+          <CardTitle>{config.title}</CardTitle>
           <CardDescription>
-            Complete your registration to access the judging platform
+            Complete your registration to access the platform
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
-              <User className="h-5 w-5 mt-0.5 text-muted-foreground" />
+              <RoleIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
               <div>
-                <p className="font-medium">Judge Account</p>
+                <p className="font-medium">{config.label}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You&apos;ve been invited to join as a judge. No password required!
+                  {config.description}
                 </p>
               </div>
             </div>
+
+            {invitationInfo?.organizationName && (
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
+                <Building2 className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Organization</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    You&apos;ll be assigned to <strong>{invitationInfo.organizationName}</strong>
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-start gap-3 p-4 rounded-lg bg-muted">
               <Mail className="h-5 w-5 mt-0.5 text-muted-foreground" />
@@ -113,7 +197,7 @@ export default function InviteLandingPage() {
               <div>
                 <p className="font-medium">After Registration</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  An admin will assign you to events once your account is created
+                  {config.afterReg}
                 </p>
               </div>
             </div>

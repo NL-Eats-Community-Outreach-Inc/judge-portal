@@ -67,17 +67,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new user record with role from invitation
+    // For admin invites, also set organizationId from the invitation
     await db.insert(users).values({
       id: data.user.id,
       email: invitation.email,
       role: invitation.role,
+      organizationId: invitation.organizationId || null,
     });
 
     // Accept invitation (mark as accepted)
     await acceptInvitation(invitation.id, data.user.id);
 
     // Determine redirect URL based on role
-    const redirectUrl = invitation.role === 'judge' ? '/judge' : '/participant';
+    const redirectUrl =
+      invitation.role === 'admin'
+        ? '/admin'
+        : invitation.role === 'judge'
+          ? '/judge'
+          : '/participant';
 
     return NextResponse.json({
       success: true,
