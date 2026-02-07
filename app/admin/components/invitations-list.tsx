@@ -22,6 +22,7 @@ import {
   Mail,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -127,6 +128,38 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
     }
   };
 
+  const handleDelete = async (id: string, email: string) => {
+    try {
+      const response = await fetch(`/api/admin/invitations/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Invitation deleted', {
+          description: `${email}'s invitation has been removed`,
+        });
+        fetchInvitations(true);
+      } else {
+        toast.error('Failed to delete invitation');
+      }
+    } catch {
+      toast.error('Failed to delete invitation');
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Badge variant="destructive">Admin</Badge>;
+      case 'judge':
+        return <Badge>Judge</Badge>;
+      case 'participant':
+        return <Badge variant="secondary">Participant</Badge>;
+      default:
+        return <Badge variant="outline">{role}</Badge>;
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -165,7 +198,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>Judge Invitations</CardTitle>
+              <CardTitle>Invitations</CardTitle>
               <CardDescription>
                 {isLoading
                   ? 'Loading invitations...'
@@ -200,6 +233,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Sent</TableHead>
@@ -211,6 +245,9 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
                   <TableRow key={i}>
                     <TableCell>
                       <div className="h-4 bg-muted animate-pulse rounded w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-6 bg-muted animate-pulse rounded w-16" />
                     </TableCell>
                     <TableCell>
                       <div className="h-6 bg-muted animate-pulse rounded w-20" />
@@ -234,7 +271,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
             <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p>No invitations sent yet</p>
             <p className="text-sm">
-              Use the &quot;Invite Judges&quot; button above to send invitations
+              Use the &quot;Invite Users&quot; button above to send invitations
             </p>
           </div>
         ) : (
@@ -243,6 +280,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Sent</TableHead>
@@ -253,6 +291,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
                 {currentInvitations.map((invitation) => (
                   <TableRow key={invitation.id}>
                     <TableCell className="font-medium">{invitation.email}</TableCell>
+                    <TableCell>{getRoleBadge(invitation.role)}</TableCell>
                     <TableCell>{getStatusBadge(invitation.status)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(invitation.expiresAt)}
@@ -274,14 +313,14 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
                           )}
                         </Button>
 
-                        {invitation.status === 'pending' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {invitation.status === 'pending' && (
                               <DropdownMenuItem
                                 onClick={() => handleRevoke(invitation.id, invitation.email)}
                                 className="text-destructive"
@@ -289,9 +328,16 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
                                 <XCircle className="mr-2 h-4 w-4" />
                                 Revoke Invitation
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(invitation.id, invitation.email)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Invitation
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
