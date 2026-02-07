@@ -54,6 +54,8 @@ interface Event {
   name: string;
   description: string | null;
   status: 'setup' | 'open' | 'active' | 'completed';
+  organizationId: string | null;
+  maxTeamSize: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,10 +80,12 @@ export default function EventManagement() {
     name: string;
     description: string;
     status: 'setup' | 'open' | 'active' | 'completed';
+    maxTeamSize: string;
   }>({
     name: '',
     description: '',
     status: 'setup',
+    maxTeamSize: '',
   });
 
   const resetForm = () => {
@@ -89,6 +93,7 @@ export default function EventManagement() {
       name: '',
       description: '',
       status: 'setup',
+      maxTeamSize: '',
     });
     setEditingEvent(null);
   };
@@ -104,6 +109,7 @@ export default function EventManagement() {
       name: event.name,
       description: event.description || '',
       status: event.status,
+      maxTeamSize: event.maxTeamSize != null ? String(event.maxTeamSize) : '',
     });
     setIsDialogOpen(true);
   };
@@ -118,6 +124,13 @@ export default function EventManagement() {
 
     setIsSaving(true);
     try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        status: formData.status,
+        maxTeamSize: formData.maxTeamSize ? parseInt(formData.maxTeamSize, 10) : null,
+      };
+
       let response;
       if (editingEvent) {
         // Update existing event
@@ -126,7 +139,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
       } else {
         // Create new event
@@ -135,7 +148,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
       }
 
@@ -214,10 +227,17 @@ export default function EventManagement() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       setup: 'outline',
+      open: 'secondary',
       active: 'default',
       completed: 'secondary',
     };
-    return <Badge variant={variants[status] || 'outline'}>{status.toUpperCase()}</Badge>;
+    const labels: Record<string, string> = {
+      setup: 'SETUP',
+      open: 'OPEN',
+      active: 'ACTIVE',
+      completed: 'COMPLETED',
+    };
+    return <Badge variant={variants[status] || 'outline'}>{labels[status] || status.toUpperCase()}</Badge>;
   };
 
   const activeEvent = events.find((event) => event.status === 'active');
@@ -295,6 +315,7 @@ export default function EventManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="setup">Setup - Preparing event</SelectItem>
+                      <SelectItem value="open">Open - Registration &amp; team forming</SelectItem>
                       <SelectItem value="active">Active - Judging in progress</SelectItem>
                       <SelectItem value="completed">Completed - Event finished</SelectItem>
                     </SelectContent>
@@ -307,6 +328,23 @@ export default function EventManagement() {
                         {activeEvent.name}&quot;
                       </p>
                     )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-team-size">Max Team Size</Label>
+                  <Input
+                    id="max-team-size"
+                    type="number"
+                    min="1"
+                    value={formData.maxTeamSize}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maxTeamSize: e.target.value }))
+                    }
+                    placeholder="No limit"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of members per team. Leave empty for no limit.
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -480,7 +518,9 @@ export default function EventManagement() {
                                         className="text-red-600 hover:text-red-700 disabled:text-muted-foreground"
                                         onClick={() => setDeletingEvent(event)}
                                         disabled={
-                                          event.status === 'active' || event.status === 'completed'
+                                          event.status === 'open' ||
+                                          event.status === 'active' ||
+                                          event.status === 'completed'
                                         }
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -488,7 +528,9 @@ export default function EventManagement() {
                                     </AlertDialogTrigger>
                                   </div>
                                 </TooltipTrigger>
-                                {(event.status === 'active' || event.status === 'completed') && (
+                                {(event.status === 'open' ||
+                                  event.status === 'active' ||
+                                  event.status === 'completed') && (
                                   <TooltipContent>
                                     <p>Cannot delete {event.status} events</p>
                                   </TooltipContent>

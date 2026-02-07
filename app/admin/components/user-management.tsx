@@ -85,7 +85,7 @@ export default function UserManagement() {
     fetchUsers();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'judge') => {
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'judge' | 'participant') => {
     setUpdatingRoles((prev) => new Set(prev).add(userId));
 
     try {
@@ -252,7 +252,7 @@ export default function UserManagement() {
   };
 
   // Render user table with role-specific actions
-  const renderUserTable = (roleUsers: User[], roleType: 'admin' | 'judge' | 'participant') => {
+  const renderUserTable = (roleUsers: User[]) => {
     if (roleUsers.length === 0) {
       return (
         <div className="text-center py-8 text-muted-foreground">
@@ -282,11 +282,12 @@ export default function UserManagement() {
                 </TableCell>
                 <TableCell className="w-[20%]">
                   <div className="flex items-center gap-2">
-                    {/* Show role change dropdown only for admin/judge */}
-                    {roleType !== 'participant' && (
-                      <Select
+                    {/* Role change dropdown */}
+                    <Select
                         value={user.role}
-                        onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
+                        onValueChange={(role: 'admin' | 'judge' | 'participant') =>
+                          updateUserRole(user.id, role)
+                        }
                         disabled={updatingRoles.has(user.id)}
                       >
                         <SelectTrigger className="w-32">
@@ -300,11 +301,11 @@ export default function UserManagement() {
                           )}
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="judge">Judge</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="judge">Judge</SelectItem>
+                          <SelectItem value="participant">Participant</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
                     {/* Show delete button for judges and participants */}
                     {(user.role === 'judge' || user.role === 'participant') && (
                       <AlertDialog>
@@ -433,7 +434,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('admin'), 'admin')}
+                      {renderUserTable(getUsersByRole('admin'))}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -453,7 +454,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('judge'), 'judge')}
+                      {renderUserTable(getUsersByRole('judge'))}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -473,7 +474,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('participant'), 'participant')}
+                      {renderUserTable(getUsersByRole('participant'))}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

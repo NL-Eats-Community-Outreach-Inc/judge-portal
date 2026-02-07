@@ -8,6 +8,8 @@ interface Event {
   name: string;
   description: string | null;
   status: 'setup' | 'open' | 'active' | 'completed';
+  organizationId: string | null;
+  maxTeamSize: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -15,6 +17,7 @@ interface Event {
 interface AdminEventContextType {
   events: Event[];
   selectedEvent: Event | null;
+  organizationName: string | null;
   isLoading: boolean;
   selectEvent: (event: Event | null) => void;
   refreshEvents: () => Promise<void>;
@@ -25,6 +28,7 @@ const AdminEventContext = createContext<AdminEventContextType | undefined>(undef
 export function AdminEventProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -35,6 +39,7 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         setEvents(data.events || []);
+        setOrganizationName(data.organizationName ?? null);
 
         // Smart event selection logic
         if (data.events?.length > 0) {
@@ -84,6 +89,7 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
   const value: AdminEventContextType = {
     events,
     selectedEvent,
+    organizationName,
     isLoading,
     selectEvent,
     refreshEvents,

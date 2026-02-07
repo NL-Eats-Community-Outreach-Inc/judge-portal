@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { events } from '@/lib/db/schema';
+import { events, organizations } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 
@@ -22,7 +22,14 @@ export async function GET() {
       .where(eq(events.organizationId, orgId))
       .orderBy(desc(events.createdAt));
 
-    return NextResponse.json({ events: allEvents });
+    // Get organization name
+    const [org] = await db
+      .select({ name: organizations.name })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+
+    return NextResponse.json({ events: allEvents, organizationName: org?.name ?? null });
   } catch (error) {
     console.error('Error fetching events:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -38,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orgId = await getAdminOrgId(user.id);
-    const { name, description, status } = await request.json();
+    const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
@@ -70,6 +77,7 @@ export async function POST(request: NextRequest) {
         description: description?.trim() || null,
         status: eventStatus,
         organizationId: orgId,
+        maxTeamSize: maxTeamSize ?? null,
       })
       .returning();
 

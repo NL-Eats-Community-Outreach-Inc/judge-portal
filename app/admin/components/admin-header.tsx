@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { UserWithRole } from '@/lib/auth';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { useAdminEvent } from '../contexts/admin-event-context';
 
 interface AdminHeaderProps {
   onOpenSettings?: () => void;
@@ -21,6 +22,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ onOpenSettings }: AdminHeaderProps) {
   const router = useRouter();
+  const { organizationName } = useAdminEvent();
   const [user, setUser] = useState<UserWithRole | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -75,7 +77,9 @@ export function AdminHeader({ onOpenSettings }: AdminHeaderProps) {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-foreground">Admin Portal</h1>
-              <p className="text-sm text-muted-foreground">Manage your judging events</p>
+              <p className="text-sm text-muted-foreground">
+                {organizationName ?? 'Manage your judging events'}
+              </p>
             </div>
           </div>
 
