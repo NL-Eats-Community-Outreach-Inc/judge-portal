@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { teams, events } from '@/lib/db/schema';
 import { eq, max } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { generateJoinCode } from '@/lib/utils/join-code';
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
 
     const nextOrder = (maxOrderResult[0]?.maxOrder || 0) + 1;
 
-    // Create new team
+    // Create new team with join code
+    const joinCode = await generateJoinCode();
     const [team] = await db
       .insert(teams)
       .values({
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
         repoUrl: repoUrl?.trim() || null,
         awardType: awardType || 'both',
         presentationOrder: nextOrder,
+        joinCode,
       })
       .returning();
 

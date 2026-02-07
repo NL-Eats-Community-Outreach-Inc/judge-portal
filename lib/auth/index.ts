@@ -66,6 +66,10 @@ export const authServer = {
   async requireSuperAdmin() {
     return await this.requireRole('super_admin');
   },
+
+  async requireParticipant() {
+    return await this.requireRole('participant');
+  },
 };
 
 // User management utilities
