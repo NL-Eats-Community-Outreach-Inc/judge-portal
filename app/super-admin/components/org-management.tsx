@@ -23,12 +23,15 @@ import {
   RefreshCw,
   Loader2,
 } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/lib/hooks/use-media-query';
 import { useSuperAdmin, type OrgWithStats } from '../contexts/super-admin-context';
 import OrgDetailPanel from './org-detail-panel';
 
 export default function OrgManagement() {
   const { organizations, isLoading, refreshOrgs, selectOrg, selectedOrg } = useSuperAdmin();
+  const isMobile = useIsMobile();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -157,15 +160,15 @@ export default function OrgManagement() {
       {/* Org List */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Building2 className="h-5 w-5 text-primary" />
+              <Building2 className="h-5 w-5 text-primary shrink-0" />
               <div>
                 <CardTitle>Organizations</CardTitle>
                 <CardDescription>Manage platform organizations</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={handleRefresh}
@@ -177,14 +180,15 @@ export default function OrgManagement() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
 
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                  <Button className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
                     <Plus className="h-4 w-4" />
-                    New Organization
+                    <span className="hidden sm:inline">New Organization</span>
+                    <span className="sm:hidden">New Org</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -278,14 +282,31 @@ export default function OrgManagement() {
         </CardContent>
       </Card>
 
-      {/* Org Detail Panel */}
-      {selectedOrg && (
+      {/* Org Detail Panel - Desktop: inline card */}
+      {selectedOrg && !isMobile && (
         <OrgDetailPanel
           org={selectedOrg}
           onClose={() => selectOrg(null)}
           onRefresh={refreshOrgs}
         />
       )}
+
+      {/* Org Detail Panel - Mobile: bottom sheet */}
+      <Sheet
+        open={!!selectedOrg && isMobile}
+        onOpenChange={(open) => { if (!open) selectOrg(null); }}
+      >
+        <SheetContent side="bottom" className="max-h-[85vh] p-0 rounded-t-xl">
+          {selectedOrg && (
+            <OrgDetailPanel
+              org={selectedOrg}
+              onClose={() => selectOrg(null)}
+              onRefresh={refreshOrgs}
+              variant="sheet"
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

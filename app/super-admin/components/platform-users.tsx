@@ -273,15 +273,15 @@ export default function PlatformUsers() {
     const showOrgColumn = roleType === 'admin' || roleType === 'judge';
 
     return (
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className={showOrgColumn ? 'w-[30%]' : 'w-[40%]'}>Email</TableHead>
-              <TableHead className="w-[15%]">Role</TableHead>
-              {showOrgColumn && <TableHead className="w-[20%]">Organization</TableHead>}
-              <TableHead className="w-[15%]">Joined</TableHead>
-              <TableHead className="w-[20%]">Actions</TableHead>
+              <TableHead className="min-w-[200px]">Email</TableHead>
+              <TableHead className="min-w-[100px]">Role</TableHead>
+              {showOrgColumn && <TableHead className="min-w-[140px]">Organization</TableHead>}
+              <TableHead className="min-w-[100px] hidden md:table-cell">Joined</TableHead>
+              <TableHead className="min-w-[160px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -290,7 +290,7 @@ export default function PlatformUsers() {
                 <TableCell className="font-medium">{user.email}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
                 {showOrgColumn && <TableCell>{renderOrgCell(user)}</TableCell>}
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground hidden md:table-cell">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
@@ -303,7 +303,7 @@ export default function PlatformUsers() {
                         onValueChange={(role) => handleRoleChange(user, role)}
                         disabled={updatingRoles.has(user.id)}
                       >
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-28 md:w-32">
                           {updatingRoles.has(user.id) ? (
                             <div className="flex items-center gap-1">
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -378,60 +378,60 @@ export default function PlatformUsers() {
     <div className="space-y-6">
       {/* Stats */}
       <div
-        className={`grid grid-cols-2 md:grid-cols-5 gap-4 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''} transition-opacity duration-200`}
+        className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''} transition-opacity duration-200`}
       >
         <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg mr-4 shadow-sm">
-              <Users className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          <CardContent className="flex items-center p-4 md:p-6">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-gray-100 dark:bg-gray-800 rounded-lg mr-3 md:mr-4 shadow-sm shrink-0">
+              <Users className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{users.length}</p>
-              <p className="text-muted-foreground text-sm">Total Users</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-lg mr-4 shadow-sm">
-              <Shield className="h-6 w-6 text-violet-700 dark:text-violet-300" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{superAdminCount}</p>
-              <p className="text-muted-foreground text-sm">Super Admins</p>
+            <div className="min-w-0">
+              <p className="text-xl md:text-2xl font-bold text-foreground">{users.length}</p>
+              <p className="text-muted-foreground text-sm truncate">Total Users</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg mr-4 shadow-sm">
-              <Crown className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          <CardContent className="flex items-center p-4 md:p-6">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-violet-100 dark:bg-violet-900/30 rounded-lg mr-3 md:mr-4 shadow-sm shrink-0">
+              <Shield className="h-5 w-5 md:h-6 md:w-6 text-violet-700 dark:text-violet-300" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{adminCount}</p>
-              <p className="text-muted-foreground text-sm">Administrators</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-lg mr-4 shadow-sm">
-              <UserCheck className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{judgeCount}</p>
-              <p className="text-muted-foreground text-sm">Judges</p>
+            <div className="min-w-0">
+              <p className="text-xl md:text-2xl font-bold text-foreground">{superAdminCount}</p>
+              <p className="text-muted-foreground text-sm truncate">Super Admins</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="flex items-center p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-4 shadow-sm">
-              <GraduationCap className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          <CardContent className="flex items-center p-4 md:p-6">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-gray-200 dark:bg-gray-700 rounded-lg mr-3 md:mr-4 shadow-sm shrink-0">
+              <Crown className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{participantCount}</p>
-              <p className="text-muted-foreground text-sm">Participants</p>
+            <div className="min-w-0">
+              <p className="text-xl md:text-2xl font-bold text-foreground">{adminCount}</p>
+              <p className="text-muted-foreground text-sm truncate">Administrators</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center p-4 md:p-6">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-slate-100 dark:bg-slate-800 rounded-lg mr-3 md:mr-4 shadow-sm shrink-0">
+              <UserCheck className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl md:text-2xl font-bold text-foreground">{judgeCount}</p>
+              <p className="text-muted-foreground text-sm truncate">Judges</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center p-4 md:p-6">
+            <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3 md:mr-4 shadow-sm shrink-0">
+              <GraduationCap className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl md:text-2xl font-bold text-foreground">{participantCount}</p>
+              <p className="text-muted-foreground text-sm truncate">Participants</p>
             </div>
           </CardContent>
         </Card>
@@ -442,9 +442,9 @@ export default function PlatformUsers() {
         className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
       >
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
+              <Users className="h-5 w-5 text-primary shrink-0" />
               <div>
                 <CardTitle>Platform Users</CardTitle>
                 <CardDescription>Manage all users across the platform</CardDescription>

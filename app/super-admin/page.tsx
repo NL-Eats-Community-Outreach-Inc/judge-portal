@@ -25,7 +25,7 @@ export default function SuperAdminDashboard() {
       <div className="min-h-screen bg-gradient-to-br from-violet-50/30 via-background to-purple-50/20 dark:from-violet-950/20 dark:via-background dark:to-purple-950/10">
         <SuperAdminHeader onOpenSettings={() => setSettingsOpen(true)} />
 
-        <main className="container mx-auto px-6 py-6">
+        <main className="container mx-auto px-4 md:px-6 py-4 md:py-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-card/60 via-card/70 to-card/60 backdrop-blur-md border border-border/30 shadow-lg rounded-xl p-1.5 h-auto min-h-[3.5rem]">
               <TabsTrigger

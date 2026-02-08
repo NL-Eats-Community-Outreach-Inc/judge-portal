@@ -54,6 +54,7 @@ import {
   MoreVertical,
   XCircle,
 } from 'lucide-react';
+import { SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import type { OrgWithStats } from '../contexts/super-admin-context';
 import { AdminInviteDialog } from './admin-invite-dialog';
@@ -62,6 +63,7 @@ interface OrgDetailPanelProps {
   org: OrgWithStats;
   onClose: () => void;
   onRefresh: () => Promise<void>;
+  variant?: 'card' | 'sheet';
 }
 
 interface OrgAdmin {
@@ -81,7 +83,7 @@ interface OrgInvitation {
   inviteLink: string;
 }
 
-export default function OrgDetailPanel({ org, onClose, onRefresh }: OrgDetailPanelProps) {
+export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'card' }: OrgDetailPanelProps) {
   const [admins, setAdmins] = useState<OrgAdmin[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
   const [orgInvitations, setOrgInvitations] = useState<OrgInvitation[]>([]);
@@ -261,16 +263,322 @@ export default function OrgDetailPanel({ org, onClose, onRefresh }: OrgDetailPan
     }
   };
 
+  const actionButtons = (
+    <div className="flex items-center gap-2 shrink-0">
+      <Button variant="outline" size="sm" onClick={() => {
+        setEditForm({
+          name: org.name,
+          slug: org.slug,
+          description: org.description || '',
+        });
+        setEditOpen(true);
+      }}>
+        <Pencil className="h-4 w-4 sm:mr-1" />
+        <span className={variant === 'sheet' ? '' : 'hidden sm:inline'}>Edit</span>
+      </Button>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:border-red-800/60 dark:hover:bg-red-950/50 dark:hover:text-red-300">
+            <Trash2 className="h-4 w-4 sm:mr-1" />
+            <span className={variant === 'sheet' ? '' : 'hidden sm:inline'}>Delete</span>
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{org.name}&quot; and all its events.
+              Admin users will be unassigned from this organization.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              Delete Organization
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {variant === 'card' && (
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+
+  const panelContent = (
+    <div className="space-y-6">
+      {/* Org Info */}
+      {org.description && (
+        <p className="text-sm text-muted-foreground">{org.description}</p>
+      )}
+
+      <div className="flex items-center gap-4">
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <Users className="h-3 w-3" />
+          {isLoadingAdmins ? org.adminCount : admins.length} admin{(isLoadingAdmins ? org.adminCount : admins.length) !== 1 ? 's' : ''}
+        </Badge>
+        <Badge variant="outline" className="flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          {org.eventCount} event{org.eventCount !== 1 ? 's' : ''}
+        </Badge>
+      </div>
+
+      {/* Admins Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Administrators</h3>
+          </div>
+          <AdminInviteDialog orgId={org.id} orgName={org.name} onInviteSent={() => {
+            fetchAdmins();
+            fetchInvitations();
+            onRefresh();
+          }} />
+        </div>
+
+        {isLoadingAdmins ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : admins.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground border rounded-lg">
+            <Mail className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm">No admins assigned</p>
+            <p className="text-xs">Invite an admin to manage this organization</p>
+          </div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell className="font-medium">{admin.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="default" className="flex items-center gap-1 w-fit">
+                        <Crown className="h-3 w-3" />
+                        Admin
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(admin.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
+      {/* Invitations Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-sm">Invitations</h3>
+        </div>
+
+        {isLoadingInvitations ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : orgInvitations.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground border rounded-lg">
+            <Mail className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm">No invitations sent</p>
+            <p className="text-xs">Use the invite button above to send admin invitations</p>
+          </div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Sent</TableHead>
+                  <TableHead className="w-[80px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orgInvitations.map((invite) => (
+                  <TableRow key={invite.id}>
+                    <TableCell className="font-medium">{invite.email}</TableCell>
+                    <TableCell>{getStatusBadge(invite.status)}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(invite.expiresAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(invite.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {invite.status === 'pending' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleCopyLink(invite.inviteLink, invite.id)}>
+                                {copiedId === invite.id ? (
+                                  <Check className="h-4 w-4 mr-2 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4 mr-2" />
+                                )}
+                                Copy Invite Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleRevokeInvitation(invite.id)}
+                                className="text-orange-600"
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Revoke
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteInvitation(invite.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const editDialog = (
+    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Organization</DialogTitle>
+          <DialogDescription>Update organization details</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">Name *</Label>
+            <Input
+              id="edit-name"
+              value={editForm.name}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              disabled={isUpdating}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-slug">Slug *</Label>
+            <Input
+              id="edit-slug"
+              value={editForm.slug}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, slug: e.target.value }))}
+              required
+              disabled={isUpdating}
+              className="font-mono text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-description">Description</Label>
+            <Textarea
+              id="edit-description"
+              value={editForm.description}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              disabled={isUpdating}
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isUpdating} className="flex-1">
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+
+  if (variant === 'sheet') {
+    return (
+      <>
+        <SheetHeader className="px-4 pt-4 pb-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 rounded-lg flex items-center justify-center shrink-0">
+                <Building2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="min-w-0">
+                <SheetTitle className="flex items-center gap-2 flex-wrap">
+                  {org.name}
+                  <Badge variant="outline" className="text-xs font-mono font-normal">
+                    /{org.slug}
+                  </Badge>
+                </SheetTitle>
+                <SheetDescription>
+                  Created {new Date(org.createdAt).toLocaleDateString()}
+                </SheetDescription>
+              </div>
+            </div>
+            {actionButtons}
+          </div>
+        </SheetHeader>
+        <div className="px-4 pb-6 overflow-y-auto">
+          {panelContent}
+        </div>
+        {editDialog}
+      </>
+    );
+  }
+
   return (
     <Card className="border-violet-200 dark:border-violet-800/50">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 rounded-lg flex items-center justify-center">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 rounded-lg flex items-center justify-center shrink-0">
               <Building2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
-            <div>
-              <CardTitle className="flex items-center gap-2">
+            <div className="min-w-0">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 {org.name}
                 <Badge variant="outline" className="text-xs font-mono">
                   /{org.slug}
@@ -281,274 +589,15 @@ export default function OrgDetailPanel({ org, onClose, onRefresh }: OrgDetailPan
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => {
-              setEditForm({
-                name: org.name,
-                slug: org.slug,
-                description: org.description || '',
-              });
-              setEditOpen(true);
-            }}>
-              <Pencil className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:border-red-800/60 dark:hover:bg-red-950/50 dark:hover:text-red-300">
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Organization</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete &quot;{org.name}&quot; and all its events.
-                    Admin users will be unassigned from this organization.
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : null}
-                    Delete Organization
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {actionButtons}
           </div>
         </div>
       </CardHeader>
-
       <CardContent className="space-y-6">
-        {/* Org Info */}
-        {org.description && (
-          <p className="text-sm text-muted-foreground">{org.description}</p>
-        )}
-
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            {isLoadingAdmins ? org.adminCount : admins.length} admin{(isLoadingAdmins ? org.adminCount : admins.length) !== 1 ? 's' : ''}
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {org.eventCount} event{org.eventCount !== 1 ? 's' : ''}
-          </Badge>
-        </div>
-
-        {/* Admins Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Crown className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Administrators</h3>
-            </div>
-            <AdminInviteDialog orgId={org.id} orgName={org.name} onInviteSent={() => {
-              fetchAdmins();
-              fetchInvitations();
-              onRefresh();
-            }} />
-          </div>
-
-          {isLoadingAdmins ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : admins.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground border rounded-lg">
-              <Mail className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm">No admins assigned</p>
-              <p className="text-xs">Invite an admin to manage this organization</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {admins.map((admin) => (
-                    <TableRow key={admin.id}>
-                      <TableCell className="font-medium">{admin.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="default" className="flex items-center gap-1 w-fit">
-                          <Crown className="h-3 w-3" />
-                          Admin
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(admin.createdAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-
-        {/* Invitations Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" />
-            <h3 className="font-semibold text-sm">Invitations</h3>
-          </div>
-
-          {isLoadingInvitations ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : orgInvitations.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground border rounded-lg">
-              <Mail className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm">No invitations sent</p>
-              <p className="text-xs">Use the invite button above to send admin invitations</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Sent</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orgInvitations.map((invite) => (
-                    <TableRow key={invite.id}>
-                      <TableCell className="font-medium">{invite.email}</TableCell>
-                      <TableCell>{getStatusBadge(invite.status)}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(invite.expiresAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(invite.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {invite.status === 'pending' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleCopyLink(invite.inviteLink, invite.id)}>
-                                  {copiedId === invite.id ? (
-                                    <Check className="h-4 w-4 mr-2 text-green-500" />
-                                  ) : (
-                                    <Copy className="h-4 w-4 mr-2" />
-                                  )}
-                                  Copy Invite Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleRevokeInvitation(invite.id)}
-                                  className="text-orange-600"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Revoke
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteInvitation(invite.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
+        {panelContent}
       </CardContent>
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Organization</DialogTitle>
-            <DialogDescription>Update organization details</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name *</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                required
-                disabled={isUpdating}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-slug">Slug *</Label>
-              <Input
-                id="edit-slug"
-                value={editForm.slug}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, slug: e.target.value }))}
-                required
-                disabled={isUpdating}
-                className="font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={editForm.description}
-                onChange={(e) =>
-                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
-                }
-                disabled={isUpdating}
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isUpdating} className="flex-1">
-                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isUpdating ? 'Saving...' : 'Save Changes'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditOpen(false)}
-                disabled={isUpdating}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {editDialog}
     </Card>
   );
 }
