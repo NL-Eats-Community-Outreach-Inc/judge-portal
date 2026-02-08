@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { OrgWithStats } from '../contexts/super-admin-context';
 import { AdminInviteDialog } from './admin-invite-dialog';
 
@@ -63,7 +64,7 @@ interface OrgDetailPanelProps {
   org: OrgWithStats;
   onClose: () => void;
   onRefresh: () => Promise<void>;
-  variant?: 'card' | 'sheet';
+  variant?: 'card' | 'sheet' | 'panel';
 }
 
 interface OrgAdmin {
@@ -314,6 +315,11 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
           <X className="h-4 w-4" />
         </Button>
       )}
+      {variant === 'panel' && (
+        <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 
@@ -547,9 +553,9 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
                 <Building2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div className="min-w-0">
-                <SheetTitle className="flex items-center gap-2 flex-wrap">
-                  {org.name}
-                  <Badge variant="outline" className="text-xs font-mono font-normal">
+                <SheetTitle className="flex items-center gap-2 flex-nowrap min-w-0">
+                  <span className="truncate">{org.name}</span>
+                  <Badge variant="outline" className="text-xs font-mono font-normal truncate max-w-[120px] shrink-0">
                     /{org.slug}
                   </Badge>
                 </SheetTitle>
@@ -570,8 +576,11 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
   }
 
   return (
-    <Card className="border-violet-200 dark:border-violet-800/50">
-      <CardHeader>
+    <Card className={cn(
+      "border-violet-200 dark:border-violet-800/50",
+      variant === 'panel' && "h-full flex flex-col overflow-hidden"
+    )}>
+      <CardHeader className={cn(variant === 'panel' && "shrink-0")}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 rounded-lg flex items-center justify-center shrink-0">
@@ -594,7 +603,10 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className={cn(
+        "space-y-6",
+        variant === 'panel' && "flex-1 overflow-y-auto"
+      )}>
         {panelContent}
       </CardContent>
       {editDialog}
