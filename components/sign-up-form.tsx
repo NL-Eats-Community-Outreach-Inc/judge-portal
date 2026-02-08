@@ -3,14 +3,19 @@
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OTPInput } from '@/components/auth/otp-input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2 } from 'lucide-react';
+import { Building2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -18,12 +23,69 @@ import { toast } from 'sonner';
 
 type UserRole = 'judge' | 'participant';
 type AuthMethod = 'password' | 'passwordless';
+type StepType = 'role-email' | 'organizations' | 'auth';
 
 interface OrgOption {
   id: string;
   name: string;
   slug: string;
   description: string | null;
+}
+
+function StepIndicator({
+  currentStep,
+  totalSteps,
+}: {
+  currentStep: number;
+  totalSteps: number;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1.5 pt-3">
+      {Array.from({ length: totalSteps }).map((_, index) => (
+        <div key={index} className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              'rounded-full transition-all duration-300',
+              index < currentStep
+                ? 'h-2 w-2 bg-primary'
+                : index === currentStep
+                  ? 'h-2.5 w-2.5 bg-primary ring-[3px] ring-primary/20'
+                  : 'h-2 w-2 bg-muted-foreground/25'
+            )}
+            aria-label={`Step ${index + 1} of ${totalSteps}${index === currentStep ? ', current' : index < currentStep ? ', completed' : ''}`}
+          />
+          {index < totalSteps - 1 && (
+            <div
+              className={cn(
+                'h-[1.5px] w-6 rounded-full transition-all duration-500',
+                index < currentStep ? 'bg-primary' : 'bg-muted-foreground/20'
+              )}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function getStepMeta(stepType: StepType): { title: string; description: string } {
+  switch (stepType) {
+    case 'role-email':
+      return {
+        title: 'Create your account',
+        description: 'Select your role and enter your email',
+      };
+    case 'organizations':
+      return {
+        title: 'Select organizations',
+        description: "Choose which organizations you'll judge for",
+      };
+    case 'auth':
+      return {
+        title: 'Set up sign-in',
+        description: 'Choose your preferred authentication method',
+      };
+  }
 }
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
@@ -39,21 +101,86 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
   const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
+
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+
   const router = useRouter();
 
-  // Fetch orgs when role is judge
+  // Step sequence based on role
+  const stepSequence: StepType[] =
+    role === 'judge' ? ['role-email', 'organizations', 'auth'] : ['role-email', 'auth'];
+  const totalSteps = stepSequence.length;
+  const currentStepType = stepSequence[currentStep];
+  const stepMeta = getStepMeta(currentStepType);
+
+  // Prefetch orgs on mount
   useEffect(() => {
-    if (role === 'judge') {
-      setOrgsLoading(true);
-      fetch('/api/organizations/public')
-        .then((res) => res.json())
-        .then((data) => setAvailableOrgs(data.organizations || []))
-        .catch(() => toast.error('Failed to load organizations'))
-        .finally(() => setOrgsLoading(false));
-    } else {
+    setOrgsLoading(true);
+    fetch('/api/organizations/public')
+      .then((res) => res.json())
+      .then((data) => setAvailableOrgs(data.organizations || []))
+      .catch(() => toast.error('Failed to load organizations'))
+      .finally(() => setOrgsLoading(false));
+  }, []);
+
+  const handleRoleChange = (value: string) => {
+    setRole(value as UserRole);
+    setCurrentStep(0);
+    setDirection('forward');
+    setError(null);
+    if (value !== 'judge') {
       setSelectedOrgIds([]);
     }
-  }, [role]);
+  };
+
+  const validateCurrentStep = (): boolean => {
+    switch (currentStepType) {
+      case 'role-email':
+        if (!email || !email.includes('@')) {
+          setError('Please enter a valid email address');
+          return false;
+        }
+        setError(null);
+        return true;
+      case 'organizations':
+        if (selectedOrgIds.length === 0) {
+          setError('Please select at least one organization');
+          return false;
+        }
+        setError(null);
+        return true;
+      case 'auth':
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (!validateCurrentStep()) return;
+    if (currentStep < totalSteps - 1) {
+      setDirection('forward');
+      setCurrentStep((prev) => prev + 1);
+      setError(null);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setDirection('backward');
+      setCurrentStep((prev) => prev - 1);
+      setError(null);
+    }
+  };
+
+  const toggleOrg = (orgId: string) => {
+    setSelectedOrgIds((prev) =>
+      prev.includes(orgId) ? prev.filter((id) => id !== orgId) : [...prev, orgId]
+    );
+    setError(null);
+  };
 
   const handlePasswordSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,12 +211,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
       if (error) throw error;
 
-      // Check if user is immediately confirmed (email confirmation disabled)
       if (data.user && data.session) {
-        // User is auto-confirmed and logged in
-        // User record is automatically created by database trigger with correct role from metadata
-
-        // Create org memberships for judges
         if (role === 'judge' && selectedOrgIds.length > 0) {
           for (const orgId of selectedOrgIds) {
             const { error: memberError } = await supabase
@@ -106,7 +228,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
         router.push(redirectPath);
       } else {
-        // User needs email confirmation
         router.push('/auth/sign-up-success');
       }
     } catch (error: unknown) {
@@ -128,8 +249,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
         options: {
           shouldCreateUser: true,
           data: {
-            // CRITICAL: Add flag to prevent automatic user creation by trigger
-            // The trigger will skip creation until OTP is verified
             invite_pending: true,
             role: role,
             organization_ids: role === 'judge' ? selectedOrgIds : [],
@@ -155,7 +274,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     setError(null);
 
     try {
-      // Verify OTP
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
@@ -165,10 +283,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error;
 
       if (data.user) {
-        // The role was set during signInWithOtp and stored securely by Supabase
         const roleFromMetadata = data.user.user_metadata?.role as UserRole | undefined;
 
-        // Validate that role exists and is valid
         if (
           !roleFromMetadata ||
           (roleFromMetadata !== 'judge' && roleFromMetadata !== 'participant')
@@ -177,21 +293,17 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
           throw new Error('Invalid role configuration. Please try signing up again.');
         }
 
-        // Create user record in public.users table with validated role from metadata
-        // The trigger was skipped due to invite_pending flag
         const { error: insertError } = await supabase.from('users').insert({
           id: data.user.id,
           email: data.user.email,
-          role: roleFromMetadata, // Using server-side metadata, not client variable
+          role: roleFromMetadata,
         });
 
-        // Ignore conflict errors (user already exists)
         if (insertError && !insertError.message.includes('duplicate')) {
           console.error('Error creating user record:', insertError);
           throw new Error('Failed to complete account setup');
         }
 
-        // Create org memberships for judges
         if (roleFromMetadata === 'judge' && selectedOrgIds.length > 0) {
           for (const orgId of selectedOrgIds) {
             const { error: memberError } = await supabase
@@ -219,201 +331,322 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account to get started</CardDescription>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl">{stepMeta.title}</CardTitle>
+          <CardDescription>{stepMeta.description}</CardDescription>
+          <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {/* Role Selection */}
-            <div className="space-y-3">
-              <Label>I am registering as a</Label>
-              <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="judge" id="role-judge" />
-                  <Label htmlFor="role-judge" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-medium">Judge</p>
-                      <p className="text-xs text-muted-foreground">
-                        Score and evaluate team projects
-                      </p>
-                    </div>
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="participant" id="role-participant" />
-                  <Label htmlFor="role-participant" className="flex-1 cursor-pointer">
-                    <div>
-                      <p className="font-medium">Participant</p>
-                      <p className="text-xs text-muted-foreground">Join events and create teams</p>
-                    </div>
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Organization Selection (judges only) */}
-            {role === 'judge' && (
-              <div className="space-y-3">
-                <Label>Select Organization(s)</Label>
-                <p className="text-xs text-muted-foreground">
-                  Choose which organization(s) you want to judge for
-                </p>
-                {orgsLoading ? (
-                  <div className="flex items-center gap-2 p-3 border rounded-lg">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">
-                      Loading organizations...
-                    </span>
-                  </div>
-                ) : availableOrgs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-3 border rounded-lg">
-                    No organizations available
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                    {availableOrgs.map((org) => (
-                      <div
-                        key={org.id}
-                        className="flex items-center space-x-2 hover:bg-muted/50 p-2 rounded transition-colors"
-                      >
-                        <Checkbox
-                          id={`org-${org.id}`}
-                          checked={selectedOrgIds.includes(org.id)}
-                          onCheckedChange={(checked) => {
-                            setSelectedOrgIds((prev) =>
-                              checked
-                                ? [...prev, org.id]
-                                : prev.filter((id) => id !== org.id)
-                            );
-                          }}
-                        />
-                        <Label
-                          htmlFor={`org-${org.id}`}
-                          className="cursor-pointer text-sm"
-                        >
-                          {org.name}
+          {/* Animated step content */}
+          <div className="relative overflow-hidden">
+            <div
+              key={`${currentStep}-${currentStepType}`}
+              className={cn(
+                'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300',
+                direction === 'forward'
+                  ? 'motion-safe:slide-in-from-right-4'
+                  : 'motion-safe:slide-in-from-left-4'
+              )}
+              aria-live="polite"
+            >
+              {/* Step 1: Role + Email */}
+              {currentStepType === 'role-email' && (
+                <div className="space-y-5">
+                  <div className="space-y-3">
+                    <Label>I am registering as a</Label>
+                    <RadioGroup value={role} onValueChange={handleRoleChange}>
+                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                        <RadioGroupItem value="judge" id="role-judge" />
+                        <Label htmlFor="role-judge" className="flex-1 cursor-pointer">
+                          <div>
+                            <p className="font-medium">Judge</p>
+                            <p className="text-xs text-muted-foreground">
+                              Score and evaluate team projects
+                            </p>
+                          </div>
                         </Label>
                       </div>
-                    ))}
+                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                        <RadioGroupItem value="participant" id="role-participant" />
+                        <Label htmlFor="role-participant" className="flex-1 cursor-pointer">
+                          <div>
+                            <p className="font-medium">Participant</p>
+                            <p className="text-xs text-muted-foreground">
+                              Join events and create teams
+                            </p>
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Authentication Method Tabs */}
-            <Tabs value={authMethod} onValueChange={(value) => setAuthMethod(value as AuthMethod)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="password">Password</TabsTrigger>
-                <TabsTrigger value="passwordless">Passwordless</TabsTrigger>
-              </TabsList>
-
-              {/* Password Registration */}
-              <TabsContent value="password">
-                <form onSubmit={handlePasswordSignUp} className="space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email-step1">Email</Label>
                     <Input
-                      id="email"
+                      id="email-step1"
                       type="email"
                       placeholder="m@example.com"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setError(null);
+                      }}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      minLength={6}
-                      placeholder="At least 6 characters"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="repeat-password">Confirm Password</Label>
-                    <Input
-                      id="repeat-password"
-                      type="password"
-                      required
-                      value={repeatPassword}
-                      onChange={(e) => setRepeatPassword(e.target.value)}
-                      minLength={6}
-                      placeholder="Repeat your password"
-                    />
-                  </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating account...' : 'Create account with password'}
-                  </Button>
-                </form>
-              </TabsContent>
 
-              {/* Passwordless Registration */}
-              <TabsContent value="passwordless">
-                {!otpSent ? (
-                  <form onSubmit={handleSendOtp} className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="email-otp">Email</Label>
-                      <Input
-                        id="email-otp"
-                        type="email"
-                        placeholder="m@example.com"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        You&apos;ll receive a 6-digit verification code via email
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                </div>
+              )}
+
+              {/* Step 2: Organization Selection (judges only) */}
+              {currentStepType === 'organizations' && (
+                <div className="space-y-4">
+                  {orgsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-lg border p-4 animate-pulse">
+                          <div className="flex items-start gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-muted" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 w-28 rounded bg-muted" />
+                              <div className="h-3 w-full rounded bg-muted" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : availableOrgs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted mb-3">
+                        <Building2 className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium">No organizations available</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Please contact an administrator
                       </p>
                     </div>
-                    {error && <p className="text-sm text-red-500">{error}</p>}
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Sending code...' : 'Send verification code'}
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleVerifyOtp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Verification Code</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Enter the 6-digit code sent to {email}
-                      </p>
-                      <OTPInput value={otp} onChange={setOtp} />
+                  ) : (
+                    <div className="space-y-2.5 max-h-64 overflow-y-auto">
+                      {availableOrgs.map((org) => {
+                        const isSelected = selectedOrgIds.includes(org.id);
+                        return (
+                          <button
+                            key={org.id}
+                            type="button"
+                            onClick={() => toggleOrg(org.id)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'relative w-full text-left rounded-lg border p-3.5 transition-all duration-200',
+                              'hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                              isSelected
+                                ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
+                                : 'border-border hover:border-primary/40 hover:bg-muted/30'
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200',
+                                  isSelected
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'bg-muted text-muted-foreground'
+                                )}
+                              >
+                                <Building2 className="h-4.5 w-4.5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">{org.name}</p>
+                                {org.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                    {org.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div
+                                className={cn(
+                                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all duration-200',
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground scale-100'
+                                    : 'border-2 border-muted-foreground/25 scale-90'
+                                )}
+                              >
+                                {isSelected && <Check className="h-3 w-3" />}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                    {error && <p className="text-sm text-red-500">{error}</p>}
-                    <div className="space-y-2">
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={isLoading || otp.length !== 6}
-                      >
-                        {isLoading ? 'Verifying...' : 'Verify and create account'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full"
-                        onClick={() => {
-                          setOtpSent(false);
-                          setOtp('');
-                          setError(null);
-                        }}
-                      >
-                        Use a different email
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </TabsContent>
-            </Tabs>
+                  )}
+
+                  {selectedOrgIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground text-center pt-1">
+                      {selectedOrgIds.length} organization
+                      {selectedOrgIds.length !== 1 ? 's' : ''} selected
+                    </p>
+                  )}
+
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                </div>
+              )}
+
+              {/* Step 3: Authentication Method */}
+              {currentStepType === 'auth' && (
+                <div className="space-y-4">
+                  {/* Email display */}
+                  <div className="rounded-lg bg-muted/50 px-3 py-2.5">
+                    <p className="text-xs text-muted-foreground">Signing up as</p>
+                    <p className="text-sm font-medium truncate">{email}</p>
+                  </div>
+
+                  <Tabs
+                    value={authMethod}
+                    onValueChange={(value) => setAuthMethod(value as AuthMethod)}
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="password">Password</TabsTrigger>
+                      <TabsTrigger value="passwordless">Passwordless</TabsTrigger>
+                    </TabsList>
+
+                    {/* Password Registration */}
+                    <TabsContent value="password">
+                      <form onSubmit={handlePasswordSignUp} className="space-y-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="password">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            minLength={6}
+                            placeholder="At least 6 characters"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="repeat-password">Confirm Password</Label>
+                          <Input
+                            id="repeat-password"
+                            type="password"
+                            required
+                            value={repeatPassword}
+                            onChange={(e) => setRepeatPassword(e.target.value)}
+                            minLength={6}
+                            placeholder="Repeat your password"
+                          />
+                        </div>
+                        {error && <p className="text-sm text-red-500">{error}</p>}
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                          {isLoading ? 'Creating account...' : 'Create account'}
+                        </Button>
+                      </form>
+                    </TabsContent>
+
+                    {/* Passwordless Registration */}
+                    <TabsContent value="passwordless">
+                      {!otpSent ? (
+                        <form onSubmit={handleSendOtp} className="space-y-4">
+                          <p className="text-xs text-muted-foreground">
+                            We&apos;ll send a 6-digit verification code to{' '}
+                            <span className="font-medium text-foreground">{email}</span>
+                          </p>
+                          {error && <p className="text-sm text-red-500">{error}</p>}
+                          <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? 'Sending code...' : 'Send verification code'}
+                          </Button>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleVerifyOtp} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Verification Code</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enter the 6-digit code sent to {email}
+                            </p>
+                            <OTPInput value={otp} onChange={setOtp} />
+                          </div>
+                          {error && <p className="text-sm text-red-500">{error}</p>}
+                          <div className="space-y-2">
+                            <Button
+                              type="submit"
+                              className="w-full"
+                              disabled={isLoading || otp.length !== 6}
+                            >
+                              {isLoading ? 'Verifying...' : 'Verify and create account'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full"
+                              onClick={() => {
+                                setOtpSent(false);
+                                setOtp('');
+                                setError(null);
+                                setCurrentStep(0);
+                                setDirection('backward');
+                              }}
+                            >
+                              Use a different email
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="mt-6 text-center text-sm">
+          {/* Navigation footer */}
+          {currentStepType !== 'auth' && (
+            <div className="flex items-center justify-between pt-5">
+              {currentStep > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBack}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              ) : (
+                <div />
+              )}
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleNext}
+                className="gap-1"
+                disabled={
+                  (currentStepType === 'organizations' && availableOrgs.length === 0 && !orgsLoading)
+                }
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Back button on auth step (above submit buttons) */}
+          {currentStepType === 'auth' && (
+            <div className="pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </div>
+          )}
+
+          <div className="mt-5 text-center text-sm">
             Already have an account?{' '}
             <Link href="/auth/login" className="underline underline-offset-4">
               Login

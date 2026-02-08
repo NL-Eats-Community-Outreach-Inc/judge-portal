@@ -137,19 +137,23 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ team });
+    return NextResponse.json({ team: { ...team, members: [] } });
   } catch (error) {
     console.error('Error creating team:', error);
 
-    // Handle unique constraint violations
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      if (error.message.includes('teams_event_id_name_key')) {
+    // Handle unique constraint violations (Drizzle nests PostgreSQL errors in error.cause)
+    const errorMsg = error instanceof Error
+      ? `${error.message} ${error.cause instanceof Error ? error.cause.message : ''}`
+      : '';
+
+    if (errorMsg.includes('duplicate key')) {
+      if (errorMsg.includes('teams_event_id_name_key')) {
         return NextResponse.json(
-          { error: 'A team with this name already exists' },
+          { error: 'A team with this name already exists in this event' },
           { status: 400 }
         );
       }
-      if (error.message.includes('teams_event_id_presentation_order_key')) {
+      if (errorMsg.includes('teams_event_id_presentation_order_key')) {
         return NextResponse.json(
           { error: 'A team with this presentation order already exists' },
           { status: 400 }
