@@ -76,18 +76,16 @@ export async function POST(request: NextRequest) {
     // CRITICAL: Verify event belongs to org BEFORE the delete-all-then-reinsert transaction
     await requireEventInOrg(eventId, orgId);
 
+    // Fetch ALL org member IDs (not just the requested judgeIds)
+    const allOrgMembers = await db
+      .select({ userId: organizationMembers.userId })
+      .from(organizationMembers)
+      .where(eq(organizationMembers.organizationId, orgId));
+    const allOrgMemberIds = allOrgMembers.map((m) => m.userId);
+
     // Validate all judgeIds are members of this org
     if (judgeIds.length > 0) {
-      const validMembers = await db
-        .select({ userId: organizationMembers.userId })
-        .from(organizationMembers)
-        .where(
-          and(
-            eq(organizationMembers.organizationId, orgId),
-            inArray(organizationMembers.userId, judgeIds)
-          )
-        );
-      const validIds = new Set(validMembers.map((m) => m.userId));
+      const validIds = new Set(allOrgMemberIds);
       const invalidIds = judgeIds.filter((id: string) => !validIds.has(id));
       if (invalidIds.length > 0) {
         return NextResponse.json(
@@ -97,10 +95,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Start a transaction
+    // Start a transaction — only manage org-member judges' entries
+    // Non-org judges' event_judges entries are preserved
     await db.transaction(async (tx) => {
-      // Remove all existing assignments for this event
-      await tx.delete(eventJudges).where(eq(eventJudges.eventId, eventId));
+      // Only remove assignments for judges who are currently org members
+      if (allOrgMemberIds.length > 0) {
+        await tx
+          .delete(eventJudges)
+          .where(
+            and(
+              eq(eventJudges.eventId, eventId),
+              inArray(eventJudges.judgeId, allOrgMemberIds)
+            )
+          );
+      }
 
       // Add new assignments
       if (judgeIds.length > 0) {

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Mail, Copy, Check, Info } from 'lucide-react';
+import { Loader2, Mail, Copy, Check, Info, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InviteJudgesDialogProps {
@@ -34,6 +34,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
   const [expiresInDays, setExpiresInDays] = useState('7');
   const [isLoading, setIsLoading] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<Array<{ email: string; inviteLink: string }>>([]);
+  const [autoAddedEmails, setAutoAddedEmails] = useState<Array<{ email: string }>>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,34 +73,46 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         return;
       }
 
-      // Handle case where all emails already have pending invitations or are registered
-      if (data.invitations && data.invitations.length > 0) {
-        setInviteLinks(data.invitations);
+      // Capture auto-added judges
+      const autoAdded: Array<{ email: string }> = data.autoAdded || [];
+      if (autoAdded.length > 0) {
+        setAutoAddedEmails(autoAdded);
+      }
 
-        const warnings: string[] = [];
+      // Handle results: invitations created and/or judges auto-added
+      const hasInvitations = data.invitations && data.invitations.length > 0;
+      const hasAutoAdded = autoAdded.length > 0;
+
+      if (hasInvitations || hasAutoAdded) {
+        if (hasInvitations) {
+          setInviteLinks(data.invitations);
+        }
+
+        const parts: string[] = [];
+        if (hasInvitations) {
+          parts.push(`Created ${data.invitations.length} invitation(s)`);
+        }
+        if (hasAutoAdded) {
+          parts.push(`${autoAdded.length} judge(s) added to your organization`);
+        }
         if (data.existingInvites && data.existingInvites.length > 0) {
-          warnings.push(`${data.existingInvites.length} email(s) already had pending invitations`);
+          parts.push(`${data.existingInvites.length} email(s) already had pending invitations`);
         }
         if (data.alreadyRegistered && data.alreadyRegistered.length > 0) {
           const registeredList = data.alreadyRegistered
             .map((u: { email: string; role: string }) => `${u.email} (${u.role})`)
             .join(', ');
-          warnings.push(
+          parts.push(
             `${data.alreadyRegistered.length} user(s) already registered: ${registeredList}`
           );
         }
 
-        const successMessage =
-          warnings.length > 0
-            ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
-            : `Created ${data.invitations.length} invitation(s)`;
-
-        toast.success('Invitations sent!', {
-          description: successMessage,
+        toast.success('Done!', {
+          description: parts.join('. '),
           duration: 8000,
         });
       } else {
-        // No invitations created - all emails were filtered out
+        // No invitations created and no auto-adds — all emails were filtered out
         const warnings: string[] = [];
         if (data.existingInvites && data.existingInvites.length > 0) {
           warnings.push(`${data.existingInvites.length} email(s) already have pending invitations`);
@@ -148,6 +161,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
     setCustomMessage('');
     setExpiresInDays('7');
     setInviteLinks([]);
+    setAutoAddedEmails([]);
     setCopiedIndex(null);
   };
 
@@ -176,38 +190,66 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        {inviteLinks.length > 0 ? (
+        {inviteLinks.length > 0 || autoAddedEmails.length > 0 ? (
           <div className="space-y-4">
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-              <h4 className="font-semibold text-green-900 dark:text-green-100">
-                Invitations Created!
-              </h4>
-              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                Share these links with the invitees
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              {inviteLinks.map((invite, index) => (
-                <div key={index} className="flex items-center gap-2 p-3 rounded-lg border bg-muted">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{invite.email}</p>
-                    <p className="text-xs text-muted-foreground truncate">{invite.inviteLink}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCopyLink(invite.inviteLink, index)}
-                  >
-                    {copiedIndex === index ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
+            {/* Auto-added judges section (blue) */}
+            {autoAddedEmails.length > 0 && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                    Added to your organization
+                  </h4>
                 </div>
-              ))}
-            </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  Already registered — added directly without invitation
+                </p>
+                <div className="mt-2 space-y-1">
+                  {autoAddedEmails.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+                      <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>{item.email}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Invitation links section (green) */}
+            {inviteLinks.length > 0 && (
+              <>
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
+                  <h4 className="font-semibold text-green-900 dark:text-green-100">
+                    Invitations Created!
+                  </h4>
+                  <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                    Share these links with the invitees
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {inviteLinks.map((invite, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 rounded-lg border bg-muted">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{invite.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{invite.inviteLink}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopyLink(invite.inviteLink, index)}
+                      >
+                        {copiedIndex === index ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="flex gap-2">
               <Button

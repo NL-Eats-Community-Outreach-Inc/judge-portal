@@ -70,10 +70,12 @@ export default function EventManagement() {
     isOpen: boolean;
     eventId: string | null;
     eventName: string;
+    eventStatus: 'setup' | 'open' | 'active' | 'completed';
   }>({
     isOpen: false,
     eventId: null,
     eventName: '',
+    eventStatus: 'setup',
   });
   const [formData, setFormData] = useState<{
     name: string;
@@ -212,6 +214,7 @@ export default function EventManagement() {
       isOpen: true,
       eventId: event.id,
       eventName: event.name,
+      eventStatus: event.status,
     });
   };
 
@@ -220,6 +223,7 @@ export default function EventManagement() {
       isOpen: false,
       eventId: null,
       eventName: '',
+      eventStatus: 'setup',
     });
   };
 
@@ -530,10 +534,10 @@ export default function EventManagement() {
       <JudgeAssignmentDialog
         eventId={judgeAssignmentDialog.eventId}
         eventName={judgeAssignmentDialog.eventName}
+        eventStatus={judgeAssignmentDialog.eventStatus}
         isOpen={judgeAssignmentDialog.isOpen}
         onOpenChange={closeJudgeAssignmentDialog}
         onAssignmentsUpdated={() => {
-          // Could refresh events if needed
           toast.success('Judge assignments updated');
         }}
       />

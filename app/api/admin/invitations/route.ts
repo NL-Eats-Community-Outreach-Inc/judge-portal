@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for already registered users
-    // For judges: allow re-invite if they're not already in this org
+    // Check for already registered users and auto-add existing judges to org
     const alreadyRegistered: Array<{ email: string; role: string }> = [];
+    const autoAdded: Array<{ email: string }> = [];
     for (const email of emails) {
       const existingUser = await db
         .select({ id: users.id, email: users.email, role: users.role })
@@ -79,8 +79,18 @@ export async function POST(request: NextRequest) {
               email: existingUser[0].email!,
               role: existingUser[0].role! + ' (already in your org)',
             });
+          } else {
+            // Existing judge NOT in this org — auto-add to org directly (no invitation needed)
+            await db
+              .insert(organizationMembers)
+              .values({
+                organizationId: orgId,
+                userId: existingUser[0].id,
+              })
+              .onConflictDoNothing();
+
+            autoAdded.push({ email: existingUser[0].email! });
           }
-          // If NOT in this org, allow re-invite (don't add to alreadyRegistered)
         } else {
           alreadyRegistered.push({
             email: existingUser[0].email!,
@@ -90,13 +100,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Filter out emails with existing invitations or registered users
+    // Filter out emails with existing invitations, registered users, or auto-added judges
     const registeredEmails = alreadyRegistered.map((u) => u.email);
+    const autoAddedEmails = autoAdded.map((u) => u.email);
     const newEmails = emails.filter(
-      (email: string) => !existingInvites.includes(email) && !registeredEmails.includes(email)
+      (email: string) =>
+        !existingInvites.includes(email) &&
+        !registeredEmails.includes(email) &&
+        !autoAddedEmails.includes(email)
     );
 
-    if (newEmails.length === 0) {
+    if (newEmails.length === 0 && autoAdded.length === 0) {
       return NextResponse.json(
         {
           message: 'All emails are already invited or registered',
@@ -105,6 +119,17 @@ export async function POST(request: NextRequest) {
         },
         { status: 200 }
       );
+    }
+
+    // If all new emails were auto-added (no invitations needed)
+    if (newEmails.length === 0 && autoAdded.length > 0) {
+      return NextResponse.json({
+        success: true,
+        invitations: [],
+        autoAdded,
+        existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+        alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
+      });
     }
 
     // Create invitations with org assignment
@@ -131,6 +156,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       invitations: invitesWithLinks,
+      autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
       existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
       alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
     });

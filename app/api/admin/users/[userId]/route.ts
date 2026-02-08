@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
-import { users, organizationMembers, teamMembers, teams, events } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import {
+  users,
+  organizationMembers,
+  teamMembers,
+  teams,
+  events,
+  eventJudges,
+} from '@/lib/db/schema';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
@@ -40,7 +47,7 @@ export async function DELETE(
       );
     }
 
-    // Multi-org aware deletion for judges
+    // Judge removal: ALWAYS remove from org only, never delete user record
     if (targetUser.role === 'judge') {
       const memberships = await db
         .select({ organizationId: organizationMembers.organizationId })
@@ -55,25 +62,7 @@ export async function DELETE(
         );
       }
 
-      if (memberships.length > 1) {
-        // Judge belongs to multiple orgs — only remove from THIS org
-        await db
-          .delete(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.userId, userId),
-              eq(organizationMembers.organizationId, orgId)
-            )
-          );
-
-        return NextResponse.json({
-          success: true,
-          action: 'removed_from_org',
-          message: 'Judge removed from your organization',
-        });
-      }
-
-      // Single org — delete membership then fall through to full deletion
+      // Remove org membership
       await db
         .delete(organizationMembers)
         .where(
@@ -82,6 +71,38 @@ export async function DELETE(
             eq(organizationMembers.organizationId, orgId)
           )
         );
+
+      // Clean up event_judges using score-existence check:
+      // For this org's events, remove event_judges entries where the judge has NO scores
+      const orgEvents = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(eq(events.organizationId, orgId));
+
+      if (orgEvents.length > 0) {
+        const orgEventIds = orgEvents.map((e) => e.id);
+
+        // Delete event_judges entries where no scores exist for this judge+event
+        await db
+          .delete(eventJudges)
+          .where(
+            and(
+              eq(eventJudges.judgeId, userId),
+              inArray(eventJudges.eventId, orgEventIds),
+              sql`NOT EXISTS (
+                SELECT 1 FROM scores
+                WHERE scores.judge_id = ${eventJudges.judgeId}
+                  AND scores.event_id = ${eventJudges.eventId}
+              )`
+            )
+          );
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'removed_from_org',
+        message: 'Judge removed from your organization',
+      });
     }
 
     // Verify participant is connected to this org's events (via teams)
@@ -104,7 +125,7 @@ export async function DELETE(
       }
     }
 
-    // Full deletion — delete from users table (CASCADE deletes scores, etc.)
+    // Full deletion (admins and participants only — judges handled above)
     const [deletedUser] = await db.delete(users).where(eq(users.id, userId)).returning();
 
     if (!deletedUser) {
