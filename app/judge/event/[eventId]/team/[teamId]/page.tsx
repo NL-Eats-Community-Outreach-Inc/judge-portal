@@ -7,19 +7,20 @@ import { TeamScoringInterface } from './components/team-scoring-interface';
 
 interface TeamPageProps {
   params: Promise<{
+    eventId: string;
     teamId: string;
   }>;
 }
 
 export default async function TeamPage({ params }: TeamPageProps) {
-  const { teamId } = await params;
+  const { eventId, teamId } = await params;
   const user = await authServer.requireAuth();
 
-  // Get team and its event in one query
+  // Get team and verify it belongs to the URL's event
   const team = await db
     .select()
     .from(teams)
-    .where(eq(teams.id, teamId))
+    .where(and(eq(teams.id, teamId), eq(teams.eventId, eventId)))
     .limit(1);
 
   if (!team.length) {
@@ -27,9 +28,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
   }
 
   const teamData = team[0];
-  const eventId = teamData.eventId;
 
-  // Verify the team's event is active
+  // Verify the event is active
   const teamEvent = await db
     .select()
     .from(events)
@@ -37,7 +37,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .limit(1);
 
   if (!teamEvent.length) {
-    redirect('/judge');
+    redirect(`/judge/event/${eventId}`);
   }
 
   // Check if judge is assigned to this event

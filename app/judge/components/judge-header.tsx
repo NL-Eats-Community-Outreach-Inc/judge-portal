@@ -8,9 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Calendar, Menu, UserX, Settings } from 'lucide-react';
+import { LogOut, User, Calendar, Menu, UserX, Settings, ChevronLeft } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import type { UserWithRole } from '@/lib/auth';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { useJudgeAssignmentContext } from './judge-assignment-provider';
@@ -22,7 +22,17 @@ interface JudgeHeaderProps {
 
 export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { status, event } = useJudgeAssignmentContext();
+
+  // Contextual back navigation
+  const isSettingsPage = pathname?.startsWith('/judge/settings');
+  const isEventPage = pathname?.startsWith('/judge/event/');
+  const backNav = isSettingsPage
+    ? { label: 'Dashboard', href: '/judge' }
+    : isEventPage
+      ? { label: 'All Events', href: '/judge' }
+      : null;
 
   // Smart email display helpers
   const getUsername = (email: string, maxLength: number) => {
@@ -55,18 +65,36 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
   return (
     <header className="bg-background border-b border-border shrink-0">
       <div className="min-h-16 px-4 md:px-6 flex items-center justify-between gap-4 max-w-full overflow-hidden">
-        {/* Mobile menu button + Event info */}
-        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-          {/* Mobile menu button - only visible on mobile */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden shrink-0"
-            onClick={onMobileMenuToggle}
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Open menu</span>
-          </Button>
+        {/* Back nav + Mobile menu button + Event info */}
+        <div className="flex items-center gap-1.5 md:gap-3 flex-1 min-w-0 overflow-hidden">
+          {/* Contextual back navigation */}
+          {backNav && (
+            <button
+              onClick={() => router.push(backNav.href)}
+              className="flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0 py-1 px-1 -ml-1 rounded-md hover:bg-muted/50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="text-xs font-medium hidden sm:inline">{backNav.label}</span>
+            </button>
+          )}
+
+          {/* Separator between back nav and content */}
+          {backNav && (
+            <div className="h-4 w-px bg-border shrink-0 hidden sm:block" />
+          )}
+
+          {/* Mobile menu button - only visible on mobile when sidebar exists */}
+          {onMobileMenuToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden shrink-0"
+              onClick={onMobileMenuToggle}
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          )}
 
           {/* Event info */}
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -75,18 +103,16 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
                 <div className="h-4 w-32 md:w-48 bg-muted animate-pulse rounded" />
                 <div className="h-3 w-24 md:w-32 bg-muted animate-pulse rounded" />
               </div>
-            ) : status === 'select-event' ? (
+            ) : status === 'dashboard' ? (
               <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Calendar className="h-4 md:h-5 w-4 md:w-5 text-primary shrink-0" />
-                <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
-                      Select an Event
-                    </h1>
-                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
-                      Choose an event to start judging
-                    </p>
-                  </div>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <h1 className="font-semibold text-sm md:text-base text-foreground truncate">
+                    Judge Dashboard
+                  </h1>
+                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block truncate">
+                    Select an event to start judging
+                  </p>
                 </div>
               </div>
             ) : status === 'not-assigned' ? (

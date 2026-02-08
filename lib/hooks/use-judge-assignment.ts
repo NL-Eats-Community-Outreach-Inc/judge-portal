@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Event {
   id: string;
@@ -23,7 +23,7 @@ interface ScoreCompletion {
   partial: boolean;
 }
 
-export type AssignmentStatus = 'loading' | 'assigned' | 'not-assigned' | 'no-event' | 'select-event';
+export type AssignmentStatus = 'loading' | 'assigned' | 'not-assigned' | 'no-event' | 'dashboard';
 
 interface JudgeAssignmentState {
   status: AssignmentStatus;
@@ -33,10 +33,9 @@ interface JudgeAssignmentState {
   error: string | null;
   isFullyComplete: boolean;
   availableEvents: Event[];
-  selectedEventId: string | null;
 }
 
-export function useJudgeAssignment() {
+export function useJudgeAssignment(eventId?: string | null) {
   const [state, setState] = useState<JudgeAssignmentState>({
     status: 'loading',
     event: null,
@@ -45,183 +44,162 @@ export function useJudgeAssignment() {
     error: null,
     isFullyComplete: false,
     availableEvents: [],
-    selectedEventId: null,
   });
 
-  // Use ref for selectedEventId to avoid dependency chain issues
-  const selectedEventIdRef = useRef<string | null>(null);
-
-  // Build eventId query param — reads from ref, so no state deps
-  const buildEventParam = useCallback((eventId?: string | null) => {
-    const id = eventId ?? selectedEventIdRef.current;
-    return id ? `eventId=${id}` : '';
+  // Fetch available events for dashboard mode
+  const fetchAvailableEvents = useCallback(async () => {
+    try {
+      const response = await fetch('/api/judge/events');
+      if (response.ok) {
+        const data = await response.json();
+        return (data.events || []) as Event[];
+      }
+      return [] as Event[];
+    } catch (error) {
+      console.error('Error fetching available events:', error);
+      return [] as Event[];
+    }
   }, []);
 
-  // Fetch event data
-  const fetchEvent = useCallback(
-    async (eventId?: string | null) => {
-      try {
-        const param = buildEventParam(eventId);
-        const url = param ? `/api/judge/event?${param}` : '/api/judge/event';
-        const response = await fetch(url);
-        const data = await response.json();
+  // Fetch event data — with optional eventId
+  const fetchEvent = useCallback(async (id?: string) => {
+    try {
+      const url = id ? `/api/judge/event?eventId=${id}` : '/api/judge/event';
+      const response = await fetch(url);
+      const data = await response.json();
 
-        if (response.ok) {
-          return { event: data.event as Event | null, isAssigned: true, selectEvent: false, events: [] as Event[] };
-        } else if (response.status === 403) {
-          if (data.errorType === 'NOT_ASSIGNED') {
-            return { event: null as Event | null, isAssigned: false, selectEvent: false, events: [] as Event[] };
-          }
-        } else if (response.status === 300 && data.errorType === 'SELECT_EVENT') {
-          return {
-            event: null as Event | null,
-            isAssigned: true,
-            selectEvent: true,
-            events: (data.events || []) as Event[],
-          };
+      if (response.ok) {
+        return { event: data.event as Event | null, isAssigned: true };
+      } else if (response.status === 403) {
+        if (data.errorType === 'NOT_ASSIGNED') {
+          return { event: null as Event | null, isAssigned: false };
         }
-        return { event: null as Event | null, isAssigned: true, selectEvent: false, events: [] as Event[] };
-      } catch (error) {
-        console.error('Error fetching event:', error);
-        return { event: null as Event | null, isAssigned: true, selectEvent: false, events: [] as Event[] };
       }
-    },
-    [buildEventParam]
-  );
+      return { event: null as Event | null, isAssigned: true };
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      return { event: null as Event | null, isAssigned: true };
+    }
+  }, []);
 
   // Fetch teams data
-  const fetchTeams = useCallback(
-    async (eventId?: string | null) => {
-      try {
-        const param = buildEventParam(eventId);
-        const url = param ? `/api/judge/teams?${param}` : '/api/judge/teams';
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          return { teams: (data.teams || []) as Team[] };
-        }
-        return { teams: [] as Team[] };
-      } catch (error) {
-        console.error('Error fetching teams:', error);
-        return { teams: [] as Team[] };
+  const fetchTeams = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/judge/teams?eventId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        return { teams: (data.teams || []) as Team[] };
       }
-    },
-    [buildEventParam]
-  );
+      return { teams: [] as Team[] };
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      return { teams: [] as Team[] };
+    }
+  }, []);
 
   // Fetch score completion
-  const fetchScoreCompletion = useCallback(
-    async (eventId?: string | null) => {
-      try {
-        const param = buildEventParam(eventId);
-        const url = param ? `/api/judge/completion?${param}` : '/api/judge/completion';
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          return (data.completion || []) as ScoreCompletion[];
-        }
-        return [] as ScoreCompletion[];
-      } catch (error) {
-        console.error('Error fetching completion:', error);
-        return [] as ScoreCompletion[];
+  const fetchScoreCompletion = useCallback(async (id?: string) => {
+    try {
+      const url = id
+        ? `/api/judge/completion?eventId=${id}`
+        : '/api/judge/completion';
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        return (data.completion || []) as ScoreCompletion[];
       }
-    },
-    [buildEventParam]
-  );
+      return [] as ScoreCompletion[];
+    } catch (error) {
+      console.error('Error fetching completion:', error);
+      return [] as ScoreCompletion[];
+    }
+  }, []);
 
-  // Main fetch function that determines assignment status
-  const fetchAllData = useCallback(
-    async (eventId?: string | null) => {
-      setState((prev) => ({ ...prev, status: 'loading' }));
+  // Main fetch function — behavior depends on whether eventId is provided
+  const fetchAllData = useCallback(async () => {
+    setState((prev) => ({ ...prev, status: 'loading' }));
 
-      const eventResult = await fetchEvent(eventId);
+    // Dashboard mode: no eventId, fetch available events
+    if (!eventId) {
+      const events = await fetchAvailableEvents();
 
-      // Handle select-event case early
-      if (eventResult.selectEvent) {
+      if (events.length === 0) {
+        // Could be no events or not assigned — check via the event API (no eventId)
+        const eventResult = await fetchEvent();
+        // If the fetch returns not-assigned or no event, show appropriate state
         setState((prev) => ({
           ...prev,
-          status: 'select-event' as AssignmentStatus,
+          status: !eventResult.isAssigned ? 'not-assigned' : 'no-event',
           event: null,
           teams: [],
           scoreCompletion: [],
           error: null,
           isFullyComplete: false,
-          availableEvents: eventResult.events,
+          availableEvents: [],
         }));
         return;
       }
 
-      // Determine status
-      let status: AssignmentStatus;
-      if (!eventResult.isAssigned) {
-        status = 'not-assigned';
-      } else if (!eventResult.event) {
-        status = 'no-event';
-      } else {
-        status = 'assigned';
-      }
-
-      // If assigned, fetch teams and completion in parallel
-      let teamsData: Team[] = [];
-      let completion: ScoreCompletion[] = [];
-
-      if (status === 'assigned') {
-        const resolvedId = eventId ?? selectedEventIdRef.current;
-        const [teamsResult, comp] = await Promise.all([
-          fetchTeams(resolvedId),
-          fetchScoreCompletion(resolvedId),
-        ]);
-        teamsData = teamsResult.teams;
-        completion = comp;
-      }
-
-      const isFullyComplete =
-        status === 'assigned' &&
-        teamsData.length > 0 &&
-        completion.length > 0 &&
-        completion.every((c: ScoreCompletion) => c.completed);
-
       setState((prev) => ({
         ...prev,
-        status,
-        event: eventResult.event,
-        teams: teamsData,
-        scoreCompletion: completion,
+        status: 'dashboard' as AssignmentStatus,
+        event: null,
+        teams: [],
+        scoreCompletion: [],
         error: null,
-        isFullyComplete,
-        availableEvents: eventResult.events.length > 0 ? eventResult.events : prev.availableEvents,
+        isFullyComplete: false,
+        availableEvents: events,
       }));
-    },
-    [fetchEvent, fetchTeams, fetchScoreCompletion]
-  );
+      return;
+    }
 
-  // Select an event (used by event picker)
-  const selectEvent = useCallback(
-    (eventId: string) => {
-      selectedEventIdRef.current = eventId;
-      setState((prev) => ({ ...prev, selectedEventId: eventId }));
-      fetchAllData(eventId);
-    },
-    [fetchAllData]
-  );
+    // Event mode: fetch specific event data
+    const eventResult = await fetchEvent(eventId);
 
-  // Switch back to event picker
-  const clearEventSelection = useCallback(() => {
-    selectedEventIdRef.current = null;
+    // Determine status
+    let status: AssignmentStatus;
+    if (!eventResult.isAssigned) {
+      status = 'not-assigned';
+    } else if (!eventResult.event) {
+      status = 'no-event';
+    } else {
+      status = 'assigned';
+    }
+
+    // If assigned, fetch teams and completion in parallel
+    let teamsData: Team[] = [];
+    let completion: ScoreCompletion[] = [];
+
+    if (status === 'assigned') {
+      const [teamsResult, comp] = await Promise.all([
+        fetchTeams(eventId),
+        fetchScoreCompletion(eventId),
+      ]);
+      teamsData = teamsResult.teams;
+      completion = comp;
+    }
+
+    const isFullyComplete =
+      status === 'assigned' &&
+      teamsData.length > 0 &&
+      completion.length > 0 &&
+      completion.every((c: ScoreCompletion) => c.completed);
+
     setState((prev) => ({
       ...prev,
-      selectedEventId: null,
-      status: 'select-event' as AssignmentStatus,
-      event: null,
-      teams: [],
-      scoreCompletion: [],
-      isFullyComplete: false,
+      status,
+      event: eventResult.event,
+      teams: teamsData,
+      scoreCompletion: completion,
+      error: null,
+      isFullyComplete,
+      availableEvents: prev.availableEvents,
     }));
-  }, []);
+  }, [eventId, fetchAvailableEvents, fetchEvent, fetchTeams, fetchScoreCompletion]);
 
   // Refresh score completion (for when scores are updated)
   const refreshScoreCompletion = useCallback(async () => {
-    const completion = await fetchScoreCompletion();
+    const completion = await fetchScoreCompletion(eventId ?? undefined);
 
     setState((prev) => {
       if (prev.status !== 'assigned') return prev;
@@ -237,9 +215,9 @@ export function useJudgeAssignment() {
         isFullyComplete,
       };
     });
-  }, [fetchScoreCompletion]);
+  }, [eventId, fetchScoreCompletion]);
 
-  // Initial load — only runs once since fetchAllData is now stable
+  // Initial load — re-fetches when eventId changes (URL navigation)
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
@@ -248,7 +226,5 @@ export function useJudgeAssignment() {
     ...state,
     refresh: fetchAllData,
     refreshScoreCompletion,
-    selectEvent,
-    clearEventSelection,
   };
 }

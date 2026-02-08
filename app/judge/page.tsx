@@ -1,26 +1,35 @@
 'use client';
 
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Target, Clock, AlertCircle, UserX, Shield, Mail } from 'lucide-react';
+import {
+  Calendar,
+  Building2,
+  AlertCircle,
+  UserX,
+  Shield,
+  Mail,
+  ArrowRight,
+} from 'lucide-react';
 import { useJudgeAssignmentContext } from './components/judge-assignment-provider';
-import { EventPicker } from './components/event-picker';
 
 export default function JudgePage() {
-  const { status, teams, refresh } = useJudgeAssignmentContext();
+  const { status, availableEvents, refresh } = useJudgeAssignmentContext();
 
-  // Show loading state
+  // Loading state
   if (status === 'loading') {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
-        <div className="space-y-4 md:space-y-6">
-          <div className="text-center space-y-3 md:space-y-4">
+        <div className="space-y-6 md:space-y-8">
+          <div className="text-center space-y-3">
             <div className="h-7 md:h-8 bg-muted animate-pulse rounded w-48 md:w-64 mx-auto" />
             <div className="h-5 md:h-6 bg-muted animate-pulse rounded w-64 md:w-96 mx-auto" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 md:h-24 bg-muted animate-pulse rounded-lg" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-32 md:h-36 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
         </div>
@@ -28,12 +37,7 @@ export default function JudgePage() {
     );
   }
 
-  // Show event picker when multiple events are available
-  if (status === 'select-event') {
-    return <EventPicker />;
-  }
-
-  // Show "NOT ASSIGNED" page when judge is not assigned to event
+  // Not assigned to any events
   if (status === 'not-assigned') {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
@@ -46,7 +50,7 @@ export default function JudgePage() {
               Not Assigned to Event
             </h1>
             <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
-              You are not currently assigned to judge the active event. Please contact an
+              You are not currently assigned to judge any active event. Please contact an
               administrator to request access.
             </p>
           </div>
@@ -72,8 +76,7 @@ export default function JudgePage() {
                       Next steps
                     </h3>
                     <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      Contact the event administrator to request access to the current judging
-                      event.
+                      Contact the event administrator to request access to a judging event.
                     </p>
                   </div>
                 </div>
@@ -88,7 +91,7 @@ export default function JudgePage() {
     );
   }
 
-  // Show "NO EVENT" page when no active event exists
+  // No active events exist
   if (status === 'no-event') {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
@@ -112,7 +115,7 @@ export default function JudgePage() {
                 <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
                   <li>• An administrator needs to activate an event</li>
                   <li>• Teams and criteria must be configured</li>
-                  <li>• You&apos;ll see teams appear in the sidebar once ready</li>
+                  <li>• You&apos;ll be able to start judging once an event is active</li>
                 </ul>
               </div>
             </Card>
@@ -125,133 +128,58 @@ export default function JudgePage() {
     );
   }
 
-  // Show "NO TEAMS" page when event is assigned but has no teams yet
-  if (teams.length === 0) {
-    return (
-      <div className="p-4 md:p-6 max-w-4xl mx-auto min-h-full flex items-center justify-center">
-        <div className="text-center space-y-4 md:space-y-6">
-          <div className="w-20 h-20 md:w-24 md:h-24 mx-auto bg-muted rounded-full flex items-center justify-center">
-            <Users className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-          </div>
-          <div className="space-y-2 md:space-y-3">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">No Teams Yet</h1>
-            <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-4 md:px-0">
-              The event is active but no teams have been added yet. An administrator needs to
-              configure teams and criteria before judging can begin.
-            </p>
-          </div>
-          <div className="space-y-4 md:space-y-6">
-            <Card className="p-4 md:p-6 max-w-sm md:max-w-md mx-auto bg-muted/30">
-              <div className="space-y-2 md:space-y-3">
-                <h3 className="font-semibold text-foreground text-sm md:text-base">
-                  What happens next?
-                </h3>
-                <ul className="text-xs md:text-sm text-muted-foreground space-y-1.5 md:space-y-2 text-left">
-                  <li>• An administrator needs to add teams to the event</li>
-                  <li>• Scoring criteria must be configured</li>
-                  <li>• You&apos;ll see teams appear in the sidebar once ready</li>
-                </ul>
-              </div>
-            </Card>
-            <Button onClick={() => refresh()} className="mx-auto">
-              Check Again
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show normal welcome page when teams exist
+  // Dashboard: show event cards
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
-      <div className="space-y-4 md:space-y-6">
-        {/* Welcome section */}
-        <div className="text-center space-y-3 md:space-y-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            Welcome to Judge Portal
-          </h1>
-          <p className="text-muted-foreground text-base md:text-lg max-w-xl md:max-w-2xl mx-auto px-2 md:px-0">
-            Select a team from the sidebar to start judging. Your scores will be automatically saved
-            as you work.
-          </p>
-        </div>
-
-        {/* Quick stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-          <Card className="p-4 md:p-6 text-center">
-            <Users className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">
-              {teams.length} Teams
-            </h3>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              {teams.length === 1 ? 'Team' : 'Teams'} ready for judging
-            </p>
-          </Card>
-
-          <Card className="p-4 md:p-6 text-center">
-            <Target className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">Criteria</h3>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Score across multiple criteria
-            </p>
-          </Card>
-
-          <Card className="p-4 md:p-6 text-center">
-            <Clock className="h-6 w-6 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <h3 className="font-semibold text-foreground text-sm md:text-base">Auto-save</h3>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Your progress is saved automatically
-            </p>
-          </Card>
-        </div>
-
-        {/* Getting started */}
-        <Card className="p-4 md:p-6">
-          <h2 className="text-lg md:text-xl font-semibold text-foreground mb-3 md:mb-4">
-            Getting Started
-          </h2>
-          <div className="space-y-2.5 md:space-y-3">
-            <div className="flex items-center gap-2.5 md:gap-3">
-              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                1
-              </div>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Select a team from the sidebar to view their project details
-              </p>
-            </div>
-            <div className="flex items-center gap-2.5 md:gap-3">
-              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                2
-              </div>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Score each criterion based on the project&apos;s merit
-              </p>
-            </div>
-            <div className="flex items-center gap-2.5 md:gap-3">
-              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                3
-              </div>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Add comments to provide valuable feedback (optional)
-              </p>
-            </div>
-            <div className="flex items-center gap-2.5 md:gap-3">
-              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center shrink-0">
-                4
-              </div>
-              <p className="text-muted-foreground text-sm md:text-base">
-                Move on to the next team - your scores are saved automatically
-              </p>
-            </div>
+      <div className="space-y-6 md:space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 md:w-20 md:h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+            <Calendar className="h-8 w-8 md:h-10 md:w-10 text-primary" />
           </div>
-        </Card>
-
-        {/* CTA */}
-        <div className="text-center">
-          <p className="text-muted-foreground text-sm md:text-base px-4 md:px-0">
-            Ready to start judging? Select your first team from the sidebar.
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Your Events</h1>
+          <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
+            {availableEvents.length === 1
+              ? 'You are assigned to the following active event. Click to start judging.'
+              : `You are assigned to ${availableEvents.length} active events. Select one to start judging.`}
           </p>
+        </div>
+
+        {/* Event cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {availableEvents.map((event) => (
+            <Link key={event.id} href={`/judge/event/${event.id}`}>
+              <Card className="p-5 md:p-6 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50 hover:bg-primary/5 border-2 border-transparent h-full">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-foreground text-base md:text-lg leading-tight">
+                      {event.name}
+                    </h3>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 shrink-0">
+                      Active
+                    </Badge>
+                  </div>
+                  {event.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {event.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    {event.organizationName && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Building2 className="h-3.5 w-3.5" />
+                        <span>{event.organizationName}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 text-xs text-primary font-medium ml-auto">
+                      <span>Start Judging</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
     </div>
