@@ -229,8 +229,7 @@ export const invitations = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
     createdBy: uuid('created_by')
-      .references(() => users.id)
-      .notNull(),
+      .references(() => users.id, { onDelete: 'set null' }),
     organizationId: uuid('organization_id').references(() => organizations.id, {
       onDelete: 'cascade',
     }),

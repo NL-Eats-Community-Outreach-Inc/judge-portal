@@ -288,9 +288,9 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Organization</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &quot;{org.name}&quot; and all its events.
-              Admin users will be unassigned from this organization.
-              This action cannot be undone.
+              Permanently deleting &quot;{org.name}&quot; will destroy all its events, teams,
+              scoring criteria, scores, and judge assignments. Admin users in this
+              organization will lose access. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

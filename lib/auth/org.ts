@@ -2,9 +2,16 @@ import { db } from '@/lib/db';
 import { users, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
+export class OrphanedAdminError extends Error {
+  constructor() {
+    super('Admin user is not assigned to an organization');
+    this.name = 'OrphanedAdminError';
+  }
+}
+
 /**
  * Get the organization ID for an admin user.
- * Throws if the user has no organization assigned.
+ * Throws OrphanedAdminError if the user has no organization assigned.
  */
 export async function getAdminOrgId(userId: string): Promise<string> {
   const result = await db
@@ -15,7 +22,7 @@ export async function getAdminOrgId(userId: string): Promise<string> {
 
   const orgId = result[0]?.organizationId;
   if (!orgId) {
-    throw new Error('Admin user is not assigned to an organization');
+    throw new OrphanedAdminError();
   }
   return orgId;
 }

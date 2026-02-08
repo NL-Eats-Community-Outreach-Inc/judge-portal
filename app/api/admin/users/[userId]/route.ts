@@ -126,18 +126,22 @@ export async function DELETE(
     }
 
     // Full deletion (admins and participants only — judges handled above)
-    const [deletedUser] = await db.delete(users).where(eq(users.id, userId)).returning();
-
-    if (!deletedUser) {
-      return NextResponse.json({ error: 'Failed to delete user from database' }, { status: 500 });
-    }
-
-    // Then delete from Supabase Auth
+    // Delete from Supabase Auth FIRST (prevents ghost users)
     const supabase = await createAdminClient();
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-
     if (authError) {
-      console.error('Error deleting user from auth:', authError);
+      return NextResponse.json({ error: 'Failed to delete auth account' }, { status: 500 });
+    }
+
+    // Then delete from database
+    try {
+      await db.delete(users).where(eq(users.id, userId));
+    } catch (dbError) {
+      console.error('CRITICAL: Auth deleted but DB delete failed for user:', userId, dbError);
+      return NextResponse.json(
+        { error: 'Auth deleted but database cleanup failed. Retry deletion.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });

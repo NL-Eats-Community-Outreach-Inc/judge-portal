@@ -411,6 +411,19 @@ CREATE POLICY "Admins can manage org members"
   );
 
 -- ================================================================
+-- FIX: invitations.created_by FK blocks user deletion
+-- Make nullable + ON DELETE SET NULL (preserves invitation audit trail)
+-- ================================================================
+DO $$ BEGIN
+  ALTER TABLE invitations DROP CONSTRAINT IF EXISTS invitations_created_by_users_id_fk;
+  ALTER TABLE invitations DROP CONSTRAINT IF EXISTS invitations_created_by_fkey;
+  ALTER TABLE invitations ALTER COLUMN created_by DROP NOT NULL;
+  ALTER TABLE invitations ADD CONSTRAINT invitations_created_by_users_id_fk
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ================================================================
 -- SUCCESS
 -- ================================================================
 

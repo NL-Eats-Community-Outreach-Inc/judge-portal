@@ -54,6 +54,7 @@ import {
   RefreshCw,
   Trash2,
   Building2,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSuperAdmin } from '../contexts/super-admin-context';
@@ -83,6 +84,7 @@ export default function PlatformUsers() {
   const [deletingUsers, setDeletingUsers] = useState(new Set<string>());
   const [roleChangeUser, setRoleChangeUser] = useState<PlatformUser | null>(null);
   const [pendingRole, setPendingRole] = useState<string>('');
+  const [pendingFromRole, setPendingFromRole] = useState<string>('');
   const [pendingOrgId, setPendingOrgId] = useState<string>('');
 
   const fetchUsers = useCallback(async () => {
@@ -108,13 +110,11 @@ export default function PlatformUsers() {
   }, [fetchUsers]);
 
   const handleRoleChange = (user: PlatformUser, newRole: string) => {
-    if (newRole === 'admin') {
-      setRoleChangeUser(user);
-      setPendingRole(newRole);
-      setPendingOrgId(user.organizationId || '');
-    } else {
-      updateRole(user.id, newRole, null);
-    }
+    // All role transitions open the confirmation dialog
+    setRoleChangeUser(user);
+    setPendingRole(newRole);
+    setPendingFromRole(user.role);
+    setPendingOrgId(newRole === 'admin' ? (user.organizationId || '') : '');
   };
 
   const updateRole = async (userId: string, role: string, organizationId: string | null) => {
@@ -161,6 +161,7 @@ export default function PlatformUsers() {
     updateRole(roleChangeUser.id, pendingRole, pendingRole === 'admin' ? pendingOrgId : null);
     setRoleChangeUser(null);
     setPendingRole('');
+    setPendingFromRole('');
     setPendingOrgId('');
   };
 
@@ -226,6 +227,32 @@ export default function PlatformUsers() {
     }
   };
 
+  const getDeleteDialogText = (role: string) => {
+    switch (role) {
+      case 'judge':
+        return 'Warning: Deleting this judge will permanently destroy all their scores across all events. Event results will change. This cannot be undone.';
+      case 'participant':
+        return 'This will permanently delete this participant and remove them from all teams and events.';
+      case 'admin':
+        return 'This will permanently delete this admin account.';
+      default:
+        return 'This will permanently delete this user and all associated data. This action cannot be undone.';
+    }
+  };
+
+  const getFromRoleWarning = (fromRole: string) => {
+    switch (fromRole) {
+      case 'judge':
+        return 'Changing this judge\'s role will remove their organization memberships. Event assignments without scores will be removed. Existing scores are preserved in results.';
+      case 'participant':
+        return 'Changing this participant\'s role will remove them from all teams and event registrations. If they are a team creator, ownership transfers to the next member.';
+      case 'admin':
+        return 'This admin will be removed from their current organization.';
+      default:
+        return '';
+    }
+  };
+
   const getUsersByRole = (role: string) => users.filter((u) => u.role === role);
 
   const superAdminCount = getUsersByRole('super_admin').length;
@@ -236,12 +263,12 @@ export default function PlatformUsers() {
   const renderOrgCell = (user: PlatformUser) => {
     if (user.role === 'judge' && user.organizationMemberships?.length > 0) {
       return (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-col gap-1">
           {user.organizationMemberships.map((org) => (
             <Badge
               key={org.id}
               variant="outline"
-              className="flex items-center gap-1 text-xs"
+              className="flex items-center gap-1 text-xs w-fit"
             >
               <Building2 className="h-2.5 w-2.5" />
               {org.name}
@@ -300,27 +327,50 @@ export default function PlatformUsers() {
                     <span className="text-xs text-muted-foreground italic">Protected</span>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={user.role}
-                        onValueChange={(role) => handleRoleChange(user, role)}
-                        disabled={updatingRoles.has(user.id)}
-                      >
-                        <SelectTrigger className="w-28 md:w-32">
+                      {/* Orphaned admin: show Reassign button instead of role dropdown */}
+                      {user.role === 'admin' && !user.organizationId ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800/60 dark:hover:bg-amber-950/50"
+                          onClick={() => {
+                            setRoleChangeUser(user);
+                            setPendingRole('admin');
+                            setPendingFromRole('admin');
+                            setPendingOrgId('');
+                          }}
+                          disabled={updatingRoles.has(user.id)}
+                        >
                           {updatingRoles.has(user.id) ? (
-                            <div className="flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span className="text-xs">...</span>
-                            </div>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
                           ) : (
-                            <SelectValue />
+                            <Building2 className="h-3 w-3 mr-1" />
                           )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="judge">Judge</SelectItem>
-                          <SelectItem value="participant">Participant</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          Reassign
+                        </Button>
+                      ) : (
+                        <Select
+                          value={user.role}
+                          onValueChange={(role) => handleRoleChange(user, role)}
+                          disabled={updatingRoles.has(user.id)}
+                        >
+                          <SelectTrigger className="w-28 md:w-32">
+                            {updatingRoles.has(user.id) ? (
+                              <div className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span className="text-xs">...</span>
+                              </div>
+                            ) : (
+                              <SelectValue />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="judge">Judge</SelectItem>
+                            <SelectItem value="participant">Participant</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -340,8 +390,7 @@ export default function PlatformUsers() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete User</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete &quot;{user.email}&quot; and all
-                              associated data. This action cannot be undone.
+                              {getDeleteDialogText(user.role)}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -567,22 +616,27 @@ export default function PlatformUsers() {
         </CardContent>
       </Card>
 
-      {/* Org Selector Dialog for Admin Role Change */}
+      {/* Role Change Confirmation Dialog */}
       <Dialog
         open={!!roleChangeUser}
         onOpenChange={(open) => {
           if (!open) {
             setRoleChangeUser(null);
             setPendingRole('');
+            setPendingFromRole('');
             setPendingOrgId('');
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Organization</DialogTitle>
+            <DialogTitle>
+              {pendingFromRole === pendingRole ? 'Reassign Organization' : 'Confirm Role Change'}
+            </DialogTitle>
             <DialogDescription>
-              Select which organization this admin should belong to.
+              {pendingFromRole === pendingRole
+                ? 'Select which organization this admin should belong to.'
+                : `Change role from ${pendingFromRole} to ${pendingRole}.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -590,24 +644,39 @@ export default function PlatformUsers() {
               <Label>User</Label>
               <p className="text-sm text-muted-foreground">{roleChangeUser?.email}</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="org-select">Organization *</Label>
-              <Select value={pendingOrgId} onValueChange={setPendingOrgId}>
-                <SelectTrigger id="org-select">
-                  <SelectValue placeholder="Select organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {/* FROM-role warning */}
+            {pendingFromRole !== pendingRole && getFromRoleWarning(pendingFromRole) && (
+              <div className="flex gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  {getFromRoleWarning(pendingFromRole)}
+                </p>
+              </div>
+            )}
+
+            {/* Org selector for admin role */}
+            {pendingRole === 'admin' && (
+              <div className="space-y-2">
+                <Label htmlFor="org-select">Organization *</Label>
+                <Select value={pendingOrgId} onValueChange={setPendingOrgId}>
+                  <SelectTrigger id="org-select">
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button onClick={confirmRoleChange} className="flex-1">
-                Confirm Role Change
+                {pendingFromRole === pendingRole ? 'Reassign' : 'Confirm Role Change'}
               </Button>
               <Button variant="outline" onClick={() => setRoleChangeUser(null)}>
                 Cancel

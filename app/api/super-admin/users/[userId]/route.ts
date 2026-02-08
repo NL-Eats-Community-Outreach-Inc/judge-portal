@@ -34,12 +34,23 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete super admin users' }, { status: 403 });
     }
 
-    // Delete from database
-    await db.delete(users).where(eq(users.id, userId));
-
-    // Delete from Supabase Auth
+    // Delete from Supabase Auth FIRST (prevents ghost users)
     const supabase = await createAdminClient();
-    await supabase.auth.admin.deleteUser(userId);
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) {
+      return NextResponse.json({ error: 'Failed to delete auth account' }, { status: 500 });
+    }
+
+    // Then delete from database
+    try {
+      await db.delete(users).where(eq(users.id, userId));
+    } catch (dbError) {
+      console.error('CRITICAL: Auth deleted but DB delete failed for user:', userId, dbError);
+      return NextResponse.json(
+        { error: 'Auth deleted but database cleanup failed. Retry deletion.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, message: `User "${targetUser.email}" deleted` });
   } catch (error) {
