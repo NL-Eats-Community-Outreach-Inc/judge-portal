@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
     const { organizationIds } = body;
 
     if (!organizationIds || !Array.isArray(organizationIds) || organizationIds.length === 0) {
-      return NextResponse.json({ error: 'At least one organization ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'At least one organization ID is required' },
+        { status: 400 }
+      );
     }
 
     // Validate that all orgs exist

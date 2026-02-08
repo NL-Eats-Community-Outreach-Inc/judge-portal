@@ -228,8 +228,7 @@ export const invitations = pgTable(
     customMessage: text('custom_message'),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
-    createdBy: uuid('created_by')
-      .references(() => users.id, { onDelete: 'set null' }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     organizationId: uuid('organization_id').references(() => organizations.id, {
       onDelete: 'cascade',
     }),

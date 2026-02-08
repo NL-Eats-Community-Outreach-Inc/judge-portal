@@ -83,9 +83,10 @@ export function AdminInviteDialog({ orgId, orgName, onInviteSent }: AdminInviteD
         }
 
         toast.success('Admin invitations sent!', {
-          description: warnings.length > 0
-            ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
-            : `Created ${data.invitations.length} invitation(s) for ${orgName}`,
+          description:
+            warnings.length > 0
+              ? `Created ${data.invitations.length} invitation(s). ${warnings.join('. ')}`
+              : `Created ${data.invitations.length} invitation(s) for ${orgName}`,
           duration: 8000,
         });
       } else {
@@ -145,7 +146,8 @@ export function AdminInviteDialog({ orgId, orgName, onInviteSent }: AdminInviteD
         <DialogHeader>
           <DialogTitle>Invite Admin to {orgName}</DialogTitle>
           <DialogDescription>
-            Send invitation links to admins. They&apos;ll be assigned to this organization upon registration.
+            Send invitation links to admins. They&apos;ll be assigned to this organization upon
+            registration.
           </DialogDescription>
         </DialogHeader>
 

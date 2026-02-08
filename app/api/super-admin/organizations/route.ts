@@ -9,10 +9,7 @@ export async function GET() {
     await authServer.requireSuperAdmin();
 
     // Fetch orgs
-    const orgs = await db
-      .select()
-      .from(organizations)
-      .orderBy(organizations.createdAt);
+    const orgs = await db.select().from(organizations).orderBy(organizations.createdAt);
 
     // Fetch admin counts per org
     const adminCounts = await db
@@ -64,7 +61,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Organization slug is required' }, { status: 400 });
     }
 
-    const slugValue = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const slugValue = slug
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-');
 
     // Check slug uniqueness
     const existing = await db
@@ -74,7 +74,10 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'An organization with this slug already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'An organization with this slug already exists' },
+        { status: 409 }
+      );
     }
 
     const [org] = await db
@@ -87,7 +90,10 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json({ organization: { ...org, adminCount: 0, eventCount: 0 } }, { status: 201 });
+    return NextResponse.json(
+      { organization: { ...org, adminCount: 0, eventCount: 0 } },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

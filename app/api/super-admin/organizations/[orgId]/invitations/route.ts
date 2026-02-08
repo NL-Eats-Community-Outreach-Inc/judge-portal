@@ -4,10 +4,7 @@ import { db } from '@/lib/db';
 import { organizations, invitations } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
@@ -50,10 +47,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
@@ -89,10 +83,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;

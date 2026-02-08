@@ -22,11 +22,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Verify invitation belongs to org
-    const [invitation] = await db
-      .select()
-      .from(invitations)
-      .where(eq(invitations.id, id))
-      .limit(1);
+    const [invitation] = await db.select().from(invitations).where(eq(invitations.id, id)).limit(1);
 
     if (!invitation) {
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
@@ -77,11 +73,7 @@ export async function DELETE(
     }
 
     // Verify invitation belongs to org
-    const [invitation] = await db
-      .select()
-      .from(invitations)
-      .where(eq(invitations.id, id))
-      .limit(1);
+    const [invitation] = await db.select().from(invitations).where(eq(invitations.id, id)).limit(1);
 
     if (!invitation) {
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });

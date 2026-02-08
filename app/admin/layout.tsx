@@ -36,7 +36,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <h1 className="text-xl font-semibold text-foreground">Organization Removed</h1>
           <p className="text-muted-foreground">
-            Your organization has been removed. Contact a super admin to be reassigned to an organization.
+            Your organization has been removed. Contact a super admin to be reassigned to an
+            organization.
           </p>
           <form
             action={async () => {

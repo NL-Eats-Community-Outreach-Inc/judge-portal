@@ -294,9 +294,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {team.eventName}
-            </p>
+            <p className="text-sm text-muted-foreground">{team.eventName}</p>
             {team.description && (
               <p className="text-sm text-muted-foreground mt-2">{team.description}</p>
             )}
@@ -502,7 +500,10 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
             {/* Leave Team */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-amber-600 border-amber-500/30 hover:bg-amber-500/10">
+                <Button
+                  variant="outline"
+                  className="text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   Leave Team
                 </Button>
@@ -515,7 +516,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                       ? 'You are the last member. Leaving will permanently delete the team.'
                       : team.isCreator
                         ? 'As the creator, your role will transfer to the next member who joined.'
-                        : 'You can rejoin later using the team\'s join code.'}
+                        : "You can rejoin later using the team's join code."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -535,7 +536,10 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
             {team.isCreator && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Button
+                    variant="outline"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete Team
                   </Button>

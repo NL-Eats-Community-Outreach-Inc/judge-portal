@@ -79,9 +79,7 @@ export function JudgeHeader({ user, onMobileMenuToggle }: JudgeHeaderProps) {
           )}
 
           {/* Separator between back nav and content */}
-          {backNav && (
-            <div className="h-4 w-px bg-border shrink-0 hidden sm:block" />
-          )}
+          {backNav && <div className="h-4 w-px bg-border shrink-0 hidden sm:block" />}
 
           {/* Mobile menu button - only visible on mobile when sidebar exists */}
           {onMobileMenuToggle && (

@@ -33,8 +33,9 @@ export async function generateJoinCode(maxRetries = 5): Promise<string> {
 }
 
 /**
- * Validate that a string is a valid join code format (6 uppercase alphanumeric chars).
+ * Validate that a string is a valid join code format (6 uppercase alphanumeric chars,
+ * excluding ambiguous characters: I, O, 0, 1).
  */
 export function isValidJoinCode(code: string): boolean {
-  return /^[A-Z0-9]{6}$/.test(code);
+  return /^[A-HJ-NP-Z2-9]{6}$/.test(code);
 }

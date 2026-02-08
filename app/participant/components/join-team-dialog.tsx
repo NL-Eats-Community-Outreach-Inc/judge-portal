@@ -103,9 +103,7 @@ export function JoinTeamDialog({ open, onOpenChange, onSuccess }: JoinTeamDialog
                 autoFocus
                 autoComplete="off"
               />
-              {error && (
-                <p className="text-sm text-destructive text-center mt-2">{error}</p>
-              )}
+              {error && <p className="text-sm text-destructive text-center mt-2">{error}</p>}
               {!error && (
                 <p className="text-xs text-muted-foreground text-center mt-2">
                   {6 - code.length} character{6 - code.length !== 1 ? 's' : ''} remaining

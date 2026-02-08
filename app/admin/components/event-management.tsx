@@ -34,16 +34,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  Save,
-  Loader2,
-  Plus,
-  Edit2,
-  Trash2,
-  Calendar,
-  RefreshCw,
-  Users,
-} from 'lucide-react';
+import { Save, Loader2, Plus, Edit2, Trash2, Calendar, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import JudgeAssignmentDialog from '@/components/judge-assignment-dialog';
@@ -240,7 +231,11 @@ export default function EventManagement() {
       active: 'ACTIVE',
       completed: 'COMPLETED',
     };
-    return <Badge variant={variants[status] || 'outline'}>{labels[status] || status.toUpperCase()}</Badge>;
+    return (
+      <Badge variant={variants[status] || 'outline'}>
+        {labels[status] || status.toUpperCase()}
+      </Badge>
+    );
   };
 
   if (isLoading) {

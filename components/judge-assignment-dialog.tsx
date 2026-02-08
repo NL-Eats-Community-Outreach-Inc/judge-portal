@@ -167,7 +167,8 @@ export default function JudgeAssignmentDialog({
               <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
                 <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Removing judges from an {eventStatus} event will exclude their scores from results.
+                  Removing judges from an {eventStatus} event will exclude their scores from
+                  results.
                 </p>
               </div>
             )}
@@ -178,7 +179,8 @@ export default function JudgeAssignmentDialog({
                 <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    The following judges are no longer in your organization but their scores are preserved in this event&apos;s results:
+                    The following judges are no longer in your organization but their scores are
+                    preserved in this event&apos;s results:
                   </p>
                   <ul className="mt-1 space-y-0.5">
                     {droppedJudges.map((judge) => (
@@ -198,7 +200,8 @@ export default function JudgeAssignmentDialog({
                 {assignedOrgCount} of {totalOrgJudges} org judges assigned
                 {droppedJudges.length > 0 && (
                   <span className="text-muted-foreground font-normal">
-                    {' '}+ {droppedJudges.length} external with preserved scores
+                    {' '}
+                    + {droppedJudges.length} external with preserved scores
                   </span>
                 )}
               </span>

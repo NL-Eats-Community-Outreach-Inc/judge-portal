@@ -4,15 +4,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Trophy,
-  Users,
-  ChevronRight,
-  Sparkles,
-  Zap,
-  CheckCircle2,
-  Loader2,
-} from 'lucide-react';
+import { Trophy, Users, ChevronRight, Sparkles, Zap, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import type { ParticipantEvent, ParticipantTeam } from '../contexts/participant-context';
 
@@ -107,7 +99,8 @@ export function EventCard({ event, team, onRegister }: EventCardProps) {
 
           {/* Description */}
           <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-3">
-            {event.description || 'An exciting challenge awaits. Register to learn more and participate!'}
+            {event.description ||
+              'An exciting challenge awaits. Register to learn more and participate!'}
           </p>
 
           {/* Tags */}

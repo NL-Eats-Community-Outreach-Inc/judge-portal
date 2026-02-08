@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { users, organizationMembers, teamMembers, teams, events, eventParticipants } from '@/lib/db/schema';
+import {
+  users,
+  organizationMembers,
+  teamMembers,
+  teams,
+  events,
+  eventParticipants,
+} from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 

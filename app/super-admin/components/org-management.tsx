@@ -112,9 +112,7 @@ export default function OrgManagement() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Organization</DialogTitle>
-          <DialogDescription>
-            Add a new organization to the platform
-          </DialogDescription>
+          <DialogDescription>Add a new organization to the platform</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="space-y-2">
@@ -134,9 +132,7 @@ export default function OrgManagement() {
               id="org-slug"
               placeholder="acme-hackathons"
               value={formData.slug}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, slug: e.target.value }))
-              }
+              onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
               required
               disabled={isCreating}
               className="font-mono text-sm"
@@ -151,9 +147,7 @@ export default function OrgManagement() {
               id="org-description"
               placeholder="Brief description of the organization..."
               value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, description: e.target.value }))
-              }
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               disabled={isCreating}
               rows={3}
             />
@@ -178,24 +172,25 @@ export default function OrgManagement() {
   );
 
   // Org list content (shared between mobile card and desktop left panel)
-  const orgListContent = organizations.length === 0 ? (
-    <div className="text-center py-12 text-muted-foreground">
-      <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-      <p>No organizations yet</p>
-      <p className="text-sm">Create your first organization to get started</p>
-    </div>
-  ) : (
-    <div className="divide-y divide-border/50">
-      {organizations.map((org) => (
-        <OrgListItem
-          key={org.id}
-          org={org}
-          isSelected={selectedOrg?.id === org.id}
-          onSelect={() => selectOrg(org.id)}
-        />
-      ))}
-    </div>
-  );
+  const orgListContent =
+    organizations.length === 0 ? (
+      <div className="text-center py-12 text-muted-foreground">
+        <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+        <p>No organizations yet</p>
+        <p className="text-sm">Create your first organization to get started</p>
+      </div>
+    ) : (
+      <div className="divide-y divide-border/50">
+        {organizations.map((org) => (
+          <OrgListItem
+            key={org.id}
+            org={org}
+            isSelected={selectedOrg?.id === org.id}
+            onSelect={() => selectOrg(org.id)}
+          />
+        ))}
+      </div>
+    );
 
   if (isLoading) {
     return (
@@ -282,9 +277,7 @@ export default function OrgManagement() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            {orgListContent}
-          </CardContent>
+          <CardContent className="pt-0">{orgListContent}</CardContent>
         </Card>
       </div>
 
@@ -323,9 +316,7 @@ export default function OrgManagement() {
               </div>
             </div>
           </CardHeader>
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            {orgListContent}
-          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-4">{orgListContent}</div>
         </Card>
 
         {/* Right panel: Detail or empty state */}
@@ -346,7 +337,9 @@ export default function OrgManagement() {
       {/* Mobile: Bottom Sheet for detail */}
       <Sheet
         open={!!selectedOrg && isMobile}
-        onOpenChange={(open) => { if (!open) selectOrg(null); }}
+        onOpenChange={(open) => {
+          if (!open) selectOrg(null);
+        }}
       >
         <SheetContent side="bottom" className="max-h-[85vh] p-0 rounded-t-xl">
           {selectedOrg && (
@@ -366,35 +359,50 @@ export default function OrgManagement() {
   );
 }
 
-function OrgListItem({ org, isSelected, onSelect }: { org: OrgWithStats; isSelected: boolean; onSelect: () => void }) {
+function OrgListItem({
+  org,
+  isSelected,
+  onSelect,
+}: {
+  org: OrgWithStats;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all duration-200 rounded-r-md",
-        "border-l-[3px] border-transparent hover:bg-muted/50",
-        isSelected && "border-l-violet-500 bg-violet-50/60 dark:bg-violet-950/25 hover:bg-violet-50/80 dark:hover:bg-violet-950/35"
+        'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all duration-200 rounded-r-md',
+        'border-l-[3px] border-transparent hover:bg-muted/50',
+        isSelected &&
+          'border-l-violet-500 bg-violet-50/60 dark:bg-violet-950/25 hover:bg-violet-50/80 dark:hover:bg-violet-950/35'
       )}
       onClick={onSelect}
     >
-      <div className={cn(
-        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200",
-        isSelected
-          ? "bg-gradient-to-br from-violet-200 to-purple-200 dark:from-violet-800/50 dark:to-purple-800/50"
-          : "bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30"
-      )}>
-        <Building2 className={cn(
-          "h-4 w-4 transition-colors duration-200",
+      <div
+        className={cn(
+          'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200',
           isSelected
-            ? "text-violet-700 dark:text-violet-300"
-            : "text-violet-500 dark:text-violet-400"
-        )} />
+            ? 'bg-gradient-to-br from-violet-200 to-purple-200 dark:from-violet-800/50 dark:to-purple-800/50'
+            : 'bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30'
+        )}
+      >
+        <Building2
+          className={cn(
+            'h-4 w-4 transition-colors duration-200',
+            isSelected
+              ? 'text-violet-700 dark:text-violet-300'
+              : 'text-violet-500 dark:text-violet-400'
+          )}
+        />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className={cn(
-            "font-medium text-sm truncate transition-colors duration-200",
-            isSelected ? "text-violet-900 dark:text-violet-100" : "text-foreground"
-          )}>
+          <h3
+            className={cn(
+              'font-medium text-sm truncate transition-colors duration-200',
+              isSelected ? 'text-violet-900 dark:text-violet-100' : 'text-foreground'
+            )}
+          >
             {org.name}
           </h3>
           <span className="text-[10px] text-muted-foreground font-mono shrink-0">/{org.slug}</span>

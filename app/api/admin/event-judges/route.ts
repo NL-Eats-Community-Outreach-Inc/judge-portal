@@ -42,9 +42,7 @@ export async function GET(request: NextRequest) {
       })
       .from(users)
       .innerJoin(organizationMembers, eq(organizationMembers.userId, users.id))
-      .where(
-        and(eq(users.role, 'judge'), eq(organizationMembers.organizationId, orgId))
-      )
+      .where(and(eq(users.role, 'judge'), eq(organizationMembers.organizationId, orgId)))
       .orderBy(users.email);
 
     return NextResponse.json({
@@ -103,10 +101,7 @@ export async function POST(request: NextRequest) {
         await tx
           .delete(eventJudges)
           .where(
-            and(
-              eq(eventJudges.eventId, eventId),
-              inArray(eventJudges.judgeId, allOrgMemberIds)
-            )
+            and(eq(eventJudges.eventId, eventId), inArray(eventJudges.judgeId, allOrgMemberIds))
           );
       }
 

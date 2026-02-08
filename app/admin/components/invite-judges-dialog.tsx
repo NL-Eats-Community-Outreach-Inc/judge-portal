@@ -185,8 +185,8 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         <DialogHeader>
           <DialogTitle>Invite Users</DialogTitle>
           <DialogDescription>
-            Send invitation links via email. Invitees will be able to register without
-            creating a password.
+            Send invitation links via email. Invitees will be able to register without creating a
+            password.
           </DialogDescription>
         </DialogHeader>
 
@@ -206,7 +206,10 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
                 </p>
                 <div className="mt-2 space-y-1">
                   {autoAddedEmails.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200"
+                    >
                       <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                       <span>{item.email}</span>
                     </div>
@@ -229,10 +232,15 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
 
                 <div className="space-y-2">
                   {inviteLinks.map((invite, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 rounded-lg border bg-muted">
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 p-3 rounded-lg border bg-muted"
+                    >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{invite.email}</p>
-                        <p className="text-xs text-muted-foreground truncate">{invite.inviteLink}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {invite.inviteLink}
+                        </p>
                       </div>
                       <Button
                         variant="ghost"
@@ -287,7 +295,11 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as 'admin' | 'judge' | 'participant')} disabled={isLoading}>
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as 'admin' | 'judge' | 'participant')}
+                disabled={isLoading}
+              >
                 <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>

@@ -1,14 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import {
-  Target,
-  Sparkles,
-  Users,
-  Clock,
-  Rocket,
-  ChevronRight,
-} from 'lucide-react';
+import { Target, Sparkles, Users, Clock, Rocket, ChevronRight } from 'lucide-react';
 import { useParticipant } from './contexts/participant-context';
 import { EventCard } from './components/event-card';
 import { TeamCard } from './components/team-card';

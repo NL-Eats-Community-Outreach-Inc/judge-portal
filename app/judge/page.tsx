@@ -4,15 +4,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Calendar,
-  Building2,
-  AlertCircle,
-  UserX,
-  Shield,
-  Mail,
-  ArrowRight,
-} from 'lucide-react';
+import { Calendar, Building2, AlertCircle, UserX, Shield, Mail, ArrowRight } from 'lucide-react';
 import { useJudgeAssignmentContext } from './components/judge-assignment-provider';
 
 export default function JudgePage() {

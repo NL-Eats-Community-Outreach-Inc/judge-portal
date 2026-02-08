@@ -4,19 +4,12 @@ import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
 import { eq, and, ne, count } from 'drizzle-orm';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
 
-    const [org] = await db
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, orgId))
-      .limit(1);
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
 
     if (!org) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
@@ -49,10 +42,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
@@ -78,7 +68,10 @@ export async function PUT(
       updateValues.name = name.trim();
     }
     if (slug !== undefined) {
-      const slugValue = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      const slugValue = slug
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-');
       if (!slugValue) {
         return NextResponse.json({ error: 'Organization slug cannot be empty' }, { status: 400 });
       }
@@ -90,7 +83,10 @@ export async function PUT(
         .limit(1);
 
       if (slugConflict.length > 0) {
-        return NextResponse.json({ error: 'An organization with this slug already exists' }, { status: 409 });
+        return NextResponse.json(
+          { error: 'An organization with this slug already exists' },
+          { status: 409 }
+        );
       }
       updateValues.slug = slugValue;
     }
@@ -117,10 +113,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;

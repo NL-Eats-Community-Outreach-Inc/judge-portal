@@ -14,10 +14,7 @@ import { eq, and, sql, asc } from 'drizzle-orm';
 
 const VALID_ROLES = ['admin', 'judge', 'participant'] as const;
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ userId: string }> }
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ userId: string }> }) {
   try {
     const currentUser = await authServer.requireSuperAdmin();
     const { userId } = await params;
@@ -82,23 +79,19 @@ export async function PUT(
       // FROM-role cleanup
       if (targetUser.role === 'judge') {
         // Delete all organization_members entries
-        await tx
-          .delete(organizationMembers)
-          .where(eq(organizationMembers.userId, userId));
+        await tx.delete(organizationMembers).where(eq(organizationMembers.userId, userId));
 
         // For event_judges: score-existence check — DELETE where no scores, PRESERVE where scores exist
-        await tx
-          .delete(eventJudges)
-          .where(
-            and(
-              eq(eventJudges.judgeId, userId),
-              sql`NOT EXISTS (
+        await tx.delete(eventJudges).where(
+          and(
+            eq(eventJudges.judgeId, userId),
+            sql`NOT EXISTS (
                 SELECT 1 FROM scores
                 WHERE scores.judge_id = ${eventJudges.judgeId}
                   AND scores.event_id = ${eventJudges.eventId}
               )`
-            )
-          );
+          )
+        );
       } else if (targetUser.role === 'participant') {
         // Get all team memberships for this participant
         const membershipRows = await tx
@@ -136,10 +129,7 @@ export async function PUT(
           await tx
             .delete(teamMembers)
             .where(
-              and(
-                eq(teamMembers.teamId, membership.teamId),
-                eq(teamMembers.participantId, userId)
-              )
+              and(eq(teamMembers.teamId, membership.teamId), eq(teamMembers.participantId, userId))
             );
 
           // Check if team is now empty
@@ -164,9 +154,7 @@ export async function PUT(
         }
 
         // Delete all event_participants entries
-        await tx
-          .delete(eventParticipants)
-          .where(eq(eventParticipants.participantId, userId));
+        await tx.delete(eventParticipants).where(eq(eventParticipants.participantId, userId));
       }
       // admin → X: no cleanup needed (organizationId handled by the UPDATE)
 

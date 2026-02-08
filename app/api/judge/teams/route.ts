@@ -15,12 +15,7 @@ export async function GET(request: NextRequest) {
       .select({ id: events.id })
       .from(eventJudges)
       .innerJoin(events, eq(eventJudges.eventId, events.id))
-      .where(
-        and(
-          eq(eventJudges.judgeId, user.id),
-          eq(events.status, 'active')
-        )
-      );
+      .where(and(eq(eventJudges.judgeId, user.id), eq(events.status, 'active')));
 
     if (assignedEvents.length === 0) {
       return NextResponse.json({ teams: [] });

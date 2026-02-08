@@ -60,9 +60,7 @@ export async function POST(request: NextRequest) {
     // Use transaction with advisory lock for race condition prevention
     const result = await db.transaction(async (tx) => {
       // Advisory lock on (eventId, participantId) to prevent concurrent team creation
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${eventId} || ${user.id}))`
-      );
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${eventId} || ${user.id}))`);
 
       // Check participant is not already on a team for this event
       const existing = await tx
@@ -134,10 +132,7 @@ export async function POST(request: NextRequest) {
         }
         if (error.message.includes('teams_event_id_presentation_order_key')) {
           // Presentation order collision — rare but possible
-          return NextResponse.json(
-            { error: 'Please try again' },
-            { status: 409 }
-          );
+          return NextResponse.json({ error: 'Please try again' }, { status: 409 });
         }
       }
     }

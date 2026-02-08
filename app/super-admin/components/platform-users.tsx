@@ -114,7 +114,7 @@ export default function PlatformUsers() {
     setRoleChangeUser(user);
     setPendingRole(newRole);
     setPendingFromRole(user.role);
-    setPendingOrgId(newRole === 'admin' ? (user.organizationId || '') : '');
+    setPendingOrgId(newRole === 'admin' ? user.organizationId || '' : '');
   };
 
   const updateRole = async (userId: string, role: string, organizationId: string | null) => {
@@ -198,7 +198,10 @@ export default function PlatformUsers() {
     switch (role) {
       case 'super_admin':
         return (
-          <Badge variant="outline" className="flex items-center gap-1 bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300 dark:border-violet-700 dark:hover:bg-violet-900/50">
+          <Badge
+            variant="outline"
+            className="flex items-center gap-1 bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300 dark:border-violet-700 dark:hover:bg-violet-900/50"
+          >
             <Shield className="h-3 w-3" />
             Super Admin
           </Badge>
@@ -243,9 +246,9 @@ export default function PlatformUsers() {
   const getFromRoleWarning = (fromRole: string) => {
     switch (fromRole) {
       case 'judge':
-        return 'Changing this judge\'s role will remove their organization memberships. Event assignments without scores will be removed. Existing scores are preserved in results.';
+        return "Changing this judge's role will remove their organization memberships. Event assignments without scores will be removed. Existing scores are preserved in results.";
       case 'participant':
-        return 'Changing this participant\'s role will remove them from all teams and event registrations. If they are a team creator, ownership transfers to the next member.';
+        return "Changing this participant's role will remove them from all teams and event registrations. If they are a team creator, ownership transfers to the next member.";
       case 'admin':
         return 'This admin will be removed from their current organization.';
       default:
@@ -265,11 +268,7 @@ export default function PlatformUsers() {
       return (
         <div className="flex flex-col gap-1">
           {user.organizationMemberships.map((org) => (
-            <Badge
-              key={org.id}
-              variant="outline"
-              className="flex items-center gap-1 text-xs w-fit"
-            >
+            <Badge key={org.id} variant="outline" className="flex items-center gap-1 text-xs w-fit">
               <Building2 className="h-2.5 w-2.5" />
               {org.name}
             </Badge>
@@ -374,11 +373,7 @@ export default function PlatformUsers() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={deletingUsers.has(user.id)}
-                          >
+                          <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
                             {deletingUsers.has(user.id) ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (

@@ -84,7 +84,12 @@ interface OrgInvitation {
   inviteLink: string;
 }
 
-export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'card' }: OrgDetailPanelProps) {
+export default function OrgDetailPanel({
+  org,
+  onClose,
+  onRefresh,
+  variant = 'card',
+}: OrgDetailPanelProps) {
   const [admins, setAdmins] = useState<OrgAdmin[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
   const [orgInvitations, setOrgInvitations] = useState<OrgInvitation[]>([]);
@@ -266,21 +271,29 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
 
   const actionButtons = (
     <div className="flex items-center gap-2 shrink-0">
-      <Button variant="outline" size="sm" onClick={() => {
-        setEditForm({
-          name: org.name,
-          slug: org.slug,
-          description: org.description || '',
-        });
-        setEditOpen(true);
-      }}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setEditForm({
+            name: org.name,
+            slug: org.slug,
+            description: org.description || '',
+          });
+          setEditOpen(true);
+        }}
+      >
         <Pencil className="h-4 w-4 sm:mr-1" />
         <span className={variant === 'sheet' ? '' : 'hidden sm:inline'}>Edit</span>
       </Button>
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:border-red-800/60 dark:hover:bg-red-950/50 dark:hover:text-red-300">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:border-red-800/60 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+          >
             <Trash2 className="h-4 w-4 sm:mr-1" />
             <span className={variant === 'sheet' ? '' : 'hidden sm:inline'}>Delete</span>
           </Button>
@@ -290,8 +303,8 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
             <AlertDialogTitle>Delete Organization</AlertDialogTitle>
             <AlertDialogDescription>
               Permanently deleting &quot;{org.name}&quot; will destroy all its events, teams,
-              scoring criteria, scores, and judge assignments. Admin users in this
-              organization will lose access. This action cannot be undone.
+              scoring criteria, scores, and judge assignments. Admin users in this organization will
+              lose access. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -301,9 +314,7 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : null}
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Delete Organization
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -316,7 +327,12 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
         </Button>
       )}
       {variant === 'panel' && (
-        <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground"
+        >
           <X className="h-4 w-4" />
         </Button>
       )}
@@ -326,14 +342,13 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
   const panelContent = (
     <div className="space-y-6">
       {/* Org Info */}
-      {org.description && (
-        <p className="text-sm text-muted-foreground">{org.description}</p>
-      )}
+      {org.description && <p className="text-sm text-muted-foreground">{org.description}</p>}
 
       <div className="flex items-center gap-4">
         <Badge variant="secondary" className="flex items-center gap-1">
           <Users className="h-3 w-3" />
-          {isLoadingAdmins ? org.adminCount : admins.length} admin{(isLoadingAdmins ? org.adminCount : admins.length) !== 1 ? 's' : ''}
+          {isLoadingAdmins ? org.adminCount : admins.length} admin
+          {(isLoadingAdmins ? org.adminCount : admins.length) !== 1 ? 's' : ''}
         </Badge>
         <Badge variant="outline" className="flex items-center gap-1">
           <Calendar className="h-3 w-3" />
@@ -348,11 +363,15 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
             <Crown className="h-4 w-4 text-primary" />
             <h3 className="font-semibold text-sm">Administrators</h3>
           </div>
-          <AdminInviteDialog orgId={org.id} orgName={org.name} onInviteSent={() => {
-            fetchAdmins();
-            fetchInvitations();
-            onRefresh();
-          }} />
+          <AdminInviteDialog
+            orgId={org.id}
+            orgName={org.name}
+            onInviteSent={() => {
+              fetchAdmins();
+              fetchInvitations();
+              onRefresh();
+            }}
+          />
         </div>
 
         {isLoadingAdmins ? (
@@ -446,7 +465,9 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
                         <DropdownMenuContent align="end">
                           {invite.status === 'pending' && (
                             <>
-                              <DropdownMenuItem onClick={() => handleCopyLink(invite.inviteLink, invite.id)}>
+                              <DropdownMenuItem
+                                onClick={() => handleCopyLink(invite.inviteLink, invite.id)}
+                              >
                                 {copiedId === invite.id ? (
                                   <Check className="h-4 w-4 mr-2 text-green-500" />
                                 ) : (
@@ -517,9 +538,7 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
             <Textarea
               id="edit-description"
               value={editForm.description}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, description: e.target.value }))
-              }
+              onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
               disabled={isUpdating}
               rows={3}
             />
@@ -555,7 +574,10 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
               <div className="min-w-0">
                 <SheetTitle className="flex items-center gap-2 flex-nowrap min-w-0">
                   <span className="truncate">{org.name}</span>
-                  <Badge variant="outline" className="text-xs font-mono font-normal truncate max-w-[120px] shrink-0">
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-mono font-normal truncate max-w-[120px] shrink-0"
+                  >
                     /{org.slug}
                   </Badge>
                 </SheetTitle>
@@ -567,20 +589,20 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
             {actionButtons}
           </div>
         </SheetHeader>
-        <div className="px-4 pb-6 overflow-y-auto">
-          {panelContent}
-        </div>
+        <div className="px-4 pb-6 overflow-y-auto">{panelContent}</div>
         {editDialog}
       </>
     );
   }
 
   return (
-    <Card className={cn(
-      "border-violet-200 dark:border-violet-800/50",
-      variant === 'panel' && "h-full flex flex-col overflow-hidden"
-    )}>
-      <CardHeader className={cn(variant === 'panel' && "shrink-0")}>
+    <Card
+      className={cn(
+        'border-violet-200 dark:border-violet-800/50',
+        variant === 'panel' && 'h-full flex flex-col overflow-hidden'
+      )}
+    >
+      <CardHeader className={cn(variant === 'panel' && 'shrink-0')}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 rounded-lg flex items-center justify-center shrink-0">
@@ -598,15 +620,10 @@ export default function OrgDetailPanel({ org, onClose, onRefresh, variant = 'car
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {actionButtons}
-          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">{actionButtons}</div>
         </div>
       </CardHeader>
-      <CardContent className={cn(
-        "space-y-6",
-        variant === 'panel' && "flex-1 overflow-y-auto"
-      )}>
+      <CardContent className={cn('space-y-6', variant === 'panel' && 'flex-1 overflow-y-auto')}>
         {panelContent}
       </CardContent>
       {editDialog}

@@ -684,7 +684,10 @@ export default function TeamManagement() {
                                 className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
                               >
                                 <Users className="h-3 w-3" />
-                                <span>{team.members?.length ?? 0} member{(team.members?.length ?? 0) !== 1 ? 's' : ''}</span>
+                                <span>
+                                  {team.members?.length ?? 0} member
+                                  {(team.members?.length ?? 0) !== 1 ? 's' : ''}
+                                </span>
                               </button>
                             </TableCell>
                             <TableCell className="text-muted-foreground w-48">

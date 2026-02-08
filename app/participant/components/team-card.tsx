@@ -44,9 +44,7 @@ export function TeamCard({ team }: TeamCardProps) {
               <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">
                 {team.name}
               </h4>
-              {team.isCreator && (
-                <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-              )}
+              {team.isCreator && <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground truncate">{team.eventName}</span>

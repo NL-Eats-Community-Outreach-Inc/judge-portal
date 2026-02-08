@@ -50,21 +50,11 @@ const tagColors = [
   'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
 ];
 
-export default function EventDetailPage({
-  params,
-}: {
-  params: Promise<{ eventId: string }>;
-}) {
+export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params);
   const router = useRouter();
-  const {
-    events,
-    isLoading,
-    registerForEvent,
-    unregisterFromEvent,
-    getTeamForEvent,
-    refreshAll,
-  } = useParticipant();
+  const { events, isLoading, registerForEvent, unregisterFromEvent, getTeamForEvent, refreshAll } =
+    useParticipant();
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [isUnregistering, setIsUnregistering] = useState(false);
@@ -224,9 +214,7 @@ export default function EventDetailPage({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    <span>
-                      Max team size: {event.maxTeamSize || 'Unlimited'}
-                    </span>
+                    <span>Max team size: {event.maxTeamSize || 'Unlimited'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Sparkles className="h-4 w-4 text-amber-500" />
@@ -295,7 +283,8 @@ export default function EventDetailPage({
                     Judging is in progress
                   </p>
                   <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-0.5">
-                    Team formation is closed. You can view the event but cannot create or join teams.
+                    Team formation is closed. You can view the event but cannot create or join
+                    teams.
                   </p>
                 </div>
               </div>
@@ -410,11 +399,7 @@ export default function EventDetailPage({
         onOpenChange={setShowCreateTeam}
         onSuccess={refreshAll}
       />
-      <JoinTeamDialog
-        open={showJoinTeam}
-        onOpenChange={setShowJoinTeam}
-        onSuccess={refreshAll}
-      />
+      <JoinTeamDialog open={showJoinTeam} onOpenChange={setShowJoinTeam} onSuccess={refreshAll} />
     </div>
   );
 }

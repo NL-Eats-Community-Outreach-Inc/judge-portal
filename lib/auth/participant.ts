@@ -95,7 +95,10 @@ export async function requireEventRegistration(eventId: string, participantId: s
     .select({ id: eventParticipants.id })
     .from(eventParticipants)
     .where(
-      and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.participantId, participantId))
+      and(
+        eq(eventParticipants.eventId, eventId),
+        eq(eventParticipants.participantId, participantId)
+      )
     )
     .limit(1);
 

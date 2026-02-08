@@ -3,15 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Sparkles,
-  Users,
-  Calendar,
-  Crown,
-  Lock,
-  LayoutDashboard,
-  Loader2,
-} from 'lucide-react';
+import { Sparkles, Users, Calendar, Crown, Lock, LayoutDashboard, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useParticipant } from '../contexts/participant-context';

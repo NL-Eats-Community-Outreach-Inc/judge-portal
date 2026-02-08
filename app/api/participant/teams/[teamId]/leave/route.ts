@@ -44,9 +44,7 @@ export async function POST(
 
     await db.transaction(async (tx) => {
       // Lock all member rows for this team
-      await tx.execute(
-        sql`SELECT id FROM team_members WHERE team_id = ${teamId} FOR UPDATE`
-      );
+      await tx.execute(sql`SELECT id FROM team_members WHERE team_id = ${teamId} FOR UPDATE`);
 
       // Get all members using Drizzle (rows are locked by the SELECT FOR UPDATE above)
       const allMembers = await tx

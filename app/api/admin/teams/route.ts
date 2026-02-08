@@ -142,9 +142,10 @@ export async function POST(request: NextRequest) {
     console.error('Error creating team:', error);
 
     // Handle unique constraint violations (Drizzle nests PostgreSQL errors in error.cause)
-    const errorMsg = error instanceof Error
-      ? `${error.message} ${error.cause instanceof Error ? error.cause.message : ''}`
-      : '';
+    const errorMsg =
+      error instanceof Error
+        ? `${error.message} ${error.cause instanceof Error ? error.cause.message : ''}`
+        : '';
 
     if (errorMsg.includes('duplicate key')) {
       if (errorMsg.includes('teams_event_id_name_key')) {

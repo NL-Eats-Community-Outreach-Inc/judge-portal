@@ -82,7 +82,9 @@ export function SuperAdminHeader({ onOpenSettings }: SuperAdminHeaderProps) {
               <Shield className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base md:text-xl font-semibold text-foreground truncate">Super Admin Portal</h1>
+              <h1 className="text-base md:text-xl font-semibold text-foreground truncate">
+                Super Admin Portal
+              </h1>
               <p className="text-sm text-muted-foreground hidden sm:block">Platform management</p>
             </div>
           </div>

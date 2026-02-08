@@ -10,12 +10,7 @@ async function resolveJudgeEvent(userId: string, eventId: string | null) {
     .select({ id: events.id })
     .from(eventJudges)
     .innerJoin(events, eq(eventJudges.eventId, events.id))
-    .where(
-      and(
-        eq(eventJudges.judgeId, userId),
-        eq(events.status, 'active')
-      )
-    );
+    .where(and(eq(eventJudges.judgeId, userId), eq(events.status, 'active')));
 
   if (assignedEvents.length === 0) {
     return { error: 'No active event', status: 400, resolvedEventId: null };
@@ -112,8 +107,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const { error: resolveError, status: resolveStatus, resolvedEventId } =
-      await resolveJudgeEvent(user.id, bodyEventId || null);
+    const {
+      error: resolveError,
+      status: resolveStatus,
+      resolvedEventId,
+    } = await resolveJudgeEvent(user.id, bodyEventId || null);
     if (!resolvedEventId) {
       if (resolveError === 'NOT_ASSIGNED') {
         return NextResponse.json(

@@ -33,10 +33,7 @@ export async function GET() {
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
       .innerJoin(events, eq(teams.eventId, events.id))
       .where(
-        and(
-          eq(teamMembers.participantId, user.id),
-          inArray(events.status, ['open', 'active'])
-        )
+        and(eq(teamMembers.participantId, user.id), inArray(events.status, ['open', 'active']))
       )
       .orderBy(events.name, teams.name);
 

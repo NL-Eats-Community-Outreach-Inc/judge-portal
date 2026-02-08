@@ -3,12 +3,13 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, invitations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { generateInvitationToken, calculateExpirationDate, getExistingInvitation } from '@/lib/auth/invitation';
+import {
+  generateInvitationToken,
+  calculateExpirationDate,
+  getExistingInvitation,
+} from '@/lib/auth/invitation';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
@@ -45,10 +46,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
     const user = await authServer.requireSuperAdmin();
     const { orgId } = await params;
@@ -74,7 +72,10 @@ export async function POST(
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
-      return NextResponse.json({ error: 'Invalid email addresses', invalidEmails }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid email addresses', invalidEmails },
+        { status: 400 }
+      );
     }
 
     // Check for existing users and pending invitations
@@ -104,8 +105,7 @@ export async function POST(
 
     const newEmails = emails.filter(
       (email: string) =>
-        !existingInvites.includes(email) &&
-        !alreadyRegistered.find((u) => u.email === email)
+        !existingInvites.includes(email) && !alreadyRegistered.find((u) => u.email === email)
     );
 
     if (newEmails.length === 0) {
@@ -129,10 +129,7 @@ export async function POST(
       organizationId: orgId,
     }));
 
-    const createdInvitations = await db
-      .insert(invitations)
-      .values(invitationData)
-      .returning();
+    const createdInvitations = await db.insert(invitations).values(invitationData).returning();
 
     const origin = new URL(request.url).origin;
     const invitesWithLinks = createdInvitations.map((invite) => ({

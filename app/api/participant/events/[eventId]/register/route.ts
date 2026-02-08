@@ -53,10 +53,7 @@ export async function POST(
         .select()
         .from(eventParticipants)
         .where(
-          and(
-            eq(eventParticipants.eventId, eventId),
-            eq(eventParticipants.participantId, user.id)
-          )
+          and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.participantId, user.id))
         )
         .limit(1);
 
@@ -123,10 +120,7 @@ export async function DELETE(
     const deleted = await db
       .delete(eventParticipants)
       .where(
-        and(
-          eq(eventParticipants.eventId, eventId),
-          eq(eventParticipants.participantId, user.id)
-        )
+        and(eq(eventParticipants.eventId, eventId), eq(eventParticipants.participantId, user.id))
       )
       .returning();
 

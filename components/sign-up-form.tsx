@@ -3,13 +3,7 @@
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -32,13 +26,7 @@ interface OrgOption {
   description: string | null;
 }
 
-function StepIndicator({
-  currentStep,
-  totalSteps,
-}: {
-  currentStep: number;
-  totalSteps: number;
-}) {
+function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   return (
     <div className="flex items-center justify-center gap-1.5 pt-3">
       {Array.from({ length: totalSteps }).map((_, index) => (
@@ -214,12 +202,10 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (data.user && data.session) {
         if (role === 'judge' && selectedOrgIds.length > 0) {
           for (const orgId of selectedOrgIds) {
-            const { error: memberError } = await supabase
-              .from('organization_members')
-              .insert({
-                organization_id: orgId,
-                user_id: data.user.id,
-              });
+            const { error: memberError } = await supabase.from('organization_members').insert({
+              organization_id: orgId,
+              user_id: data.user.id,
+            });
             if (memberError && !memberError.message.includes('duplicate')) {
               console.error('Error creating org membership:', memberError);
             }
@@ -306,12 +292,10 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
         if (roleFromMetadata === 'judge' && selectedOrgIds.length > 0) {
           for (const orgId of selectedOrgIds) {
-            const { error: memberError } = await supabase
-              .from('organization_members')
-              .insert({
-                organization_id: orgId,
-                user_id: data.user.id,
-              });
+            const { error: memberError } = await supabase.from('organization_members').insert({
+              organization_id: orgId,
+              user_id: data.user.id,
+            });
             if (memberError && !memberError.message.includes('duplicate')) {
               console.error('Error creating org membership:', memberError);
             }
@@ -621,7 +605,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 onClick={handleNext}
                 className="gap-1"
                 disabled={
-                  (currentStepType === 'organizations' && availableOrgs.length === 0 && !orgsLoading)
+                  currentStepType === 'organizations' && availableOrgs.length === 0 && !orgsLoading
                 }
               >
                 Next

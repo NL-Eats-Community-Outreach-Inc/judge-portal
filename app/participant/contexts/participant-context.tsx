@@ -93,41 +93,47 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
     await Promise.all([fetchEvents(), fetchTeams()]);
   }, [fetchEvents, fetchTeams]);
 
-  const registerForEvent = useCallback(async (eventId: string): Promise<boolean> => {
-    try {
-      const response = await fetch(`/api/participant/events/${eventId}/register`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to register');
+  const registerForEvent = useCallback(
+    async (eventId: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`/api/participant/events/${eventId}/register`, {
+          method: 'POST',
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to register');
+        }
+        toast.success('Registered successfully!');
+        await refreshEvents();
+        return true;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to register');
+        return false;
       }
-      toast.success('Registered successfully!');
-      await refreshEvents();
-      return true;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to register');
-      return false;
-    }
-  }, [refreshEvents]);
+    },
+    [refreshEvents]
+  );
 
-  const unregisterFromEvent = useCallback(async (eventId: string): Promise<boolean> => {
-    try {
-      const response = await fetch(`/api/participant/events/${eventId}/register`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to unregister');
+  const unregisterFromEvent = useCallback(
+    async (eventId: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`/api/participant/events/${eventId}/register`, {
+          method: 'DELETE',
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to unregister');
+        }
+        toast.success('Unregistered from event');
+        await refreshAll();
+        return true;
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to unregister');
+        return false;
       }
-      toast.success('Unregistered from event');
-      await refreshAll();
-      return true;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to unregister');
-      return false;
-    }
-  }, [refreshAll]);
+    },
+    [refreshAll]
+  );
 
   const getTeamForEvent = useCallback(
     (eventId: string) => myTeams.find((t) => t.eventId === eventId),

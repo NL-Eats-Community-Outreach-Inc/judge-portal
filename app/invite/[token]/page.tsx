@@ -4,7 +4,16 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, Calendar, User, Building2, Shield, UserCheck, GraduationCap } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  Calendar,
+  User,
+  Building2,
+  Shield,
+  UserCheck,
+  GraduationCap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InvitationInfo {
@@ -14,7 +23,10 @@ interface InvitationInfo {
   organizationName?: string | null;
 }
 
-const ROLE_CONFIG: Record<string, { title: string; label: string; description: string; afterReg: string; icon: typeof User }> = {
+const ROLE_CONFIG: Record<
+  string,
+  { title: string; label: string; description: string; afterReg: string; icon: typeof User }
+> = {
   admin: {
     title: "You've Been Invited as an Admin!",
     label: 'Admin Account',
@@ -154,9 +166,7 @@ export default function InviteLandingPage() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>{config.title}</CardTitle>
-          <CardDescription>
-            Complete your registration to access the platform
-          </CardDescription>
+          <CardDescription>Complete your registration to access the platform</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
@@ -164,9 +174,7 @@ export default function InviteLandingPage() {
               <RoleIcon className="h-5 w-5 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="font-medium">{config.label}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {config.description}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">{config.description}</p>
               </div>
             </div>
 
@@ -196,9 +204,7 @@ export default function InviteLandingPage() {
               <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="font-medium">After Registration</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {config.afterReg}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">{config.afterReg}</p>
               </div>
             </div>
           </div>

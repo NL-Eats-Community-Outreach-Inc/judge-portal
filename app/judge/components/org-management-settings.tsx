@@ -145,10 +145,7 @@ export function OrgManagementSettings() {
             <h4 className="text-sm font-medium text-foreground">Join More Organizations</h4>
             <div className="space-y-2">
               {availableOrgs.map((org) => (
-                <div
-                  key={org.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border"
-                >
+                <div key={org.id} className="flex items-center gap-3 p-3 rounded-lg border">
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{org.name}</p>

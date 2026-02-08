@@ -131,7 +131,10 @@ export async function PUT(
           { status: 400 }
         );
       }
-      if (error.message.includes('duplicate key') && error.message.includes('teams_event_id_name_key')) {
+      if (
+        error.message.includes('duplicate key') &&
+        error.message.includes('teams_event_id_name_key')
+      ) {
         return NextResponse.json(
           { error: 'A team with this name already exists in this event' },
           { status: 400 }

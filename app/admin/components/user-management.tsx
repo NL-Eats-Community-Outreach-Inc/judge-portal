@@ -34,7 +34,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Users, UserCheck, Crown, RefreshCw, UserMinus, GraduationCap } from 'lucide-react';
+import {
+  Loader2,
+  Users,
+  UserCheck,
+  Crown,
+  RefreshCw,
+  UserMinus,
+  GraduationCap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
@@ -294,15 +302,13 @@ export default function UserManagement() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Remove Judge from Organization</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will remove &quot;{user.email}&quot; from your organization.
-                            Their account and scores in events will be preserved.
+                            This will remove &quot;{user.email}&quot; from your organization. Their
+                            account and scores in events will be preserved.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(user.id)}
-                          >
+                          <AlertDialogAction onClick={() => handleDelete(user.id)}>
                             Remove
                           </AlertDialogAction>
                         </AlertDialogFooter>

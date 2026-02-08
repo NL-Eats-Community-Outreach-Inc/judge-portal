@@ -66,10 +66,7 @@ export async function DELETE(
       await db
         .delete(organizationMembers)
         .where(
-          and(
-            eq(organizationMembers.userId, userId),
-            eq(organizationMembers.organizationId, orgId)
-          )
+          and(eq(organizationMembers.userId, userId), eq(organizationMembers.organizationId, orgId))
         );
 
       // Clean up event_judges using score-existence check:
@@ -83,19 +80,17 @@ export async function DELETE(
         const orgEventIds = orgEvents.map((e) => e.id);
 
         // Delete event_judges entries where no scores exist for this judge+event
-        await db
-          .delete(eventJudges)
-          .where(
-            and(
-              eq(eventJudges.judgeId, userId),
-              inArray(eventJudges.eventId, orgEventIds),
-              sql`NOT EXISTS (
+        await db.delete(eventJudges).where(
+          and(
+            eq(eventJudges.judgeId, userId),
+            inArray(eventJudges.eventId, orgEventIds),
+            sql`NOT EXISTS (
                 SELECT 1 FROM scores
                 WHERE scores.judge_id = ${eventJudges.judgeId}
                   AND scores.event_id = ${eventJudges.eventId}
               )`
-            )
-          );
+          )
+        );
       }
 
       return NextResponse.json({
@@ -112,9 +107,7 @@ export async function DELETE(
         .from(teamMembers)
         .innerJoin(teams, eq(teams.id, teamMembers.teamId))
         .innerJoin(events, eq(events.id, teams.eventId))
-        .where(
-          and(eq(teamMembers.participantId, userId), eq(events.organizationId, orgId))
-        )
+        .where(and(eq(teamMembers.participantId, userId), eq(events.organizationId, orgId)))
         .limit(1);
 
       if (participantInOrg.length === 0) {

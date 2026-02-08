@@ -77,9 +77,7 @@ export async function POST(request: NextRequest) {
     // Use transaction with advisory lock
     const result = await db.transaction(async (tx) => {
       // Advisory lock on (eventId, participantId) to prevent concurrent joins
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${team.eventId} || ${user.id}))`
-      );
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${team.eventId} || ${user.id}))`);
 
       // Check participant is not already on a team for this event
       const existing = await tx
@@ -96,9 +94,7 @@ export async function POST(request: NextRequest) {
       // Lock team row and check team size
       if (event.maxTeamSize) {
         // Lock the team row to prevent concurrent joins
-        await tx.execute(
-          sql`SELECT id FROM teams WHERE id = ${team.id} FOR UPDATE`
-        );
+        await tx.execute(sql`SELECT id FROM teams WHERE id = ${team.id} FOR UPDATE`);
 
         // Count current members
         const [countResult] = await tx
@@ -136,10 +132,7 @@ export async function POST(request: NextRequest) {
         );
       }
       if (error.message === 'TEAM_FULL') {
-        return NextResponse.json(
-          { error: 'This team is full' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'This team is full' }, { status: 400 });
       }
     }
 

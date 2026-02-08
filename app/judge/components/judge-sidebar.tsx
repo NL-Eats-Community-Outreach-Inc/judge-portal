@@ -18,13 +18,8 @@ interface JudgeSidebarProps {
 export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: JudgeSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const {
-    status,
-    teams,
-    event,
-    scoreCompletion,
-    refreshScoreCompletion,
-  } = useJudgeAssignmentContext();
+  const { status, teams, event, scoreCompletion, refreshScoreCompletion } =
+    useJudgeAssignmentContext();
 
   // Extract current team ID from pathname: /judge/event/[eventId]/team/[teamId]
   const teamIdMatch = pathname?.match(/\/judge\/event\/[^/]+\/team\/([^/]+)/);
@@ -143,7 +138,9 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
             aria-label="Back to Events Dashboard"
           >
             <Home className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Events</span>
+            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+              Events
+            </span>
           </button>
           <h2 className="font-semibold text-foreground">Teams</h2>
         </div>
@@ -186,7 +183,9 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
             aria-label="Back to Events Dashboard"
           >
             <Home className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Events</span>
+            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+              Events
+            </span>
           </button>
           <h2 className="font-semibold text-foreground">Teams</h2>
         </div>
@@ -229,13 +228,13 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
             aria-label="Back to Events Dashboard"
           >
             <Home className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Events</span>
+            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+              Events
+            </span>
           </button>
           <h2 className="font-semibold text-foreground">Teams</h2>
         </div>
-        {event && (
-          <p className="text-sm text-muted-foreground mt-1 truncate">{event.name}</p>
-        )}
+        {event && <p className="text-sm text-muted-foreground mt-1 truncate">{event.name}</p>}
       </div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center space-y-3">
@@ -347,11 +346,7 @@ export function JudgeSidebar({ isMobile = false, isOpen = false, onClose }: Judg
             {teams.length} teams
           </Badge>
         </div>
-        {event && (
-          <p className="text-sm text-muted-foreground mt-2 truncate">
-            {event.name}
-          </p>
-        )}
+        {event && <p className="text-sm text-muted-foreground mt-2 truncate">{event.name}</p>}
         {!event && (
           <p className="text-sm text-muted-foreground mt-1">Select a team to start judging</p>
         )}

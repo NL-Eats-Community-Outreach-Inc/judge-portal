@@ -100,9 +100,7 @@ export function useJudgeAssignment(eventId?: string | null) {
   // Fetch score completion
   const fetchScoreCompletion = useCallback(async (id?: string) => {
     try {
-      const url = id
-        ? `/api/judge/completion?eventId=${id}`
-        : '/api/judge/completion';
+      const url = id ? `/api/judge/completion?eventId=${id}` : '/api/judge/completion';
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();

@@ -22,12 +22,7 @@ export async function GET(request: NextRequest) {
       .from(eventJudges)
       .innerJoin(events, eq(eventJudges.eventId, events.id))
       .leftJoin(organizations, eq(events.organizationId, organizations.id))
-      .where(
-        and(
-          eq(eventJudges.judgeId, user.id),
-          eq(events.status, 'active')
-        )
-      );
+      .where(and(eq(eventJudges.judgeId, user.id), eq(events.status, 'active')));
 
     if (assignedEvents.length === 0) {
       return NextResponse.json({ event: null });

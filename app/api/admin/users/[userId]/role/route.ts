@@ -40,11 +40,7 @@ export async function PUT(
     }
 
     // Fetch current user to check current role
-    const [currentTargetUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const [currentTargetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (!currentTargetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
