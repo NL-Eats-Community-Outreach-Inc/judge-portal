@@ -252,9 +252,11 @@ export default function PlatformUsers() {
     }
     if (user.organizationName) {
       return (
-        <div className="flex items-center gap-1 text-sm">
-          <Building2 className="h-3 w-3 text-muted-foreground" />
-          {user.organizationName}
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="outline" className="flex items-center gap-1 text-xs">
+            <Building2 className="h-2.5 w-2.5" />
+            {user.organizationName}
+          </Badge>
         </div>
       );
     }
