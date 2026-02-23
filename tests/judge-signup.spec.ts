@@ -33,11 +33,11 @@ test.describe('Judge portal - sign-up & cleanup', () => {
 
     // Fill email input and go to next tab
     await emailInput.fill(user.email);
-    await page.getByRole('button', { name: 'Next'}).click();
+    await page.locator('form').getByRole('button', { name: 'Next', exact : true }).click();
 
     // Select the NL Eats Org and go to next tab
     await page.getByRole('button', { name : 'NL Eats', exact: true }).click();
-    await page.getByRole('button', { name : 'Next'}).click();
+    await page.locator('form').getByRole('button', { name : 'Next', exact : true }).click();
 
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
     await page.getByRole('tab', { name: 'Password', exact: true }).click();
