@@ -24,9 +24,9 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await page.getByRole('link', { name: 'Sign up' }).click();
     await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
-    // Wait for form to be ready and fill it
-    const emailInput = page.locator('input[id="email"]');
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+      // Wait for form to be ready and fill it (used label based selector instead of id for stability)
+    const emailInput = page.getByLabel('Email');
+    await expect(emailInput).toBeVisible({ timeout: 10000 });
 
     // Explicitly select Judge role (it's the default, but being explicit is safer)
     await page.getByLabel('Judge').check();
