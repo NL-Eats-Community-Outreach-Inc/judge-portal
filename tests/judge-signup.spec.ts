@@ -31,13 +31,13 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     // Explicitly select Judge role (it's the default, but being explicit is safer)
     await page.getByLabel('Judge').check();
 
-    // Fill email input and go to next tab
+    // Fill email input and go to next tab (have to filter out the Next.js menu button that has id next-logo)
     await emailInput.fill(user.email);
-    await page.locator('form').getByRole('button', { name: 'Next', exact : true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
 
     // Select the NL Eats Org and go to next tab
     await page.getByRole('button', { name : 'NL Eats', exact: true }).click();
-    await page.locator('form').getByRole('button', { name : 'Next', exact : true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
 
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
     await page.getByRole('tab', { name: 'Password', exact: true }).click();
