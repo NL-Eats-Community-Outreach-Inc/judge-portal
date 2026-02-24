@@ -92,7 +92,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
       console.error('[test] Browser console errors:', consoleErrors);
     }
 
-    await expect(page).toHaveURL(/\/judge/);
+    await expect(page).toHaveURL(/\/participant/);
   });
 
   test.afterEach(async ({}, testInfo) => {
