@@ -36,7 +36,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
 
     // Select the NL Eats Org and go to next tab
-    await page.getByRole('button', { name : 'NL Eats', exact: true }).click();
+    await page.getByRole('button').filter({ hasText: 'NL Eats' }).click();
     await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
 
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
