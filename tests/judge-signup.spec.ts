@@ -24,7 +24,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await page.getByRole('link', { name: 'Sign up' }).click();
     await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
-     // Wait for form to be ready and fill it (used label based selector instead of id for stability)
+    // Wait for form to be ready and fill it (used label based selector instead of id for stability)
     const emailInput = page.getByLabel('Email');
     await expect(emailInput).toBeVisible({ timeout: 10000 });
 
@@ -33,11 +33,17 @@ test.describe('Judge portal - sign-up & cleanup', () => {
 
     // Fill email input and go to next tab (have to filter out the Next.js menu button that has id next-logo)
     await emailInput.fill(user.email);
-    await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
+    await page
+      .getByRole('button', { name: 'Next', exact: true })
+      .filter({ hasNot: page.locator('#next-logo') })
+      .click();
 
     // Select the NL Eats Org and go to next tab
     await page.getByRole('button').filter({ hasText: 'NL Eats' }).click();
-    await page.getByRole('button', { name: 'Next', exact: true }).filter({ hasNot: page.locator('#next-logo') }).click();
+    await page
+      .getByRole('button', { name: 'Next', exact: true })
+      .filter({ hasNot: page.locator('#next-logo') })
+      .click();
 
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
     await page.getByRole('tab', { name: 'Password', exact: true }).click();
