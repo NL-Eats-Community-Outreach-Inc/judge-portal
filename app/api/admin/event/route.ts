@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { events } from '@/lib/db/schema';
+import { events, organizations } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 export async function GET() {
   try {
@@ -12,10 +13,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all events, ordered by created date (newest first)
-    const allEvents = await db.select().from(events).orderBy(desc(events.createdAt));
+    const orgId = await getAdminOrgId(user.id);
 
-    return NextResponse.json({ events: allEvents });
+    // Get org's events, ordered by created date (newest first)
+    const allEvents = await db
+      .select()
+      .from(events)
+      .where(eq(events.organizationId, orgId))
+      .orderBy(desc(events.createdAt));
+
+    // Get organization name
+    const [org] = await db
+      .select({ name: organizations.name })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+
+    return NextResponse.json({ events: allEvents, organizationName: org?.name ?? null });
   } catch (error) {
     console.error('Error fetching events:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -30,26 +44,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, description, status } = await request.json();
+    const orgId = await getAdminOrgId(user.id);
+    const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
     }
 
     const eventStatus = status || 'setup';
-
-    // If setting event to active, ensure no other event is active
-    if (eventStatus === 'active') {
-      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'));
-      if (activeEvents.length > 0) {
-        return NextResponse.json(
-          {
-            error: 'Another event is already active. Please deactivate it first.',
-          },
-          { status: 400 }
-        );
-      }
-    }
 
     // Create new event
     const [event] = await db
@@ -58,6 +60,8 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         status: eventStatus,
+        organizationId: orgId,
+        maxTeamSize: maxTeamSize ?? null,
       })
       .returning();
 

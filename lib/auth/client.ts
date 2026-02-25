@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-export type UserRole = 'admin' | 'judge';
+export type UserRole = 'super_admin' | 'admin' | 'judge' | 'participant';
 
 // Client-side authentication utilities only
 export const authClient = {

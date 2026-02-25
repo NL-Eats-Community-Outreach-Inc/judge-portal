@@ -6,7 +6,8 @@ interface Event {
   id: string;
   name: string;
   description: string | null;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'open' | 'active' | 'completed';
+  organizationName?: string | null;
 }
 
 interface Team {
@@ -22,7 +23,7 @@ interface ScoreCompletion {
   partial: boolean;
 }
 
-export type AssignmentStatus = 'loading' | 'assigned' | 'not-assigned' | 'no-event';
+export type AssignmentStatus = 'loading' | 'assigned' | 'not-assigned' | 'no-event' | 'dashboard';
 
 interface JudgeAssignmentState {
   status: AssignmentStatus;
@@ -31,9 +32,10 @@ interface JudgeAssignmentState {
   scoreCompletion: ScoreCompletion[];
   error: string | null;
   isFullyComplete: boolean;
+  availableEvents: Event[];
 }
 
-export function useJudgeAssignment() {
+export function useJudgeAssignment(eventId?: string | null) {
   const [state, setState] = useState<JudgeAssignmentState>({
     status: 'loading',
     event: null,
@@ -41,125 +43,179 @@ export function useJudgeAssignment() {
     scoreCompletion: [],
     error: null,
     isFullyComplete: false,
+    availableEvents: [],
   });
 
-  // Fetch event data
-  const fetchEvent = useCallback(async () => {
+  // Fetch available events for dashboard mode
+  const fetchAvailableEvents = useCallback(async () => {
     try {
-      const response = await fetch('/api/judge/event');
+      const response = await fetch('/api/judge/events');
       if (response.ok) {
         const data = await response.json();
-        return { event: data.event, isAssigned: true };
+        return (data.events || []) as Event[];
+      }
+      return [] as Event[];
+    } catch (error) {
+      console.error('Error fetching available events:', error);
+      return [] as Event[];
+    }
+  }, []);
+
+  // Fetch event data — with optional eventId
+  const fetchEvent = useCallback(async (id?: string) => {
+    try {
+      const url = id ? `/api/judge/event?eventId=${id}` : '/api/judge/event';
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (response.ok) {
+        return { event: data.event as Event | null, isAssigned: true };
       } else if (response.status === 403) {
-        const data = await response.json();
         if (data.errorType === 'NOT_ASSIGNED') {
-          return { event: null, isAssigned: false };
+          return { event: null as Event | null, isAssigned: false };
         }
       }
-      return { event: null, isAssigned: true };
+      return { event: null as Event | null, isAssigned: true };
     } catch (error) {
       console.error('Error fetching event:', error);
-      return { event: null, isAssigned: true };
+      return { event: null as Event | null, isAssigned: true };
     }
   }, []);
 
   // Fetch teams data
-  const fetchTeams = useCallback(async () => {
+  const fetchTeams = useCallback(async (id: string) => {
     try {
-      const response = await fetch('/api/judge/teams');
+      const response = await fetch(`/api/judge/teams?eventId=${id}`);
       if (response.ok) {
         const data = await response.json();
-        return { teams: data.teams || [], isAssigned: true };
-      } else if (response.status === 403) {
-        const data = await response.json();
-        if (data.errorType === 'NOT_ASSIGNED') {
-          return { teams: [], isAssigned: false };
-        }
+        return { teams: (data.teams || []) as Team[] };
       }
-      return { teams: [], isAssigned: true };
+      return { teams: [] as Team[] };
     } catch (error) {
       console.error('Error fetching teams:', error);
-      return { teams: [], isAssigned: true };
+      return { teams: [] as Team[] };
     }
   }, []);
 
   // Fetch score completion
-  const fetchScoreCompletion = useCallback(async () => {
+  const fetchScoreCompletion = useCallback(async (id?: string) => {
     try {
-      const response = await fetch('/api/judge/completion');
+      const url = id ? `/api/judge/completion?eventId=${id}` : '/api/judge/completion';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        return data.completion || [];
-      } else if (response.status === 403) {
-        // Not assigned - return empty completion
-        return [];
+        return (data.completion || []) as ScoreCompletion[];
       }
-      return [];
+      return [] as ScoreCompletion[];
     } catch (error) {
       console.error('Error fetching completion:', error);
-      return [];
+      return [] as ScoreCompletion[];
     }
   }, []);
 
-  // Main fetch function that determines assignment status
+  // Main fetch function — behavior depends on whether eventId is provided
   const fetchAllData = useCallback(async () => {
     setState((prev) => ({ ...prev, status: 'loading' }));
 
-    const [eventResult, teamsResult] = await Promise.all([fetchEvent(), fetchTeams()]);
+    // Dashboard mode: no eventId, fetch available events
+    if (!eventId) {
+      const events = await fetchAvailableEvents();
 
-    // Determine status based on API responses
+      if (events.length === 0) {
+        // Could be no events or not assigned — check via the event API (no eventId)
+        const eventResult = await fetchEvent();
+        // If the fetch returns not-assigned or no event, show appropriate state
+        setState((prev) => ({
+          ...prev,
+          status: !eventResult.isAssigned ? 'not-assigned' : 'no-event',
+          event: null,
+          teams: [],
+          scoreCompletion: [],
+          error: null,
+          isFullyComplete: false,
+          availableEvents: [],
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        status: 'dashboard' as AssignmentStatus,
+        event: null,
+        teams: [],
+        scoreCompletion: [],
+        error: null,
+        isFullyComplete: false,
+        availableEvents: events,
+      }));
+      return;
+    }
+
+    // Event mode: fetch specific event data
+    const eventResult = await fetchEvent(eventId);
+
+    // Determine status
     let status: AssignmentStatus;
-    if (!eventResult.isAssigned || !teamsResult.isAssigned) {
+    if (!eventResult.isAssigned) {
       status = 'not-assigned';
-    } else if (!eventResult.event || teamsResult.teams.length === 0) {
+    } else if (!eventResult.event) {
       status = 'no-event';
     } else {
       status = 'assigned';
     }
 
-    // Fetch completion data if assigned
+    // If assigned, fetch teams and completion in parallel
+    let teamsData: Team[] = [];
     let completion: ScoreCompletion[] = [];
+
     if (status === 'assigned') {
-      completion = await fetchScoreCompletion();
+      const [teamsResult, comp] = await Promise.all([
+        fetchTeams(eventId),
+        fetchScoreCompletion(eventId),
+      ]);
+      teamsData = teamsResult.teams;
+      completion = comp;
     }
 
-    // Check if fully complete - all teams are completed
     const isFullyComplete =
       status === 'assigned' &&
-      teamsResult.teams.length > 0 &&
+      teamsData.length > 0 &&
       completion.length > 0 &&
       completion.every((c: ScoreCompletion) => c.completed);
 
-    setState({
+    setState((prev) => ({
+      ...prev,
       status,
       event: eventResult.event,
-      teams: teamsResult.teams,
+      teams: teamsData,
       scoreCompletion: completion,
       error: null,
       isFullyComplete,
-    });
-  }, [fetchEvent, fetchTeams, fetchScoreCompletion]);
+      availableEvents: prev.availableEvents,
+    }));
+  }, [eventId, fetchAvailableEvents, fetchEvent, fetchTeams, fetchScoreCompletion]);
 
   // Refresh score completion (for when scores are updated)
   const refreshScoreCompletion = useCallback(async () => {
-    if (state.status === 'assigned') {
-      const completion = await fetchScoreCompletion();
+    const completion = await fetchScoreCompletion(eventId ?? undefined);
 
-      // Check if fully complete after refresh
+    setState((prev) => {
+      if (prev.status !== 'assigned') return prev;
+
       const isFullyComplete =
-        state.teams.length > 0 &&
+        prev.teams.length > 0 &&
         completion.length > 0 &&
         completion.every((c: ScoreCompletion) => c.completed);
 
-      setState((prev) => ({
+      return {
         ...prev,
         scoreCompletion: completion,
         isFullyComplete,
-      }));
-    }
-  }, [state.status, state.teams.length, fetchScoreCompletion]);
+      };
+    });
+  }, [eventId, fetchScoreCompletion]);
 
-  // Initial load
+  // Initial load — re-fetches when eventId changes (URL navigation)
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);

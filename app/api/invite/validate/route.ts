@@ -1,6 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInvitationByToken, isInvitationValid } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { organizations } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
+/**
+ * GET /api/invite/validate?token=xxx
+ * Returns invitation info without sending OTP (for display purposes)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.nextUrl.searchParams.get('token');
+
+    if (!token) {
+      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
+    }
+
+    const invitation = await getInvitationByToken(token);
+
+    if (!invitation) {
+      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
+    }
+
+    const validationResult = isInvitationValid(invitation);
+    if (!validationResult.valid) {
+      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
+    }
+
+    // Get org name for admin invites
+    let organizationName: string | null = null;
+    if (invitation.organizationId) {
+      const [org] = await db
+        .select({ name: organizations.name })
+        .from(organizations)
+        .where(eq(organizations.id, invitation.organizationId))
+        .limit(1);
+      organizationName = org?.name || null;
+    }
+
+    return NextResponse.json({
+      success: true,
+      invitation: {
+        email: invitation.email,
+        role: invitation.role,
+        customMessage: invitation.customMessage,
+        organizationName,
+      },
+    });
+  } catch (error) {
+    console.error('Invitation info error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 /**
  * POST /api/invite/validate

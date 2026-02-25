@@ -4,7 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export type InvitationRole = 'judge' | 'participant';
+export type InvitationRole = 'admin' | 'judge' | 'participant';
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 /**
@@ -57,6 +57,7 @@ export async function createInvitation(data: {
   customMessage?: string;
   expiresInDays?: number;
   createdBy: string;
+  organizationId?: string;
 }): Promise<Invitation> {
   const token = generateInvitationToken();
   const expiresAt = calculateExpirationDate(data.expiresInDays || 7);
@@ -70,6 +71,7 @@ export async function createInvitation(data: {
       customMessage: data.customMessage,
       expiresAt,
       createdBy: data.createdBy,
+      organizationId: data.organizationId,
     })
     .returning();
 
@@ -85,6 +87,7 @@ export async function createBatchInvitations(data: {
   customMessage?: string;
   expiresInDays?: number;
   createdBy: string;
+  organizationId?: string;
 }): Promise<Invitation[]> {
   const expiresAt = calculateExpirationDate(data.expiresInDays || 7);
 
@@ -95,6 +98,7 @@ export async function createBatchInvitations(data: {
     customMessage: data.customMessage,
     expiresAt,
     createdBy: data.createdBy,
+    organizationId: data.organizationId,
   }));
 
   const result = await db.insert(invitations).values(invitationData).returning();

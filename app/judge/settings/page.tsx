@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PasswordChangeForm } from '@/components/settings/password-change-form';
+import { OrgManagementSettings } from '../components/org-management-settings';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { User, Mail, Shield, Calendar } from 'lucide-react';
@@ -82,6 +83,9 @@ export default async function JudgeSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Organization Management */}
+        <OrgManagementSettings />
 
         {/* Password Management */}
         <PasswordChangeForm />

@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function PUT(
   request: NextRequest,
@@ -15,27 +16,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId } = await params;
-    const { name, description, status } = await request.json();
+    await requireEventInOrg(eventId, orgId);
+
+    const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
-    }
-
-    // If setting event to active, ensure no other event is active
-    if (status === 'active') {
-      const activeEvents = await db.select().from(events).where(eq(events.status, 'active'));
-
-      // Check if there's an active event that's not the current one being updated
-      const otherActiveEvent = activeEvents.find((event) => event.id !== eventId);
-      if (otherActiveEvent) {
-        return NextResponse.json(
-          {
-            error: 'Another event is already active. Please deactivate it first.',
-          },
-          { status: 400 }
-        );
-      }
     }
 
     // Update the event
@@ -45,6 +33,7 @@ export async function PUT(
         name: name.trim(),
         description: description?.trim() || null,
         status: status || 'setup',
+        maxTeamSize: maxTeamSize ?? null,
       })
       .where(eq(events.id, eventId))
       .returning();
@@ -71,7 +60,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId } = await params;
+    await requireEventInOrg(eventId, orgId);
 
     // Check if event exists before deletion
     const existingEvent = await db.select().from(events).where(eq(events.id, eventId)).limit(1);

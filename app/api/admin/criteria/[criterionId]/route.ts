@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { criteria } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function PUT(
   request: NextRequest,
@@ -17,6 +18,8 @@ export async function PUT(
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const orgId = await getAdminOrgId(user.id);
 
     const { name, description, minScore, maxScore, displayOrder, weight, category } =
       await request.json();
@@ -61,6 +64,9 @@ export async function PUT(
     if (!currentCriterion) {
       return NextResponse.json({ error: 'Criterion not found' }, { status: 404 });
     }
+
+    // Verify criterion's event belongs to org
+    await requireEventInOrg(currentCriterion.eventId, orgId);
 
     // Get all criteria in the same event to validate weight totals
     const allCriteria = await db
@@ -148,6 +154,21 @@ export async function DELETE(
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const orgId = await getAdminOrgId(user.id);
+
+    // Verify criterion's event belongs to org
+    const [existingCriterion] = await db
+      .select({ eventId: criteria.eventId })
+      .from(criteria)
+      .where(eq(criteria.id, criterionId))
+      .limit(1);
+
+    if (!existingCriterion) {
+      return NextResponse.json({ error: 'Criterion not found' }, { status: 404 });
+    }
+
+    await requireEventInOrg(existingCriterion.eventId, orgId);
 
     // Delete criterion (cascade will handle related scores)
     const [deletedCriterion] = await db

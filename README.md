@@ -1,25 +1,25 @@
 # JudgePortal
 
-A comprehensive real-time judging system for hackathons and competitive events. Built with modern web technologies, JudgePortal enables judges to score teams based on customizable weighted criteria while providing admins with powerful management and analytics capabilities.
+A comprehensive multi-tenant real-time judging platform for hackathons and competitive events. Built with modern web technologies, JudgePortal enables organizations to manage events with a 4-stage lifecycle, judges to score teams across multiple events, participants to form teams via join codes, and super admins to oversee the entire platform.
 
 ## 🎯 Features
 
-### For Judges
-- **Judge Assignment System** - Judges must be assigned to events by admins to participate
-- **Automatic Active Event Display** - Judges see only the assigned active event automatically
-- **Responsive Mobile Design** - Full mobile and tablet support with touch-friendly interfaces
-- **Sidebar Navigation** - Easy team selection with completion status indicators
-- **Real-time Auto-save** - Scores save immediately, comments save with intelligent debouncing (500ms)
-- **Smart Criteria Filtering** - Only see relevant criteria based on team award types (Technical/Business/Both)
-- **Score Validation** - Ensures complete and valid submissions with visual feedback
-- **Progress Tracking** - Visual indicators show scoring completion status per team
+### For Super Admins
+- **Organization Management** - Create, edit, and delete organizations with slugs, descriptions, and branding
+- **Platform-Wide User Management** - View all users across the platform, change roles, and delete accounts
+- **Admin Invitation** - Invite admins directly to specific organizations
+- **Orphaned Admin Recovery** - Reassign admins who lost their organization to a new one
+- **Role Change Safety** - Confirmation dialogs with role-specific warnings for all transitions
+- **Score Preservation** - Intelligent cleanup preserves scoring data when changing user roles
 
 ### For Admins
-- **Invite Link System** - Send batch invitations via email with OTP verification
-- **Multi-Event Management** - Create and manage multiple events with complete data separation
-- **Judge Assignment System** - Assign specific judges to events for enhanced security
-- **Single Active Event Enforcement** - Prevents confusion by allowing only one active event at a time
-- **User Role Management** - Promote judges to admins, invite judges, delete accounts
+- **Organization-Scoped Operations** - All data (events, teams, users) isolated to admin's organization
+- **Invite Link System** - Send batch invitations via email with OTP verification for judges, participants, and admins
+- **Smart Judge Invitation** - Existing judges are auto-added to the organization without re-sending emails
+- **4-Stage Event Lifecycle** - Manage events through setup → open → active → completed stages
+- **Multi-Event Management** - Create and manage multiple simultaneous events per organization
+- **Judge Assignment System** - Assign specific judges to events with score preservation warnings
+- **Configurable Team Size** - Set maximum team size per event
 - **Team Award Types** - Configure teams as Technical, Business, or Both competition categories
 - **Weighted Criteria System** - Create scoring criteria with customizable weights (0-100%) and categories
 - **Real-time Results Dashboard** - Live score updates with three scoring modes (Total/Average/Weighted)
@@ -29,20 +29,44 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 - **Data Integrity Safeguards** - Prevent destructive operations during active judging sessions
 - **Markdown Support** - Rich formatting for criteria descriptions with markdown syntax
 
+### For Judges
+- **Multi-Event Dashboard** - View all assigned active events across organizations
+- **URL-Based Event Routing** - Persistent event selection via URL (survives page refresh)
+- **Judge Assignment System** - Must be assigned to active events by admins to participate
+- **Multi-Organization Membership** - Belong to multiple organizations simultaneously
+- **Organization Management** - Join new organizations via settings page
+- **Responsive Mobile Design** - Full mobile and tablet support with touch-friendly interfaces
+- **Sidebar Navigation** - Easy team selection with completion status indicators per event
+- **Real-time Auto-save** - Scores save immediately, comments save with intelligent debouncing (500ms)
+- **Smart Criteria Filtering** - Only see relevant criteria based on team award types (Technical/Business/Both)
+- **Score Validation** - Ensures complete and valid submissions with visual feedback
+- **Progress Tracking** - Visual indicators show scoring completion status per team
+
+### For Participants
+- **Event Browsing** - View all open and active events across all organizations
+- **Event Registration** - Register for events during open or active stages
+- **Team Creation** - Create teams with auto-generated 6-character join codes
+- **Team Joining** - Join existing teams using join codes (like Kahoot)
+- **Team Management** - Edit team info, view members, and leave teams during open events
+- **Creator Controls** - Team creators can delete teams, remove members, and regenerate join codes
+- **Stage-Aware UI** - Teams locked during active judging (no join/leave/edit/create); read-only view only
+- **Cross-Organization Access** - Browse and register for events from any organization
+
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js 14+](https://nextjs.org/) with App Router
+- **Framework**: [Next.js 15+](https://nextjs.org/) with App Router
 - **Database**: [Supabase](https://supabase.com/) (PostgreSQL) with [Drizzle ORM](https://orm.drizzle.team/)
 - **Authentication**: Supabase Auth with role-based access control (Password, Passwordless OTP, Invite Links)
 - **UI Components**: [Shadcn UI](https://ui.shadcn.com/) with [Lucide Icons](https://lucide.dev/)
 - **Styling**: [Tailwind CSS v3](https://tailwindcss.com/) with PostCSS processing
-- **Additional Libraries**: 
+- **Additional Libraries**:
   - [@dnd-kit](https://dndkit.com/) for drag and drop functionality
   - [Sonner](https://sonner.emilkowal.ski/) for toast notifications
   - [react-markdown](https://github.com/remarkjs/react-markdown) for markdown rendering
   - [next-themes](https://github.com/pacocoursey/next-themes) for theme switching
 - **Real-time Updates**: Supabase Realtime subscriptions
 - **Type Safety**: TypeScript with strict mode
+- **Testing**: [Playwright](https://playwright.dev/) for E2E testing
 - **Development**: React 19, Turbopack development server
 
 ## 🚀 Quick Start
@@ -92,7 +116,8 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 
    ```bash
    npm run db:setup
-   npm run db:update invite-link  # Apply invite link feature migration
+   npm run db:update invite-link                # Apply invite link feature migration
+   npm run db:update multi-tenant-participants   # Apply multi-tenant feature migration
    ```
 
    This will:
@@ -100,6 +125,7 @@ A comprehensive real-time judging system for hackathons and competitive events. 
    - ✅ Set up Row Level Security policies
    - ✅ Add database functions and triggers
    - ✅ Create proper indexes for performance
+   - ✅ Set up organizations and multi-tenant data model
 
 5. **Configure Email Templates (Optional)**
    ```bash
@@ -118,16 +144,19 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 ### Create Your First Admin
 
 1. **Sign up** at `/auth/sign-up`
-2. **Promote to admin**:
+2. **Promote to super admin** (for platform management):
    - Go to Supabase Dashboard
    - Table Editor → `users` table
-   - Find your user, edit, change `role` to `admin`
-3. **Log back in** - you'll now see the Admin Panel!
+   - Find your user, edit, change `role` to `super_admin`
+3. **Log back in** — you'll see the Super Admin Dashboard
+4. **Create an organization** and invite an admin to it
+5. Alternatively, **promote to admin** directly:
+   - Change `role` to `admin` and set `organization_id` to a valid organization UUID
 
 ### Test Accounts
 
 - **Admin**: `admin@example.com` / `admin123`
-- **Judge 1**: `judge1@example.com` / `judge123`  
+- **Judge 1**: `judge1@example.com` / `judge123`
 - **Judge 2**: `judge2@example.com` / `judge123`
 
 ### Troubleshooting
@@ -136,91 +165,138 @@ A comprehensive real-time judging system for hackathons and competitive events. 
 - Check `.env.local` exists (not `.env`)
 - Ensure all 4 variables are set correctly
 
-**"Tables don't exist"**  
+**"Tables don't exist"**
 - Run `npm run db:setup` again
 - If automated setup fails, copy `supabase/migrations/consolidated_setup.sql` to Supabase Dashboard > SQL Editor and run manually
 
 **"Permission denied"**
-- Make sure you promoted your user to admin role in the `users` table
+- Make sure you promoted your user to the correct role in the `users` table
+- Admins must have a valid `organization_id` set
 
 ## 📱 Usage
 
 ### First Time Setup
 
-1. Create an admin account by signing up
-2. Manually promote the user to admin role in Supabase dashboard (one-time setup)
-3. Create an event and set it as "active"
-4. Add teams with award types and scoring criteria with weights
-5. Invite judges to register, then assign them to the event
-6. Judges can start scoring assigned teams
+1. Create an account by signing up
+2. Promote the user to `super_admin` in Supabase dashboard (one-time setup)
+3. Create an organization in the Super Admin Dashboard
+4. Invite an admin to the organization
+5. As admin: create an event and progress it through setup → open → active
+6. Add teams with award types and scoring criteria with weights
+7. Invite judges to register, then assign them to the event
+8. Judges can start scoring assigned teams
+
+### Super Admin Workflow
+
+1. **Login** as super admin
+2. **Manage Organizations** - Create, edit, and delete organizations
+3. **Invite Admins** - Send invitations to admins for specific organizations
+4. **Manage Users** - View all platform users, change roles, reassign organizations
+5. **Monitor Platform** - View organization stats (admin count, event count)
+
+### Admin Workflow
+
+1. **Login** as admin (scoped to your organization)
+2. **Invite Users** - Send batch invitations to judges, participants, or admins via email
+3. **Manage Events** - Create events and progress through 4 stages (setup → open → active → completed)
+4. **Configure Teams** - Add teams with award types (Technical/Business/Both), presentation order, and max team size
+5. **Assign Judges** - Assign organization judges to events for access control
+6. **Set Weighted Criteria** - Define scoring criteria with weights, categories, and markdown descriptions
+7. **Monitor Results** - View real-time scores with three scoring modes and award type filtering
+8. **Export Data** - Download CSV with total, average, and weighted scores
 
 ### Judge Workflow
 
 1. **Register/Login** - Sign up with password or passwordless OTP, or accept invite link
-2. **Assignment Check** - Must be assigned to active event by admin to participate
-3. **View Active Event** - Automatically see assigned active event details
-4. **Select Teams** - Use mobile-responsive sidebar to navigate between teams
-5. **Submit Scores** - Enter scores for relevant criteria based on team award type (auto-saved)
-6. **Add Comments** - Optional feedback with markdown support (saves after 500ms pause)
-7. **Manage Account** - Access settings to change password or manage account
-8. **Track Progress** - Visual indicators show completion status across all devices
+2. **Select Organizations** - Join organizations during signup or via settings
+3. **View Event Dashboard** - See all assigned active events across organizations
+4. **Enter Event** - Click an event card to enter the scoring interface
+5. **Select Teams** - Use sidebar to navigate between teams within an event
+6. **Submit Scores** - Enter scores for relevant criteria based on team award type (auto-saved)
+7. **Add Comments** - Optional feedback with markdown support (saves after 500ms pause)
+8. **Switch Events** - Return to dashboard to switch between assigned events
+9. **Manage Account** - Access settings to change password or manage organization memberships
 
-### Admin Workflow
+### Participant Workflow
 
-1. **Login** as admin
-2. **Invite Users** - Send batch invitations to judges via email with OTP
-3. **Manage Events** - Create, edit, and activate events with single active enforcement
-4. **Assign Judges** - Assign specific judges to events for security
-5. **Configure Teams** - Add teams with award types (Technical/Business/Both) and presentation order
-6. **Set Weighted Criteria** - Define scoring criteria with weights, categories, and markdown descriptions
-7. **Manage Users** - Promote judges to admins, revoke invitations, delete accounts
-8. **Monitor Results** - View real-time scores with three scoring modes and award type filtering
-9. **Export Data** - Download CSV with total, average, and weighted scores
+1. **Register/Login** - Sign up with password or accept invite link
+2. **Browse Events** - View all open and active events across all organizations
+3. **Register for Event** - Join an event during open or active stages
+4. **Create or Join Team** - Create a new team or join an existing one using a 6-character join code (open events only)
+5. **Manage Team** - Edit team info, view members, regenerate join codes (open events only)
+6. **View During Judging** - See team info in read-only mode when event is active (teams are locked)
 
 ## 🗂️ Project Structure
 
 ```
 judgeportal/
-├── app/                   # Next.js app directory
-│   ├── admin/             # Admin panel routes
-│   ├── judge/             # Judge interface routes
-│   ├── participant/       # Participant dashboard (coming soon)
-│   ├── invite/            # Invite link acceptance pages
-│   ├── api/               # API endpoints
-│   └── auth/              # Authentication pages
-├── components/            # Reusable UI components
-│   ├── auth/              # OTP input, passwordless login components
-│   └── settings/          # Password management components
-├── lib/                   # Core utilities
-│   ├── auth/              # Authentication & invitation helpers
-│   ├── db/                # Database schema and utilities
-│   └── supabase/          # Supabase client configuration
-├── scripts/               # Database & email setup scripts
-└── supabase/              # Database migrations
-    └── migrations/features/  # Feature-specific migrations
+├── app/                          # Next.js app directory
+│   ├── super-admin/              # Super admin dashboard & org management
+│   ├── admin/                    # Admin panel (org-scoped)
+│   ├── judge/                    # Judge interface
+│   │   ├── event/[eventId]/      # Event-specific scoring
+│   │   │   └── team/[teamId]/    # Team scoring interface
+│   │   └── settings/             # Judge settings & org management
+│   ├── participant/              # Participant dashboard
+│   │   ├── event/[eventId]/      # Event detail & team management
+│   │   └── settings/             # Participant settings
+│   ├── invite/                   # Invite link acceptance pages
+│   ├── auth/                     # Authentication pages
+│   └── api/                      # API endpoints
+│       ├── super-admin/          #   Super admin APIs (orgs, users, roles)
+│       ├── admin/                #   Admin APIs (events, teams, criteria, users, results)
+│       ├── judge/                #   Judge APIs (events, teams, scores, organizations)
+│       ├── participant/          #   Participant APIs (events, teams, registration)
+│       ├── invite/               #   Invitation APIs (validate, verify)
+│       ├── organizations/        #   Public organization listing
+│       ├── settings/             #   Settings APIs (password)
+│       └── auth/                 #   Auth callbacks
+├── components/                   # Reusable UI components
+│   ├── ui/                       #   Shadcn UI components
+│   ├── auth/                     #   OTP input, passwordless login components
+│   ├── settings/                 #   Password management components
+│   └── tutorial/                 #   Tutorial components
+├── lib/                          # Core utilities
+│   ├── auth/                     #   Auth, invitation, org, & participant helpers
+│   ├── db/                       #   Database schema and utilities
+│   ├── hooks/                    #   Custom React hooks
+│   ├── supabase/                 #   Supabase client configuration
+│   └── utils/                    #   General utilities (join codes, etc.)
+├── scripts/                      # Database & email setup scripts
+├── tests/                        # E2E tests (Playwright)
+└── supabase/                     # Database migrations
+    └── migrations/features/      #   Feature-specific migrations
 ```
 
 ## 🔐 Security
 
+- **Multi-Tenant Isolation** - Organization-scoped data access for all admin operations
 - **Row Level Security (RLS)** - Database-level access control
-- **Role-based Authentication** - Admin, Judge, and Participant roles
+- **Role-based Authentication** - Super Admin, Admin, Judge, and Participant roles with strict separation
+- **Super Admin Isolation** - Super admins cannot access admin routes and vice versa
 - **Multiple Auth Methods** - Password, Passwordless OTP, and Invite Links
 - **Crypto-secure Tokens** - 128-bit entropy for invitation tokens
-- **Judge Assignment System** - Judges can only access assigned events
-- **Secure API Routes** - Protected endpoints with middleware
-- **Data Isolation** - Complete separation between events
+- **Judge Assignment System** - Judges can only access and score assigned events
+- **Secure API Routes** - Protected endpoints with role-based middleware
+- **Organization Boundaries** - Admins cannot access data outside their organization
+- **Score Preservation** - Judge scores are preserved when removing judges from organizations
+- **Event Stage Gating** - Team mutations locked during active judging
 
 ## 📊 Database Schema
 
-The system uses seven main tables:
+The system uses eleven main tables:
 
-- **events** - Event management with status tracking (setup/active/completed)
-- **users** - User accounts with role assignments (admin/judge/participant)
-- **teams** - Team information with award types (technical/business/both)
+- **organizations** - Multi-tenant organizations with name, slug, and branding
+- **events** - Event management with 4-stage lifecycle (setup/open/active/completed) and org scoping
+- **users** - User accounts with role assignments (super_admin/admin/judge/participant) and org association
+- **teams** - Team information with award types, join codes, and org-scoped events
 - **criteria** - Weighted scoring criteria with categories per event
 - **event_judges** - Judge assignment system for event access control
 - **scores** - Individual judge scores and comments with event context
-- **invitations** - Invitation tokens with status lifecycle (pending/accepted/revoked/expired)
+- **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
+- **event_participants** - Participant-event registration tracking
+- **team_members** - Team membership with creator flag and join timestamps
+- **organization_members** - Judge-organization many-to-many membership
 
 ## 🛠️ Development Commands
 
@@ -232,9 +308,9 @@ npm run db:studio        # Open Drizzle Studio for database management
 # Database Setup (Consolidated Approach)
 npm run db:setup         # Complete database setup (schema + migrations)
 npm run db:setup:seed    # Complete setup with realistic test data
-npm run db:seed          # Add test data to existing database
 npm run db:update        # Apply all feature migrations
-npm run db:update invite-link  # Apply specific feature migration
+npm run db:update invite-link                # Apply invite link migration
+npm run db:update multi-tenant-participants  # Apply multi-tenant migration
 
 # Database Management (Advanced)
 npm run db:push          # Push schema changes to database
@@ -324,11 +400,16 @@ This setup ensures both code quality and consistent formatting while maintaining
 
 ## 🏆 Key Features Implemented
 
-- ✅ **Invite Link System** - Batch invitations with OTP verification and status tracking
+- ✅ **Multi-Tenant Platform** - Organization-based data isolation with super admin management
+- ✅ **4-Stage Event Lifecycle** - Setup → Open → Active → Completed with stage-specific permissions
+- ✅ **Participant Team Management** - Team creation, join codes, membership, and creator controls
+- ✅ **Multi-Event Judge Support** - Judges assigned to multiple active events with URL-based routing
+- ✅ **Multi-Organization Judges** - Judges can belong to multiple organizations simultaneously
+- ✅ **Invite Link System** - Batch invitations with OTP verification for admins, judges, and participants
 - ✅ **Multi-Auth Support** - Password, Passwordless OTP, and Invite Link authentication
-- ✅ **Multi-Role System** - Admin, Judge, and Participant roles with role-based dashboards
+- ✅ **Multi-Role System** - Super Admin, Admin, Judge, and Participant roles with role-based dashboards
 - ✅ **Password Management** - Account settings with password change/set functionality
-- ✅ **Judge Assignment Security** - Comprehensive judge-event assignment system
+- ✅ **Judge Assignment Security** - Comprehensive judge-event assignment with score preservation
 - ✅ **Weighted Scoring** - Flexible criteria weights with category-based filtering
 - ✅ **Mobile Responsive** - Full mobile and tablet support with touch interfaces
 - ✅ **Award Type System** - Technical, Business, and Both team categories
@@ -338,6 +419,7 @@ This setup ensures both code quality and consistent formatting while maintaining
 - ✅ **Real-time Updates** - Live scoring with auto-save and progress tracking
 - ✅ **Advanced Analytics** - Comprehensive results dashboard with filtering
 - ✅ **CSV Export** - Multiple export formats with complete scoring data
+- ✅ **Score Preservation** - Safe role changes and org removals that preserve historical scores
 
 ---
 

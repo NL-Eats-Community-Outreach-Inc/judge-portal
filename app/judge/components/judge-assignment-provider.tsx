@@ -1,13 +1,14 @@
 'use client';
 
-import { createContext, useContext, ReactNode, useState } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useJudgeAssignment, AssignmentStatus } from '@/lib/hooks/use-judge-assignment';
 
 interface Event {
   id: string;
   name: string;
   description: string | null;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'open' | 'active' | 'completed';
+  organizationName?: string | null;
 }
 
 interface Team {
@@ -32,15 +33,26 @@ interface JudgeAssignmentContextType {
   isFullyComplete: boolean;
   hasShownCompletionConfetti: boolean;
   setHasShownCompletionConfetti: (shown: boolean) => void;
+  availableEvents: Event[];
   refresh: () => Promise<void>;
   refreshScoreCompletion: () => Promise<void>;
 }
 
 const JudgeAssignmentContext = createContext<JudgeAssignmentContextType | undefined>(undefined);
 
-export function JudgeAssignmentProvider({ children }: { children: ReactNode }) {
-  const assignmentData = useJudgeAssignment();
+interface JudgeAssignmentProviderProps {
+  eventId?: string | null;
+  children: ReactNode;
+}
+
+export function JudgeAssignmentProvider({ eventId, children }: JudgeAssignmentProviderProps) {
+  const assignmentData = useJudgeAssignment(eventId);
   const [hasShownCompletionConfetti, setHasShownCompletionConfetti] = useState(false);
+
+  // Reset confetti state when switching events so each event gets its own celebration
+  useEffect(() => {
+    setHasShownCompletionConfetti(false);
+  }, [eventId]);
 
   return (
     <JudgeAssignmentContext.Provider

@@ -34,17 +34,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  Save,
-  Loader2,
-  CheckCircle,
-  Plus,
-  Edit2,
-  Trash2,
-  Calendar,
-  RefreshCw,
-  Users,
-} from 'lucide-react';
+import { Save, Loader2, Plus, Edit2, Trash2, Calendar, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import JudgeAssignmentDialog from '@/components/judge-assignment-dialog';
@@ -53,7 +43,9 @@ interface Event {
   id: string;
   name: string;
   description: string | null;
-  status: 'setup' | 'active' | 'completed';
+  status: 'setup' | 'open' | 'active' | 'completed';
+  organizationId: string | null;
+  maxTeamSize: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,19 +61,23 @@ export default function EventManagement() {
     isOpen: boolean;
     eventId: string | null;
     eventName: string;
+    eventStatus: 'setup' | 'open' | 'active' | 'completed';
   }>({
     isOpen: false,
     eventId: null,
     eventName: '',
+    eventStatus: 'setup',
   });
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
-    status: 'setup' | 'active' | 'completed';
+    status: 'setup' | 'open' | 'active' | 'completed';
+    maxTeamSize: string;
   }>({
     name: '',
     description: '',
     status: 'setup',
+    maxTeamSize: '',
   });
 
   const resetForm = () => {
@@ -89,6 +85,7 @@ export default function EventManagement() {
       name: '',
       description: '',
       status: 'setup',
+      maxTeamSize: '',
     });
     setEditingEvent(null);
   };
@@ -104,6 +101,7 @@ export default function EventManagement() {
       name: event.name,
       description: event.description || '',
       status: event.status,
+      maxTeamSize: event.maxTeamSize != null ? String(event.maxTeamSize) : '',
     });
     setIsDialogOpen(true);
   };
@@ -118,6 +116,13 @@ export default function EventManagement() {
 
     setIsSaving(true);
     try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        status: formData.status,
+        maxTeamSize: formData.maxTeamSize ? parseInt(formData.maxTeamSize, 10) : null,
+      };
+
       let response;
       if (editingEvent) {
         // Update existing event
@@ -126,7 +131,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
       } else {
         // Create new event
@@ -135,7 +140,7 @@ export default function EventManagement() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
       }
 
@@ -200,6 +205,7 @@ export default function EventManagement() {
       isOpen: true,
       eventId: event.id,
       eventName: event.name,
+      eventStatus: event.status,
     });
   };
 
@@ -208,19 +214,29 @@ export default function EventManagement() {
       isOpen: false,
       eventId: null,
       eventName: '',
+      eventStatus: 'setup',
     });
   };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       setup: 'outline',
+      open: 'secondary',
       active: 'default',
       completed: 'secondary',
     };
-    return <Badge variant={variants[status] || 'outline'}>{status.toUpperCase()}</Badge>;
+    const labels: Record<string, string> = {
+      setup: 'SETUP',
+      open: 'OPEN',
+      active: 'ACTIVE',
+      completed: 'COMPLETED',
+    };
+    return (
+      <Badge variant={variants[status] || 'outline'}>
+        {labels[status] || status.toUpperCase()}
+      </Badge>
+    );
   };
-
-  const activeEvent = events.find((event) => event.status === 'active');
 
   if (isLoading) {
     return (
@@ -286,7 +302,7 @@ export default function EventManagement() {
                   <Label htmlFor="event-status">Status</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value: 'setup' | 'active' | 'completed') =>
+                    onValueChange={(value: 'setup' | 'open' | 'active' | 'completed') =>
                       setFormData((prev) => ({ ...prev, status: value }))
                     }
                   >
@@ -295,18 +311,28 @@ export default function EventManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="setup">Setup - Preparing event</SelectItem>
+                      <SelectItem value="open">Open - Registration &amp; team forming</SelectItem>
                       <SelectItem value="active">Active - Judging in progress</SelectItem>
                       <SelectItem value="completed">Completed - Event finished</SelectItem>
                     </SelectContent>
                   </Select>
-                  {formData.status === 'active' &&
-                    activeEvent &&
-                    activeEvent.id !== editingEvent?.id && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400">
-                        Warning: Setting this event to active will deactivate &quot;
-                        {activeEvent.name}&quot;
-                      </p>
-                    )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-team-size">Max Team Size</Label>
+                  <Input
+                    id="max-team-size"
+                    type="number"
+                    min="1"
+                    value={formData.maxTeamSize}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maxTeamSize: e.target.value }))
+                    }
+                    placeholder="No limit"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of members per team. Leave empty for no limit.
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -334,48 +360,6 @@ export default function EventManagement() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Active Event Card */}
-        {activeEvent && (
-          <Card className="bg-gradient-to-r from-green-50/50 to-emerald-50/30 dark:from-green-800/20 dark:to-emerald-900/10 border-green-200 dark:border-green-800 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-green-900 dark:text-green-100">
-                      Active Event
-                    </CardTitle>
-                    <CardDescription className="text-green-700 dark:text-green-300">
-                      {activeEvent.name}
-                    </CardDescription>
-                  </div>
-                </div>
-                {getStatusBadge(activeEvent.status)}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-green-900 dark:text-green-100">Created:</span>
-                  <p className="text-green-700 dark:text-green-300">
-                    {new Date(activeEvent.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-medium text-green-900 dark:text-green-100">
-                    Last Updated:
-                  </span>
-                  <p className="text-green-700 dark:text-green-300">
-                    {new Date(activeEvent.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Events List */}
         <Card
@@ -480,7 +464,9 @@ export default function EventManagement() {
                                         className="text-red-600 hover:text-red-700 disabled:text-muted-foreground"
                                         onClick={() => setDeletingEvent(event)}
                                         disabled={
-                                          event.status === 'active' || event.status === 'completed'
+                                          event.status === 'open' ||
+                                          event.status === 'active' ||
+                                          event.status === 'completed'
                                         }
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -488,7 +474,9 @@ export default function EventManagement() {
                                     </AlertDialogTrigger>
                                   </div>
                                 </TooltipTrigger>
-                                {(event.status === 'active' || event.status === 'completed') && (
+                                {(event.status === 'open' ||
+                                  event.status === 'active' ||
+                                  event.status === 'completed') && (
                                   <TooltipContent>
                                     <p>Cannot delete {event.status} events</p>
                                   </TooltipContent>
@@ -541,10 +529,10 @@ export default function EventManagement() {
       <JudgeAssignmentDialog
         eventId={judgeAssignmentDialog.eventId}
         eventName={judgeAssignmentDialog.eventName}
+        eventStatus={judgeAssignmentDialog.eventStatus}
         isOpen={judgeAssignmentDialog.isOpen}
         onOpenChange={closeJudgeAssignmentDialog}
         onAssignmentsUpdated={() => {
-          // Could refresh events if needed
           toast.success('Judge assignments updated');
         }}
       />

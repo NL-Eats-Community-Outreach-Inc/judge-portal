@@ -48,8 +48,8 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'validation-warning';
 export function TeamScoringInterface({
   team,
   criteria,
-  judgeId: _, // eslint-disable-line @typescript-eslint/no-unused-vars
-  eventId: __, // eslint-disable-line @typescript-eslint/no-unused-vars
+  judgeId: _, // eslint-disable-line @typescript-eslint/no-unused-vars -- auth handled server-side
+  eventId,
 }: TeamScoringInterfaceProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
@@ -77,7 +77,7 @@ export function TeamScoringInterface({
   // Use callback to ensure stable reference for real-time sync
   const fetchExistingScores = useCallback(async () => {
     try {
-      const response = await fetch(`/api/judge/scores?teamId=${team.id}`);
+      const response = await fetch(`/api/judge/scores?teamId=${team.id}&eventId=${eventId}`);
       if (response.ok) {
         const data = await response.json();
 
@@ -115,7 +115,7 @@ export function TeamScoringInterface({
     } finally {
       setLoading(false);
     }
-  }, [team.id, criteria]);
+  }, [team.id, criteria, eventId]);
 
   // Initialize scores from database
   useEffect(() => {
@@ -153,6 +153,7 @@ export function TeamScoringInterface({
             criterionId,
             score,
             comment,
+            eventId,
           }),
         });
 
@@ -184,7 +185,7 @@ export function TeamScoringInterface({
         setSaveStatus((prev) => ({ ...prev, [criterionId]: 'error' }));
       }
     },
-    [team.id, lastSavedState]
+    [team.id, lastSavedState, eventId]
   );
 
   // Unified save system - one debounced save per criterion handling both score and comment

@@ -7,13 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import { InviteJudgesDialog } from './invite-judges-dialog';
 import { InvitationsList } from './invitations-list';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+// Select imports kept for potential super admin role change feature
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -39,7 +34,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Users, UserCheck, Crown, RefreshCw, Trash2, GraduationCap } from 'lucide-react';
+import {
+  Loader2,
+  Users,
+  UserCheck,
+  Crown,
+  RefreshCw,
+  UserMinus,
+  GraduationCap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
@@ -56,6 +59,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [updatingRoles, setUpdatingRoles] = useState(new Set<string>());
   const [deletingUsers, setDeletingUsers] = useState(new Set<string>());
   const [invitationRefreshTrigger, setInvitationRefreshTrigger] = useState(0);
@@ -85,7 +89,9 @@ export default function UserManagement() {
     fetchUsers();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'judge') => {
+  // Role change kept for potential super admin use — UI trigger removed
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'judge' | 'participant') => {
     setUpdatingRoles((prev) => new Set(prev).add(userId));
 
     try {
@@ -137,10 +143,18 @@ export default function UserManagement() {
         throw new Error(error.error || 'Failed to delete user');
       }
 
+      const data = await response.json();
       setUsers((prev) => prev.filter((user) => user.id !== userId));
-      toast.success('Success', {
-        description: 'User deleted successfully',
-      });
+
+      if (data.action === 'removed_from_org') {
+        toast.success('Success', {
+          description: data.message || 'Judge removed from your organization',
+        });
+      } else {
+        toast.success('Success', {
+          description: 'User deleted successfully',
+        });
+      }
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error('Error', {
@@ -243,8 +257,8 @@ export default function UserManagement() {
     return users.filter((u) => u.role === role);
   };
 
-  // Render user table with role-specific actions
-  const renderUserTable = (roleUsers: User[], roleType: 'admin' | 'judge' | 'participant') => {
+  // Render user table — showActions controls whether the Actions column is rendered
+  const renderUserTable = (roleUsers: User[], showActions = false) => {
     if (roleUsers.length === 0) {
       return (
         <div className="text-center py-8 text-muted-foreground">
@@ -258,80 +272,50 @@ export default function UserManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[35%]">Email</TableHead>
-              <TableHead className="w-[25%]">Role</TableHead>
-              <TableHead className="w-[20%]">Joined</TableHead>
-              <TableHead className="w-[20%]">Actions</TableHead>
+              <TableHead className={showActions ? 'w-[35%]' : 'w-[40%]'}>Email</TableHead>
+              <TableHead className={showActions ? 'w-[25%]' : 'w-[30%]'}>Role</TableHead>
+              <TableHead className={showActions ? 'w-[20%]' : 'w-[30%]'}>Joined</TableHead>
+              {showActions && <TableHead className="w-[20%]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {roleUsers.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium w-[35%]">{user.email}</TableCell>
-                <TableCell className="w-[25%]">{getRoleBadge(user.role)}</TableCell>
-                <TableCell className="text-muted-foreground w-[20%]">
+                <TableCell className="font-medium">{user.email}</TableCell>
+                <TableCell>{getRoleBadge(user.role)}</TableCell>
+                <TableCell className="text-muted-foreground">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="w-[20%]">
-                  <div className="flex items-center gap-2">
-                    {/* Show role change dropdown only for admin/judge */}
-                    {roleType !== 'participant' && (
-                      <Select
-                        value={user.role}
-                        onValueChange={(role: 'admin' | 'judge') => updateUserRole(user.id, role)}
-                        disabled={updatingRoles.has(user.id)}
-                      >
-                        <SelectTrigger className="w-32">
-                          {updatingRoles.has(user.id) ? (
-                            <div className="flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span className="text-xs">•••</span>
-                            </div>
+                {showActions && (
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
+                          {deletingUsers.has(user.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <SelectValue />
+                            <UserMinus className="h-4 w-4" />
                           )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="judge">Judge</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {/* Show delete button for judges and participants */}
-                    {(user.role === 'judge' || user.role === 'participant') && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
-                            {deletingUsers.has(user.id) ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the{' '}
-                              {user.role} &quot;{user.email}&quot;
-                              {user.role === 'judge' && ' and all their associated scores'}.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(user.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete {user.role === 'judge' ? 'Judge' : 'Participant'}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </TableCell>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Judge from Organization</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove &quot;{user.email}&quot; from your organization. Their
+                            account and scores in events will be preserved.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(user.id)}>
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -425,7 +409,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('admin'), 'admin')}
+                      {renderUserTable(getUsersByRole('admin'))}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -445,7 +429,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('judge'), 'judge')}
+                      {renderUserTable(getUsersByRole('judge'), true)}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -465,7 +449,7 @@ export default function UserManagement() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      {renderUserTable(getUsersByRole('participant'), 'participant')}
+                      {renderUserTable(getUsersByRole('participant'))}
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
