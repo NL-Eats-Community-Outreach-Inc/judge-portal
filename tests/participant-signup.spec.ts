@@ -4,9 +4,9 @@ import { cleanupTestUserById, getUserIdByEmail } from './test-utils/delete-test-
 
 test.describe('Judge portal - sign-up & cleanup', () => {
   // One test user per test
-  const user = { email: uniqueTestEmail('judge'), password: 'UniqueTestPassphrase28940!' };
+  const user = { email: uniqueTestEmail('participant'), password: 'UniqueTestPassphrase28940!' };
 
-  test('Dashboard reached @judge', async ({ page }, testInfo) => {
+  test('Dashboard reached @participant', async ({ page }, testInfo) => {
     // Capture console errors for debugging
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
@@ -28,8 +28,8 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     const emailInput = page.getByLabel('Email');
     await expect(emailInput).toBeVisible({ timeout: 10000 });
 
-    // Explicitly select Judge role (it's the default, but being explicit is safer)
-    await page.getByLabel('Judge').check();
+    // Explicitly select Participant role
+    await page.getByLabel('Participant').check();
 
     // Fill email input and go to next tab (have to filter out the Next.js menu button that has id next-logo)
     await emailInput.fill(user.email);
@@ -38,17 +38,10 @@ test.describe('Judge portal - sign-up & cleanup', () => {
       .filter({ hasNot: page.locator('#next-logo') })
       .click();
 
-    // Select the NL Eats Org and go to next tab
-    await page.getByRole('button').filter({ hasText: 'NL Eats' }).click();
-    await page
-      .getByRole('button', { name: 'Next', exact: true })
-      .filter({ hasNot: page.locator('#next-logo') })
-      .click();
-
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
     await page.getByRole('tab', { name: 'Password', exact: true }).click();
 
-    // Fill password inputs and confirm
+    // Fill password inputs
     await page.locator('input[id="password"]').fill(user.password);
     await page.locator('input[id="repeat-password"]').fill(user.password);
 
@@ -75,7 +68,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
       // Click triggers the signup network call
       page.getByRole('button', { name: 'Create account' }).click(),
       // Wait for navigation to the judge dashboard (increased timeout for CI)
-      page.waitForURL(/\/judge/, { timeout: 60000 }),
+      page.waitForURL(/\/participant/, { timeout: 60000 }),
     ]);
 
     // If we didn't capture the id from the network, fallback to admin lookup by email
@@ -101,7 +94,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
       console.error('[test] Browser console errors:', consoleErrors);
     }
 
-    await expect(page).toHaveURL(/\/judge/);
+    await expect(page).toHaveURL(/\/participant/);
   });
 
   test.afterEach(async ({}, testInfo) => {
