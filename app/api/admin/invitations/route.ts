@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
-import { createBatchInvitations, getAllInvitations, getExistingInvitation } from '@/lib/auth';
+import { createBatchInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, invitations, organizationMembers } from '@/lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { getAdminOrgId } from '@/lib/auth/org';
 
 /**
  * POST /api/admin/invitations
@@ -13,9 +14,16 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin role
     const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
     const body = await request.json();
     const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
+
+    // Validate role
+    const validRoles = ['admin', 'judge', 'participant'];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
 
     // Validation
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
@@ -24,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = emails.filter((email) => !emailRegex.test(email));
+    const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
       return NextResponse.json(
         { error: 'Invalid email addresses', invalidEmails },
@@ -41,30 +49,68 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for already registered users
+    // Check for already registered users and auto-add existing judges to org
     const alreadyRegistered: Array<{ email: string; role: string }> = [];
+    const autoAdded: Array<{ email: string }> = [];
     for (const email of emails) {
       const existingUser = await db
-        .select({ email: users.email, role: users.role })
+        .select({ id: users.id, email: users.email, role: users.role })
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
 
       if (existingUser[0]) {
-        alreadyRegistered.push({
-          email: existingUser[0].email!,
-          role: existingUser[0].role!,
-        });
+        // If this is a judge invite and user is already a judge, check org membership
+        if (existingUser[0].role === 'judge' && role === 'judge') {
+          const existingMembership = await db
+            .select()
+            .from(organizationMembers)
+            .where(
+              and(
+                eq(organizationMembers.userId, existingUser[0].id),
+                eq(organizationMembers.organizationId, orgId)
+              )
+            )
+            .limit(1);
+
+          if (existingMembership[0]) {
+            // Already a member of this org
+            alreadyRegistered.push({
+              email: existingUser[0].email!,
+              role: existingUser[0].role! + ' (already in your org)',
+            });
+          } else {
+            // Existing judge NOT in this org — auto-add to org directly (no invitation needed)
+            await db
+              .insert(organizationMembers)
+              .values({
+                organizationId: orgId,
+                userId: existingUser[0].id,
+              })
+              .onConflictDoNothing();
+
+            autoAdded.push({ email: existingUser[0].email! });
+          }
+        } else {
+          alreadyRegistered.push({
+            email: existingUser[0].email!,
+            role: existingUser[0].role!,
+          });
+        }
       }
     }
 
-    // Filter out emails with existing invitations or registered users
+    // Filter out emails with existing invitations, registered users, or auto-added judges
     const registeredEmails = alreadyRegistered.map((u) => u.email);
+    const autoAddedEmails = autoAdded.map((u) => u.email);
     const newEmails = emails.filter(
-      (email) => !existingInvites.includes(email) && !registeredEmails.includes(email)
+      (email: string) =>
+        !existingInvites.includes(email) &&
+        !registeredEmails.includes(email) &&
+        !autoAddedEmails.includes(email)
     );
 
-    if (newEmails.length === 0) {
+    if (newEmails.length === 0 && autoAdded.length === 0) {
       return NextResponse.json(
         {
           message: 'All emails are already invited or registered',
@@ -75,18 +121,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create invitations
-    const invitations = await createBatchInvitations({
+    // If all new emails were auto-added (no invitations needed)
+    if (newEmails.length === 0 && autoAdded.length > 0) {
+      return NextResponse.json({
+        success: true,
+        invitations: [],
+        autoAdded,
+        existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+        alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
+      });
+    }
+
+    // Create invitations with org assignment
+    const createdInvitations = await createBatchInvitations({
       emails: newEmails,
       role,
       customMessage,
       expiresInDays,
       createdBy: user.id,
+      organizationId: orgId,
     });
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map((invite) => ({
+    const invitesWithLinks = createdInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,
@@ -98,6 +156,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       invitations: invitesWithLinks,
+      autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
       existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
       alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
     });
@@ -114,18 +173,24 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/admin/invitations
- * List all invitations
+ * List invitations for admin's organization
  */
 export async function GET(request: NextRequest) {
   try {
     // Verify admin role
-    await authServer.requireAdmin();
+    const user = await authServer.requireAdmin();
+    const orgId = await getAdminOrgId(user.id);
 
-    const invitations = await getAllInvitations();
+    // Get org-scoped invitations
+    const orgInvitations = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.organizationId, orgId))
+      .orderBy(desc(invitations.createdAt));
 
     // Generate invite links
     const origin = request.nextUrl.origin;
-    const invitesWithLinks = invitations.map((invite) => ({
+    const invitesWithLinks = orgInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
       role: invite.role,

@@ -4,7 +4,7 @@ import { cleanupTestUserById, getUserIdByEmail } from './test-utils/delete-test-
 
 test.describe('Judge portal - sign-up & cleanup', () => {
   // One test user per test
-  const user = { email: uniqueTestEmail(), password: 'UniqueTestPassphrase28940!' };
+  const user = { email: uniqueTestEmail('judge'), password: 'UniqueTestPassphrase28940!' };
 
   test('Dashboard reached @judge', async ({ page }, testInfo) => {
     // Capture console errors for debugging
@@ -24,17 +24,31 @@ test.describe('Judge portal - sign-up & cleanup', () => {
     await page.getByRole('link', { name: 'Sign up' }).click();
     await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
-    // Wait for form to be ready and fill it
-    const emailInput = page.locator('input[id="email"]');
-    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for form to be ready and fill it (used label based selector instead of id for stability)
+    const emailInput = page.getByLabel('Email');
+    await expect(emailInput).toBeVisible({ timeout: 10000 });
 
     // Explicitly select Judge role (it's the default, but being explicit is safer)
     await page.getByLabel('Judge').check();
 
+    // Fill email input and go to next tab (have to filter out the Next.js menu button that has id next-logo)
+    await emailInput.fill(user.email);
+    await page
+      .getByRole('button', { name: 'Next', exact: true })
+      .filter({ hasNot: page.locator('#next-logo') })
+      .click();
+
+    // Select the NL Eats Org and go to next tab
+    await page.getByRole('button').filter({ hasText: 'NL Eats' }).click();
+    await page
+      .getByRole('button', { name: 'Next', exact: true })
+      .filter({ hasNot: page.locator('#next-logo') })
+      .click();
+
     // Ensure Password tab is selected (it's the default, but being explicit is safer)
     await page.getByRole('tab', { name: 'Password', exact: true }).click();
 
-    await emailInput.fill(user.email);
+    // Fill password inputs and confirm
     await page.locator('input[id="password"]').fill(user.password);
     await page.locator('input[id="repeat-password"]').fill(user.password);
 
@@ -59,7 +73,7 @@ test.describe('Judge portal - sign-up & cleanup', () => {
 
     await Promise.all([
       // Click triggers the signup network call
-      page.getByRole('button', { name: 'Create account with password' }).click(),
+      page.getByRole('button', { name: 'Create account' }).click(),
       // Wait for navigation to the judge dashboard (increased timeout for CI)
       page.waitForURL(/\/judge/, { timeout: 60000 }),
     ]);

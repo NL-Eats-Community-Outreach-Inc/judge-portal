@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { scores, teams, criteria, users, events, eventJudges } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +13,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
+
+    if (!eventId) {
+      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+    }
+
+    await requireEventInOrg(eventId, orgId);
 
     // Get all scores with team, criterion, and judge info including award types and categories
     // Only include scores from judges assigned to the event

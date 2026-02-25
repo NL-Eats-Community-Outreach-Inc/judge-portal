@@ -1,40 +1,49 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, events, eventJudges } from '@/lib/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Verify authentication and get judge info
     const user = await authServer.requireAuth();
-    const userId = user.id;
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
 
-    // Get currently active event only
-    const activeEvent = await db.select().from(events).where(eq(events.status, 'active')).limit(1);
+    // Find all active events the judge is assigned to
+    const assignedEvents = await db
+      .select({ id: events.id })
+      .from(eventJudges)
+      .innerJoin(events, eq(eventJudges.eventId, events.id))
+      .where(and(eq(eventJudges.judgeId, user.id), eq(events.status, 'active')));
 
-    if (!activeEvent.length) {
+    if (assignedEvents.length === 0) {
       return NextResponse.json({ teams: [] });
     }
 
-    // Check if judge is assigned to this event
-    const assignment = await db
-      .select()
-      .from(eventJudges)
-      .where(and(eq(eventJudges.eventId, activeEvent[0].id), eq(eventJudges.judgeId, userId)))
-      .limit(1);
+    // Resolve which event to use
+    let resolvedEventId: string;
 
-    if (!assignment.length) {
+    if (eventId) {
+      const selected = assignedEvents.find((e) => e.id === eventId);
+      if (!selected) {
+        return NextResponse.json(
+          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
+          { status: 403 }
+        );
+      }
+      resolvedEventId = eventId;
+    } else if (assignedEvents.length === 1) {
+      resolvedEventId = assignedEvents[0].id;
+    } else {
+      // Multiple events, no selection
       return NextResponse.json(
-        {
-          error: 'You are not assigned to the current active event',
-          errorType: 'NOT_ASSIGNED',
-        },
-        { status: 403 }
+        { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
+        { status: 300 }
       );
     }
 
-    // Get all teams for the active event, ordered by presentation_order
+    // Get all teams for the resolved event, ordered by presentation_order
     const eventTeams = await db
       .select({
         id: teams.id,
@@ -43,7 +52,7 @@ export async function GET() {
         presentationOrder: teams.presentationOrder,
       })
       .from(teams)
-      .where(eq(teams.eventId, activeEvent[0].id))
+      .where(eq(teams.eventId, resolvedEventId))
       .orderBy(asc(teams.presentationOrder));
 
     return NextResponse.json({ teams: eventTeams });

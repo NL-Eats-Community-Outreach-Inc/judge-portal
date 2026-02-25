@@ -5,9 +5,17 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import * as schema from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
+import { getUserFromSession } from '@/lib/auth/server';
 
 export async function POST() {
   try {
+    // Security fix: require admin auth
+    const user = await getUserFromSession();
+
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = await createClient();
 
     // Get all auth users

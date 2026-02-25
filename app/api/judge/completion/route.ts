@@ -1,40 +1,46 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, criteria, scores, events, eventJudges } from '@/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
     const user = await authServer.requireAuth();
-    const userId = user.id;
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
 
-    // Get currently active event only
-    const activeEvent = await db.select().from(events).where(eq(events.status, 'active')).limit(1);
+    // Find all active events the judge is assigned to
+    const assignedEvents = await db
+      .select({ id: events.id })
+      .from(eventJudges)
+      .innerJoin(events, eq(eventJudges.eventId, events.id))
+      .where(and(eq(eventJudges.judgeId, user.id), eq(events.status, 'active')));
 
-    if (!activeEvent.length) {
+    if (assignedEvents.length === 0) {
       return NextResponse.json({ completion: [] });
     }
 
-    // Check if judge is assigned to this event
-    const assignment = await db
-      .select()
-      .from(eventJudges)
-      .where(and(eq(eventJudges.eventId, activeEvent[0].id), eq(eventJudges.judgeId, userId)))
-      .limit(1);
+    // Resolve which event to use
+    let resolvedEventId: string;
 
-    if (!assignment.length) {
+    if (eventId) {
+      const selected = assignedEvents.find((e) => e.id === eventId);
+      if (!selected) {
+        return NextResponse.json(
+          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
+          { status: 403 }
+        );
+      }
+      resolvedEventId = eventId;
+    } else if (assignedEvents.length === 1) {
+      resolvedEventId = assignedEvents[0].id;
+    } else {
       return NextResponse.json(
-        {
-          error: 'You are not assigned to the current active event',
-          errorType: 'NOT_ASSIGNED',
-        },
-        { status: 403 }
+        { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
+        { status: 300 }
       );
     }
-
-    const eventId = activeEvent[0].id;
 
     // Get all teams for the current event with their award types
     const eventTeams = await db
@@ -43,7 +49,7 @@ export async function GET() {
         awardType: teams.awardType,
       })
       .from(teams)
-      .where(eq(teams.eventId, eventId));
+      .where(eq(teams.eventId, resolvedEventId));
 
     // Get criteria counts by category in a single query
     const criteriaCounts = await db
@@ -52,7 +58,7 @@ export async function GET() {
         count: count(),
       })
       .from(criteria)
-      .where(eq(criteria.eventId, eventId))
+      .where(eq(criteria.eventId, resolvedEventId))
       .groupBy(criteria.category);
 
     // Create a map for quick lookup
@@ -71,7 +77,7 @@ export async function GET() {
         count: count(),
       })
       .from(scores)
-      .where(and(eq(scores.judgeId, userId), eq(scores.eventId, eventId)))
+      .where(and(eq(scores.judgeId, user.id), eq(scores.eventId, resolvedEventId)))
       .groupBy(scores.teamId);
 
     // Create a map for quick lookup

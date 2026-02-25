@@ -3,7 +3,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Settings, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Settings, CheckCircle, Clock, AlertCircle, DoorOpen } from 'lucide-react';
 import { useAdminEvent } from '../contexts/admin-event-context';
 
 export default function EventSelector() {
@@ -37,6 +37,8 @@ export default function EventSelector() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'open':
+        return <DoorOpen className="h-3 w-3 text-amber-600" />;
       case 'active':
         return <CheckCircle className="h-3 w-3 text-green-600" />;
       case 'completed':
@@ -48,6 +50,8 @@ export default function EventSelector() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'open':
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
       case 'active':
         return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
       case 'completed':

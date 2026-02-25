@@ -8,14 +8,15 @@ import {
   check,
   index,
   pgEnum,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const eventStatusEnum = pgEnum('event_status', ['setup', 'active', 'completed']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant']);
+export const eventStatusEnum = pgEnum('event_status', ['setup', 'open', 'active', 'completed']);
+export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'judge', 'participant']);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
-export const invitationRoleEnum = pgEnum('invitation_role', ['judge', 'participant']);
+export const invitationRoleEnum = pgEnum('invitation_role', ['admin', 'judge', 'participant']);
 export const invitationStatusEnum = pgEnum('invitation_status', [
   'pending',
   'accepted',
@@ -23,32 +24,72 @@ export const invitationStatusEnum = pgEnum('invitation_status', [
   'expired',
 ]);
 
-export const events = pgTable('events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  description: text('description'),
-  status: eventStatusEnum('status').default('setup'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull()
-    .$onUpdate(() => sql`timezone('utc'::text, now())`),
-});
+export const organizations = pgTable(
+  'organizations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull().unique(),
+    description: text('description'),
+    logoUrl: text('logo_url'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    slugIdx: index('idx_organizations_slug').on(table.slug),
+  })
+);
 
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey(),
-  email: text('email').notNull(),
-  role: userRoleEnum('role').default('judge'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull()
-    .$onUpdate(() => sql`timezone('utc'::text, now())`),
-});
+export const events = pgTable(
+  'events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    description: text('description'),
+    status: eventStatusEnum('status').default('setup'),
+    organizationId: uuid('organization_id').references(() => organizations.id, {
+      onDelete: 'cascade',
+    }),
+    maxTeamSize: integer('max_team_size'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    organizationIdx: index('idx_events_organization').on(table.organizationId),
+  })
+);
+
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey(),
+    email: text('email').notNull(),
+    role: userRoleEnum('role').default('judge'),
+    organizationId: uuid('organization_id').references(() => organizations.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    organizationIdx: index('idx_users_organization').on(table.organizationId),
+  })
+);
 
 export const teams = pgTable(
   'teams',
@@ -63,6 +104,7 @@ export const teams = pgTable(
     repoUrl: text('repo_url'),
     presentationOrder: integer('presentation_order').notNull(),
     awardType: teamAwardTypeEnum('award_type').default('both').notNull(),
+    joinCode: text('join_code').unique(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
@@ -75,6 +117,7 @@ export const teams = pgTable(
     uniqueEventOrder: unique().on(table.eventId, table.presentationOrder),
     uniqueEventName: unique().on(table.eventId, table.name),
     eventOrderIdx: index('idx_teams_event_order').on(table.eventId, table.presentationOrder),
+    joinCodeIdx: index('idx_teams_join_code').on(table.joinCode),
   })
 );
 
@@ -185,9 +228,10 @@ export const invitations = pgTable(
     customMessage: text('custom_message'),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
-    createdBy: uuid('created_by')
-      .references(() => users.id)
-      .notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    organizationId: uuid('organization_id').references(() => organizations.id, {
+      onDelete: 'cascade',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
@@ -201,9 +245,76 @@ export const invitations = pgTable(
     emailIdx: index('idx_invitations_email').on(table.email),
     statusIdx: index('idx_invitations_status').on(table.status),
     createdByIdx: index('idx_invitations_created_by').on(table.createdBy),
+    organizationIdx: index('idx_invitations_organization').on(table.organizationId),
   })
 );
 
+export const eventParticipants = pgTable(
+  'event_participants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: uuid('event_id')
+      .references(() => events.id, { onDelete: 'cascade' })
+      .notNull(),
+    participantId: uuid('participant_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    registeredAt: timestamp('registered_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueEventParticipant: unique().on(table.eventId, table.participantId),
+    eventIdx: index('idx_event_participants_event').on(table.eventId),
+    participantIdx: index('idx_event_participants_participant').on(table.participantId),
+  })
+);
+
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    teamId: uuid('team_id')
+      .references(() => teams.id, { onDelete: 'cascade' })
+      .notNull(),
+    participantId: uuid('participant_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    isCreator: boolean('is_creator').default(false).notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueTeamMember: unique().on(table.teamId, table.participantId),
+    teamIdx: index('idx_team_members_team').on(table.teamId),
+    participantIdx: index('idx_team_members_participant').on(table.participantId),
+  })
+);
+
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .references(() => organizations.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueOrgUser: unique().on(table.organizationId, table.userId),
+    orgIdx: index('idx_org_members_organization').on(table.organizationId),
+    userIdx: index('idx_org_members_user').on(table.userId),
+  })
+);
+
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -218,3 +329,9 @@ export type Score = typeof scores.$inferSelect;
 export type NewScore = typeof scores.$inferInsert;
 export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
+export type EventParticipant = typeof eventParticipants.$inferSelect;
+export type NewEventParticipant = typeof eventParticipants.$inferInsert;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type NewTeamMember = typeof teamMembers.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type NewOrganizationMember = typeof organizationMembers.$inferInsert;

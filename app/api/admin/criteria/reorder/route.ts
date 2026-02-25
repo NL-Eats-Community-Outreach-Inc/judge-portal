@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { criteria } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,11 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { eventId, criteriaOrders } = await request.json();
 
     if (!eventId) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
+
+    await requireEventInOrg(eventId, orgId);
 
     if (!Array.isArray(criteriaOrders) || criteriaOrders.length === 0) {
       return NextResponse.json({ error: 'Criteria orders array is required' }, { status: 400 });

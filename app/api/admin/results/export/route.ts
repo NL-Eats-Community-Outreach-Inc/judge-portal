@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';
+import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,10 +13,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
     const scoreMode = searchParams.get('scoreMode') || 'total';
     const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all';
+
+    if (!eventId) {
+      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+    }
+
+    await requireEventInOrg(eventId, orgId);
 
     // Get event information for filename
     let eventName = 'event';

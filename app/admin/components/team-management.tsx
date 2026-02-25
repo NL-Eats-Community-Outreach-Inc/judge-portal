@@ -53,6 +53,7 @@ import {
   Github,
   RefreshCw,
   GripVertical,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminEvent } from '../contexts/admin-event-context';
@@ -123,6 +124,14 @@ function SortableRow({
   );
 }
 
+interface TeamMember {
+  teamId: string;
+  participantId: string;
+  email: string;
+  isCreator: boolean;
+  joinedAt: string;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -134,6 +143,7 @@ interface Team {
   createdAt: string;
   updatedAt: string;
   eventId: string;
+  members: TeamMember[];
 }
 
 interface TeamFormData {
@@ -163,6 +173,7 @@ export default function TeamManagement() {
   const [awardTypeFilter, setAwardTypeFilter] = useState<'all' | 'technical' | 'business' | 'both'>(
     'all'
   );
+  const [membersDialogTeam, setMembersDialogTeam] = useState<Team | null>(null);
   const { selectedEvent } = useAdminEvent();
 
   // Drag and drop sensors
@@ -644,6 +655,7 @@ export default function TeamManagement() {
                       <TableRow>
                         <TableHead className="w-24">Order</TableHead>
                         <TableHead className="w-40">Team Name</TableHead>
+                        <TableHead className="w-44">Members</TableHead>
                         <TableHead className="w-48">Description</TableHead>
                         <TableHead className="w-28">Award Type</TableHead>
                         <TableHead className="w-28">Links</TableHead>
@@ -665,6 +677,18 @@ export default function TeamManagement() {
                               <div className="truncate" title={team.name}>
                                 {team.name}
                               </div>
+                            </TableCell>
+                            <TableCell className="w-44">
+                              <button
+                                onClick={() => setMembersDialogTeam(team)}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all cursor-pointer"
+                              >
+                                <Users className="h-3 w-3" />
+                                <span>
+                                  {team.members?.length ?? 0} member
+                                  {(team.members?.length ?? 0) !== 1 ? 's' : ''}
+                                </span>
+                              </button>
                             </TableCell>
                             <TableCell className="text-muted-foreground w-48">
                               <div className="truncate" title={team.description || ''}>
@@ -802,6 +826,59 @@ export default function TeamManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Members dialog */}
+      <Dialog
+        open={!!membersDialogTeam}
+        onOpenChange={(open) => !open && setMembersDialogTeam(null)}
+      >
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              {membersDialogTeam?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {membersDialogTeam?.members.length || 0} member
+              {membersDialogTeam?.members.length !== 1 ? 's' : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-y-auto -mx-2">
+            {membersDialogTeam?.members.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No members yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {membersDialogTeam?.members.map((m) => (
+                  <div
+                    key={m.participantId}
+                    className="flex items-center justify-between px-3 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{m.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Joined{' '}
+                        {new Date(m.joinedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    {m.isCreator && (
+                      <Badge variant="outline" className="text-[10px] ml-3 shrink-0">
+                        Creator
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Subtle loading overlay */}
       {isRefreshing && (

@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 /**
@@ -34,18 +35,15 @@ export async function createClient() {
 }
 
 // Admin client for operations requiring service role permissions
-export async function createAdminClient() {
-  return createServerClient(
+// Uses @supabase/supabase-js directly (not SSR) since admin operations don't need cookies
+export function createAdminClient() {
+  return createSupabaseAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return [];
-        },
-        setAll() {
-          // Admin client doesn't need cookie management
-        },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   );
