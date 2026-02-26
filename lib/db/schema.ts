@@ -56,6 +56,9 @@ export const events = pgTable(
       onDelete: 'cascade',
     }),
     maxTeamSize: integer('max_team_size'),
+    prize: text('prize'),
+    tags: text('tags').array(),
+    submissionDeadline: timestamp('submission_deadline', { withTimezone: true, mode: 'string' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),

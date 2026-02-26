@@ -25,24 +25,6 @@ import { CreateTeamDialog } from '../../components/create-team-dialog';
 import { JoinTeamDialog } from '../../components/join-team-dialog';
 import { TeamDetailPanel } from '../../components/team-detail-panel';
 
-function getEventTags(name: string): string[] {
-  const lower = name.toLowerCase();
-  const tags: string[] = [];
-  if (lower.includes('hack')) tags.push('Hackathon');
-  if (lower.includes('innov')) tags.push('Innovation');
-  if (lower.includes('ai') || lower.includes('ml')) tags.push('AI/ML');
-  if (lower.includes('web')) tags.push('Web Dev');
-  if (lower.includes('mobile')) tags.push('Mobile');
-  if (lower.includes('data')) tags.push('Data');
-  if (lower.includes('design')) tags.push('Design');
-  if (lower.includes('iot')) tags.push('IoT');
-  if (lower.includes('game')) tags.push('Gaming');
-  if (lower.includes('sustain') || lower.includes('green')) tags.push('Sustainability');
-  if (tags.length === 0) tags.push('Challenge');
-  if (tags.length < 2) tags.push('Innovation');
-  return tags.slice(0, 3);
-}
-
 const tagColors = [
   'bg-teal-500/10 text-teal-700 dark:text-teal-400',
   'bg-violet-500/10 text-violet-700 dark:text-violet-400',
@@ -63,7 +45,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
   const event = events.find((e) => e.id === eventId);
   const team = getTeamForEvent(eventId);
-  const tags = event ? getEventTags(event.name) : [];
+  const tags = event?.tags ?? [];
 
   // Loading state
   if (isLoading) {
@@ -218,12 +200,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Sparkles className="h-4 w-4 text-amber-500" />
-                    <span>Prize: TBA</span>
+                    <span>Prize: {event.prize || 'TBA'} </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>Started {new Date(event.createdAt).toLocaleDateString()}</span>
                   </div>
+                  {/* Only renders if a submission deadline exists */}
+                  {event.submissionDeadline && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        Deadline: {new Date(event.submissionDeadline).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
@@ -264,7 +255,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                 <div className="text-center">
                   <Sparkles className="h-7 w-7 mx-auto mb-2 text-amber-500" />
                   <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>
-                  <p className="text-xl font-bold text-foreground">TBA</p>
+                  <p className="text-xl font-bold text-foreground"> {event.prize || 'TBA'} </p>
                 </div>
               </Card>
             </div>
@@ -312,7 +303,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="h-4 w-4 text-amber-500" />
-                      <span>Prize: TBA</span>
+                      <span>Prize: {event.prize || 'TBA'} </span>
                     </div>
                   </div>
                 </Card>
@@ -382,7 +373,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="h-4 w-4 text-amber-500" />
-                    <span>Prize: TBA</span>
+                    <span>Prize: {event.prize || 'TBA'} </span>
                   </div>
                 </div>
               </Card>
