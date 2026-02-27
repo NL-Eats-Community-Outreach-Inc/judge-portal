@@ -46,6 +46,9 @@ interface Event {
   status: 'setup' | 'open' | 'active' | 'completed';
   organizationId: string | null;
   maxTeamSize: number | null;
+  prize: string | null;
+  tags: string[] | null;
+  submissionDeadline: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,11 +76,17 @@ export default function EventManagement() {
     description: string;
     status: 'setup' | 'open' | 'active' | 'completed';
     maxTeamSize: string;
+    prize: string | null;
+    tags: string[] | null;
+    submissionDeadline: string | null;
   }>({
     name: '',
     description: '',
     status: 'setup',
     maxTeamSize: '',
+    prize: '',
+    tags: [],
+    submissionDeadline: '',
   });
 
   const resetForm = () => {
@@ -86,6 +95,9 @@ export default function EventManagement() {
       description: '',
       status: 'setup',
       maxTeamSize: '',
+      prize: '',
+      tags: [],
+      submissionDeadline: '',
     });
     setEditingEvent(null);
   };
@@ -102,6 +114,9 @@ export default function EventManagement() {
       description: event.description || '',
       status: event.status,
       maxTeamSize: event.maxTeamSize != null ? String(event.maxTeamSize) : '',
+      prize: event.prize || '',
+      tags: event.tags || [],
+      submissionDeadline: event.submissionDeadline || '',
     });
     setIsDialogOpen(true);
   };
@@ -121,6 +136,9 @@ export default function EventManagement() {
         description: formData.description,
         status: formData.status,
         maxTeamSize: formData.maxTeamSize ? parseInt(formData.maxTeamSize, 10) : null,
+        prize: formData.prize || null,
+        tags: formData.tags.length > 0 ? formData.tags : null,
+        submissionDeadline: formData.submissionDeadline || null,
       };
 
       let response;
@@ -333,6 +351,47 @@ export default function EventManagement() {
                   <p className="text-xs text-muted-foreground">
                     Maximum number of members per team. Leave empty for no limit.
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="event-prize">Prize</Label>
+                  <Input
+                    id="event-prize"
+                    value={formData.prize || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, prize: e.target.value }))}
+                    placeholder="e.g. $10 000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="event-tags">Tags</Label>
+                  <Input
+                    id="event-tags"
+                    value={formData.tags?.join(', ')}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        tags: e.target.value
+                          .split(',')
+                          .map((t) => t.trim())
+                          .filter(Boolean),
+                      }))
+                    }
+                    placeholder="e.g. Sustainability, Design, Innovation"
+                  />
+                  <p className="text-xs text-muted-foreground">Separate tags with commas.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="event-submission-deadline">Submission Deadline</Label>
+                  <Input
+                    id="event-submission-deadline"
+                    type="datetime-local"
+                    value={formData.submissionDeadline || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, submissionDeadline: e.target.value }))
+                    }
+                  />
                 </div>
 
                 <div className="flex gap-3 pt-4">
