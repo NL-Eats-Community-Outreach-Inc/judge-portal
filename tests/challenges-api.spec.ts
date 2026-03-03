@@ -29,9 +29,7 @@ test.describe('GET /api/challenges endpoint', () => {
     expect(Array.isArray(dataCompleted.challenges)).toBe(true);
   });
 
-  test('should return 400 error when invalid status provided', async ({
-    request,
-  }) => {
+  test('should return 400 error when invalid status provided', async ({ request }) => {
     const response = await request.get('/api/challenges?status=invalid');
 
     expect(response.status()).toBe(400);
@@ -85,9 +83,7 @@ test.describe('GET /api/challenges endpoint', () => {
     }
   });
 
-  test('should respond to OPTIONS preflight request with CORS headers', async ({
-    request,
-  }) => {
+  test('should respond to OPTIONS preflight request with CORS headers', async ({ request }) => {
     const response = await request.fetch('/api/challenges', {
       method: 'OPTIONS',
       headers: {
@@ -100,9 +96,7 @@ test.describe('GET /api/challenges endpoint', () => {
     expect(response.headers()).toHaveProperty('access-control-allow-headers');
   });
 
-  test('should include CORS headers in GET response from allowed origin', async ({
-    request,
-  }) => {
+  test('should include CORS headers in GET response from allowed origin', async ({ request }) => {
     const response = await request.get('/api/challenges', {
       headers: {
         Origin: LEARNWORLDS_ORIGIN,

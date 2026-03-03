@@ -19,8 +19,7 @@ function resolveStatus(request: NextRequest): ChallengeStatus {
 function getCorsHeaders(request: NextRequest): HeadersInit {
   const allowedOrigin = process.env.LEARNWORLDS_ALLOWED_ORIGIN;
   const requestOrigin = request.headers.get('origin');
-  const origin =
-    allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : undefined;
+  const origin = allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : undefined;
 
   return {
     'Access-Control-Allow-Origin': origin || '',
