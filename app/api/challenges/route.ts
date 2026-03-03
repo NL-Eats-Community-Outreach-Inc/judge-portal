@@ -20,10 +20,11 @@ function getCorsHeaders(request: NextRequest): HeadersInit {
   const allowedOrigin = process.env.LEARNWORLDS_ALLOWED_ORIGIN;
   const requestOrigin = request.headers.get('origin');
   const origin =
-    allowedOrigin && requestOrigin && requestOrigin === allowedOrigin ? allowedOrigin : 'null';
+    allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : undefined;
 
   return {
-    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Origin': origin || '',
+
     'Access-Control-Allow-Methods': 'GET,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
@@ -42,7 +43,16 @@ export async function GET(request: NextRequest) {
   const corsHeaders = getCorsHeaders(request);
 
   try {
+    const statusParam = request.nextUrl.searchParams.get('status')?.trim();
     const status = resolveStatus(request);
+
+    // Validate that if a status parameter was provided, it's valid
+    if (statusParam && !VALID_STATUSES.includes(statusParam as ChallengeStatus)) {
+      return NextResponse.json(
+        { error: 'Invalid status parameter. Valid values: setup, open, active, completed' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     const challenges = await db
       .select({

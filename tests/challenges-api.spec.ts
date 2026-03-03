@@ -29,14 +29,15 @@ test.describe('GET /api/challenges endpoint', () => {
     expect(Array.isArray(dataCompleted.challenges)).toBe(true);
   });
 
-  test('should return open status by default when invalid status provided', async ({
+  test('should return 400 error when invalid status provided', async ({
     request,
   }) => {
     const response = await request.get('/api/challenges?status=invalid');
 
-    expect(response.status()).toBe(200);
+    expect(response.status()).toBe(400);
     const data = await response.json();
-    expect(Array.isArray(data.challenges)).toBe(true);
+    expect(data).toHaveProperty('error');
+    expect(data.error).toContain('Invalid status parameter');
   });
 
   test('should have correct response shape for challenges', async ({ request }) => {
