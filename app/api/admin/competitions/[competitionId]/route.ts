@@ -70,7 +70,11 @@ export async function DELETE(
     await requireCompetitionInOrg(competitionId, orgId);
 
     // Check if competition exists before deletion
-    const existingCompetition = await db.select().from(competitions).where(eq(competitions.id, competitionId)).limit(1);
+    const existingCompetition = await db
+      .select()
+      .from(competitions)
+      .where(eq(competitions.id, competitionId))
+      .limit(1);
 
     if (!existingCompetition.length) {
       return NextResponse.json({ error: 'Competition not found' }, { status: 404 });

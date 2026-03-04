@@ -29,7 +29,10 @@ export async function GET() {
       .where(eq(organizations.id, orgId))
       .limit(1);
 
-    return NextResponse.json({ competitions: allCompetitions, organizationName: org?.name ?? null });
+    return NextResponse.json({
+      competitions: allCompetitions,
+      organizationName: org?.name ?? null,
+    });
   } catch (error) {
     console.error('Error fetching competitions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
