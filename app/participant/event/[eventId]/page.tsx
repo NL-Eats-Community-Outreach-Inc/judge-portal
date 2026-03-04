@@ -46,6 +46,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const event = events.find((e) => e.id === eventId);
   const team = getTeamForEvent(eventId);
   const tags = event?.tags ?? [];
+  const allTags = event?.country.toLowerCase() !== 'canada' ? [...tags, 'Global'] : tags;
 
   // Loading state
   if (isLoading) {
@@ -158,7 +159,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
-            {tags.map((tag, index) => (
+            {allTags.map((tag, index) => (
               <span
                 key={tag}
                 className={`text-xs sm:text-sm px-2.5 py-1 rounded-full font-medium ${tagColors[index % tagColors.length]}`}

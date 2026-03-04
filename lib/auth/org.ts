@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { users, events } from '@/lib/db/schema';
+import { users, events, competitions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export class OrphanedAdminError extends Error {
@@ -48,5 +48,32 @@ export async function requireEventInOrg(eventId: string, orgId: string): Promise
   const belongs = await verifyEventInOrg(eventId, orgId);
   if (!belongs) {
     throw new Error('Event does not belong to your organization');
+  }
+}
+
+/**
+ * Check if a competition belongs to a specific organization.
+ */
+export async function verifyCompetitionInOrg(
+  competitionId: string,
+  orgId: string
+): Promise<boolean> {
+  const result = await db
+    .select({ organizationId: competitions.organizationId })
+    .from(competitions)
+    .where(eq(competitions.id, competitionId))
+    .limit(1);
+
+  return result[0]?.organizationId === orgId;
+}
+
+/**
+ * Require that a competition belongs to a specific organization.
+ * Throws an error if the competition doesn't exist or doesn't belong to the org.
+ */
+export async function requireCompetitionInOrg(competitionId: string, orgId: string): Promise<void> {
+  const belongs = await verifyCompetitionInOrg(competitionId, orgId);
+  if (!belongs) {
+    throw new Error('Competition does not belong in your organization');
   }
 }

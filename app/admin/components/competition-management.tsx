@@ -36,10 +36,10 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Save, Loader2, Plus, Edit2, Trash2, Calendar, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAdminEvent } from '../contexts/admin-event-context';
+import { useAdminCompetition } from '../contexts/admin-competition-context';
 import JudgeAssignmentDialog from '@/components/judge-assignment-dialog';
 
-interface Event {
+interface Competition {
   id: string;
   name: string;
   description: string | null;
@@ -49,27 +49,28 @@ interface Event {
   prize: string | null;
   tags: string[] | null;
   submissionDeadline: string | null;
+  country: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export default function EventManagement() {
-  const { events, isLoading, refreshEvents } = useAdminEvent();
+export default function CompetitionManagement() {
+  const { competitions, isLoading, refreshCompetitions } = useAdminCompetition();
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editingCompetition, setEditingCompetition] = useState<Competition | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
+  const [deletingCompetition, setDeletingCompetition] = useState<Competition | null>(null);
   const [judgeAssignmentDialog, setJudgeAssignmentDialog] = useState<{
     isOpen: boolean;
-    eventId: string | null;
-    eventName: string;
-    eventStatus: 'setup' | 'open' | 'active' | 'completed';
+    competitionId: string | null;
+    competitionName: string;
+    competitionStatus: 'setup' | 'open' | 'active' | 'completed';
   }>({
     isOpen: false,
-    eventId: null,
-    eventName: '',
-    eventStatus: 'setup',
+    competitionId: null,
+    competitionName: '',
+    competitionStatus: 'setup',
   });
   const [formData, setFormData] = useState<{
     name: string;
@@ -79,6 +80,7 @@ export default function EventManagement() {
     prize: string | null;
     tags: string[] | null;
     submissionDeadline: string | null;
+    country: string | null;
   }>({
     name: '',
     description: '',
@@ -87,6 +89,7 @@ export default function EventManagement() {
     prize: '',
     tags: [],
     submissionDeadline: '',
+    country: '',
   });
 
   const resetForm = () => {
@@ -98,8 +101,9 @@ export default function EventManagement() {
       prize: '',
       tags: [],
       submissionDeadline: '',
+      country: '',
     });
-    setEditingEvent(null);
+    setEditingCompetition(null);
   };
 
   const openCreateDialog = () => {
@@ -107,16 +111,17 @@ export default function EventManagement() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (event: Event) => {
-    setEditingEvent(event);
+  const openEditDialog = (competition: Competition) => {
+    setEditingCompetition(competition);
     setFormData({
-      name: event.name,
-      description: event.description || '',
-      status: event.status,
-      maxTeamSize: event.maxTeamSize != null ? String(event.maxTeamSize) : '',
-      prize: event.prize || '',
-      tags: event.tags || [],
-      submissionDeadline: event.submissionDeadline || '',
+      name: competition.name,
+      description: competition.description || '',
+      status: competition.status,
+      maxTeamSize: competition.maxTeamSize != null ? String(competition.maxTeamSize) : '',
+      prize: competition.prize || '',
+      tags: competition.tags || [],
+      submissionDeadline: competition.submissionDeadline || '',
+      country: competition.country || '',
     });
     setIsDialogOpen(true);
   };
@@ -124,7 +129,7 @@ export default function EventManagement() {
   const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error('Validation Error', {
-        description: 'Event name is required',
+        description: 'Competition name is required',
       });
       return;
     }
@@ -139,12 +144,13 @@ export default function EventManagement() {
         prize: formData.prize || null,
         tags: formData.tags && formData.tags.length > 0 ? formData.tags : null,
         submissionDeadline: formData.submissionDeadline || null,
+        country: formData.country || null,
       };
 
       let response;
-      if (editingEvent) {
-        // Update existing event
-        response = await fetch(`/api/admin/events/${editingEvent.id}`, {
+      if (editingCompetition) {
+        // Update existing competition
+        response = await fetch(`/api/admin/competitions/${editingCompetition.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -152,8 +158,8 @@ export default function EventManagement() {
           body: JSON.stringify(payload),
         });
       } else {
-        // Create new event
-        response = await fetch('/api/admin/event', {
+        // Create new competition
+        response = await fetch('/api/admin/competition', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -164,25 +170,27 @@ export default function EventManagement() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to save event');
+        throw new Error(error.error || 'Failed to save competition');
       }
 
       await response.json();
 
-      // Refresh events list in context (this will update both EventSelector and EventManagement)
-      await refreshEvents();
+      // Refresh competitions list in context (this will update both CompetitionSelector and CompetitionManagement)
+      await refreshCompetitions();
 
       // Close dialog and reset form
       setIsDialogOpen(false);
       resetForm();
 
       toast.success('Success', {
-        description: editingEvent ? 'Event updated successfully' : 'Event created successfully',
+        description: editingCompetition
+          ? 'Competition updated successfully'
+          : 'Competition created successfully',
       });
     } catch (error) {
-      console.error('Error saving event:', error);
+      console.error('Error saving competition:', error);
       toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to save event',
+        description: error instanceof Error ? error.message : 'Failed to save competition',
       });
     } finally {
       setIsSaving(false);
@@ -190,49 +198,49 @@ export default function EventManagement() {
   };
 
   const handleDelete = async () => {
-    if (!deletingEvent) return;
+    if (!deletingCompetition) return;
 
     try {
-      const response = await fetch(`/api/admin/events/${deletingEvent.id}`, {
+      const response = await fetch(`/api/admin/competitions/${deletingCompetition.id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete event');
+        throw new Error(error.error || 'Failed to delete competition');
       }
 
-      // Refresh events list in context (this will update both EventSelector and EventManagement)
-      await refreshEvents();
+      // Refresh competitions list in context (this will update both CompetitionSelector and CompetitionManagement)
+      await refreshCompetitions();
 
       toast.success('Success', {
-        description: 'Event deleted successfully',
+        description: 'Competition deleted successfully',
       });
 
-      setDeletingEvent(null);
+      setDeletingCompetition(null);
     } catch (error) {
-      console.error('Error deleting event:', error);
+      console.error('Error deleting competition:', error);
       toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete event',
+        description: error instanceof Error ? error.message : 'Failed to delete competition',
       });
     }
   };
 
-  const openJudgeAssignmentDialog = (event: Event) => {
+  const openJudgeAssignmentDialog = (competition: Competition) => {
     setJudgeAssignmentDialog({
       isOpen: true,
-      eventId: event.id,
-      eventName: event.name,
-      eventStatus: event.status,
+      competitionId: competition.id,
+      competitionName: competition.name,
+      competitionStatus: competition.status,
     });
   };
 
   const closeJudgeAssignmentDialog = () => {
     setJudgeAssignmentDialog({
       isOpen: false,
-      eventId: null,
-      eventName: '',
-      eventStatus: 'setup',
+      competitionId: null,
+      competitionName: '',
+      competitionStatus: 'setup',
     });
   };
 
@@ -272,52 +280,56 @@ export default function EventManagement() {
         {/* Header with Create Button */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Event Management</h2>
-            <p className="text-muted-foreground">Manage your judging events and their status</p>
+            <h2 className="text-2xl font-bold text-foreground">Competition Management</h2>
+            <p className="text-muted-foreground">
+              Manage your judging competitions and their status
+            </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreateDialog} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                Create Event
+                Create Competition
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+                <DialogTitle>
+                  {editingCompetition ? 'Edit Competition' : 'Create New Competition'}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingEvent
-                    ? 'Update the event details below.'
-                    : 'Fill in the details to create a new judging event.'}
+                  {editingCompetition
+                    ? 'Update the competition details below.'
+                    : 'Fill in the details to create a new judging competition.'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="event-name">Event Name *</Label>
+                  <Label htmlFor="competition-name">Competition Name *</Label>
                   <Input
-                    id="event-name"
+                    id="competition-name"
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter event name"
+                    placeholder="Enter competition name"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="event-description">Description</Label>
+                  <Label htmlFor="competition-description">Description</Label>
                   <Textarea
-                    id="event-description"
+                    id="competition-description"
                     value={formData.description}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, description: e.target.value }))
                     }
-                    placeholder="Enter event description"
+                    placeholder="Enter competition description"
                     className="resize-none"
                     rows={3}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="event-status">Status</Label>
+                  <Label htmlFor="competition-status">Status</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value: 'setup' | 'open' | 'active' | 'completed') =>
@@ -328,10 +340,10 @@ export default function EventManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="setup">Setup - Preparing event</SelectItem>
+                      <SelectItem value="setup">Setup - Preparing competition</SelectItem>
                       <SelectItem value="open">Open - Registration &amp; team forming</SelectItem>
                       <SelectItem value="active">Active - Judging in progress</SelectItem>
-                      <SelectItem value="completed">Completed - Event finished</SelectItem>
+                      <SelectItem value="completed">Completed - Competition finished</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -354,9 +366,9 @@ export default function EventManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="event-prize">Prize</Label>
+                  <Label htmlFor="competition-prize">Prize</Label>
                   <Input
-                    id="event-prize"
+                    id="competition-prize"
                     value={formData.prize || ''}
                     onChange={(e) => setFormData((prev) => ({ ...prev, prize: e.target.value }))}
                     placeholder="e.g. $10 000"
@@ -364,9 +376,9 @@ export default function EventManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="event-tags">Tags</Label>
+                  <Label htmlFor="competition-tags">Tags</Label>
                   <Input
-                    id="event-tags"
+                    id="competition-tags"
                     value={formData.tags?.join(', ')}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -383,14 +395,24 @@ export default function EventManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="event-submission-deadline">Submission Deadline</Label>
+                  <Label htmlFor="competition-submission-deadline">Submission Deadline</Label>
                   <Input
-                    id="event-submission-deadline"
+                    id="competition-submission-deadline"
                     type="datetime-local"
                     value={formData.submissionDeadline || ''}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, submissionDeadline: e.target.value }))
                     }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="competition-country">Country</Label>
+                  <Input
+                    id="competition-country"
+                    value={formData.country || ''}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, country: e.target.value }))}
+                    placeholder="e.g. Canada"
                   />
                 </div>
 
@@ -405,7 +427,7 @@ export default function EventManagement() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    {editingEvent ? 'Update Event' : 'Create Event'}
+                    {editingCompetition ? 'Update Competition' : 'Create Competition'}
                   </Button>
                   <Button
                     variant="outline"
@@ -420,7 +442,7 @@ export default function EventManagement() {
           </Dialog>
         </div>
 
-        {/* Events List */}
+        {/* Competitions List */}
         <Card
           className={`relative ${isRefreshing ? 'opacity-60' : ''} transition-opacity duration-200`}
         >
@@ -429,9 +451,9 @@ export default function EventManagement() {
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-primary" />
                 <div>
-                  <CardTitle>All Events</CardTitle>
+                  <CardTitle>All Competitions</CardTitle>
                   <CardDescription>
-                    Manage all your judging events ({events.length} total)
+                    Manage all your judging competitions ({competitions.length} total)
                   </CardDescription>
                 </div>
               </div>
@@ -440,7 +462,7 @@ export default function EventManagement() {
                 onClick={async () => {
                   setIsRefreshing(true);
                   try {
-                    await refreshEvents();
+                    await refreshCompetitions();
                   } finally {
                     setIsRefreshing(false);
                   }
@@ -458,49 +480,51 @@ export default function EventManagement() {
             </div>
           </CardHeader>
           <CardContent>
-            {events.length === 0 ? (
+            {competitions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p>No events yet</p>
-                <p className="text-sm">Create your first judging event to get started</p>
+                <p>No competitions yet</p>
+                <p className="text-sm">Create your first judging competition to get started</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {events.map((event) => (
-                  <Card key={event.id} className="border-border/50">
+                {competitions.map((competition: Competition) => (
+                  <Card key={competition.id} className="border-border/50">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div
                             className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              event.status === 'active'
+                              competition.status === 'active'
                                 ? 'bg-green-100 dark:bg-green-900/30'
                                 : 'bg-muted'
                             }`}
                           >
                             <Calendar
                               className={`h-4 w-4 ${
-                                event.status === 'active'
+                                competition.status === 'active'
                                   ? 'text-green-600 dark:text-green-400'
                                   : 'text-muted-foreground'
                               }`}
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-semibold text-foreground truncate">{event.name}</h4>
+                            <h4 className="font-semibold text-foreground truncate">
+                              {competition.name}
+                            </h4>
                             <p className="text-sm text-muted-foreground truncate">
-                              Created {new Date(event.createdAt).toLocaleDateString()}
-                              {event.description && ` • ${event.description}`}
+                              Created {new Date(competition.createdAt).toLocaleDateString()}
+                              {competition.description && ` • ${competition.description}`}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          {getStatusBadge(event.status)}
+                          {getStatusBadge(competition.status)}
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openJudgeAssignmentDialog(event)}
+                              onClick={() => openJudgeAssignmentDialog(competition)}
                               title="Manage Judge Assignments"
                             >
                               <Users className="h-4 w-4" />
@@ -508,7 +532,7 @@ export default function EventManagement() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openEditDialog(event)}
+                              onClick={() => openEditDialog(competition)}
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -521,11 +545,11 @@ export default function EventManagement() {
                                         variant="outline"
                                         size="sm"
                                         className="text-red-600 hover:text-red-700 disabled:text-muted-foreground"
-                                        onClick={() => setDeletingEvent(event)}
+                                        onClick={() => setDeletingCompetition(competition)}
                                         disabled={
-                                          event.status === 'open' ||
-                                          event.status === 'active' ||
-                                          event.status === 'completed'
+                                          competition.status === 'open' ||
+                                          competition.status === 'active' ||
+                                          competition.status === 'completed'
                                         }
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -533,11 +557,11 @@ export default function EventManagement() {
                                     </AlertDialogTrigger>
                                   </div>
                                 </TooltipTrigger>
-                                {(event.status === 'open' ||
-                                  event.status === 'active' ||
-                                  event.status === 'completed') && (
+                                {(competition.status === 'open' ||
+                                  competition.status === 'active' ||
+                                  competition.status === 'completed') && (
                                   <TooltipContent>
-                                    <p>Cannot delete {event.status} events</p>
+                                    <p>Cannot delete {competition.status} competitions</p>
                                   </TooltipContent>
                                 )}
                               </Tooltip>
@@ -546,18 +570,19 @@ export default function EventManagement() {
                                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                   <AlertDialogDescription>
                                     This action cannot be undone. This will permanently delete the
-                                    event &quot;{event.name}&quot; and all associated data.
+                                    competition &quot;{competition.name}&quot; and all associated
+                                    data.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={() => setDeletingEvent(null)}>
+                                  <AlertDialogCancel onClick={() => setDeletingCompetition(null)}>
                                     Cancel
                                   </AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={handleDelete}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    Delete Event
+                                    Delete Competition
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -579,16 +604,16 @@ export default function EventManagement() {
         <div className="fixed inset-0 bg-background/20 backdrop-blur-[1px] flex items-center justify-center z-50">
           <div className="bg-background/95 backdrop-blur-md border border-border/50 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-sm font-medium text-foreground">Refreshing events...</span>
+            <span className="text-sm font-medium text-foreground">Refreshing competitions...</span>
           </div>
         </div>
       )}
 
       {/* Judge Assignment Dialog */}
       <JudgeAssignmentDialog
-        eventId={judgeAssignmentDialog.eventId}
-        eventName={judgeAssignmentDialog.eventName}
-        eventStatus={judgeAssignmentDialog.eventStatus}
+        eventId={judgeAssignmentDialog.competitionId}
+        eventName={judgeAssignmentDialog.competitionName}
+        eventStatus={judgeAssignmentDialog.competitionStatus}
         isOpen={judgeAssignmentDialog.isOpen}
         onOpenChange={closeJudgeAssignmentDialog}
         onAssignmentsUpdated={() => {
