@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { getLearnWorldsParams, getPostAuthRedirect } from '@/lib/utils/learnworlds-params';
 
 export function PasswordlessLogin() {
   const [email, setEmail] = useState('');
@@ -16,6 +17,14 @@ export function PasswordlessLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const router = useRouter();
+
+  // Pre-fill email from LearnWorlds params
+  useEffect(() => {
+    const params = getLearnWorldsParams();
+    if (params.isLearnWorlds && params.email) {
+      setEmail(params.email);
+    }
+  }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,26 +105,10 @@ export function PasswordlessLogin() {
 
         if (roleError) {
           console.error('Error checking user role:', roleError);
-          router.push('/'); // Let middleware handle the redirect
+          router.push('/');
         } else {
           const userRole = roleData?.[0]?.role;
-
-          // Check for 'next' param for participant deep linking
-          const nextUrl = new URLSearchParams(window.location.search).get('next');
-          if (userRole === 'participant' && nextUrl?.startsWith('/participant')) {
-            router.push(nextUrl);
-            return;
-          }
-
-          if (userRole === 'admin') {
-            router.push('/admin');
-          } else if (userRole === 'judge') {
-            router.push('/judge');
-          } else if (userRole === 'participant') {
-            router.push('/participant');
-          } else {
-            router.push('/'); // Let middleware handle the redirect
-          }
+          router.push(getPostAuthRedirect(userRole));
         }
       }
     } catch {
