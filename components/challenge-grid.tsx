@@ -2,17 +2,17 @@
 
 /**
  * Challenge Grid Component
- * 
+ *
  * Fetches challenge data from /api/challenges endpoint
  * and displays the result in a grid
- * 
+ *
  * Challenges are rendered in cards that contain:
  *   Title
  *   Description
  *   Tag(s)
  *   Deadline
  *   Application button
- * 
+ *
  * If no challenges are return, an error message is
  * displayed instead.
  */
@@ -90,9 +90,7 @@ export function ChallengeGrid() {
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm font-medium">
-                Deadline: {ch.deadline || 'N/A'}
-              </p>
+              <p className="text-sm font-medium">Deadline: {ch.deadline || 'N/A'}</p>
               <Button size="sm" className="bg-gray-900 dark:bg-white dark:text-gray-900">
                 Apply
               </Button>
