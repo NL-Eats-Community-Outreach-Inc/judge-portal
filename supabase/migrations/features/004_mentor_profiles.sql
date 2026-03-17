@@ -26,13 +26,6 @@ CREATE TABLE IF NOT EXISTS mentor_profiles (
 );
 
 -- ================================================================
--- STEP 2: CREATE INDEXES
--- ================================================================
-
--- Index for fast lookups when LearnWorlds webhooks ping the database
-CREATE INDEX IF NOT EXISTS idx_mentor_profiles_lw_id ON mentor_profiles(learnworlds_user_id);
-
--- ================================================================
 -- STEP 3: ENABLE ROW LEVEL SECURITY
 -- ================================================================
 
