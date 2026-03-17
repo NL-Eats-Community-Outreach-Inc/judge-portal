@@ -26,19 +26,35 @@ CREATE TABLE IF NOT EXISTS mentor_profiles (
 );
 
 -- ================================================================
--- STEP 3: ENABLE ROW LEVEL SECURITY
+-- STEP 2: ENABLE ROW LEVEL SECURITY
 -- ================================================================
 
 ALTER TABLE mentor_profiles ENABLE ROW LEVEL SECURITY;
 
 -- ================================================================
--- STEP 4: CREATE RLS POLICIES
+-- STEP 3: CREATE RLS POLICIES
 -- ================================================================
 
 -- Policy: Public can view visible mentor profiles for visible mentor profiles only
 CREATE POLICY "Public can view visible mentor profiles"
     ON mentor_profiles FOR SELECT
     USING (is_visible = true);
+
+-- ============================================================================
+-- STEP 4: CREATE TRIGGERS
+-- ============================================================================
+CREATE OR REPLACE FUNCTION update_mentor_profiles_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = timezone('utc'::text, now());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER mentor_profiles_updated_at
+    BEFORE UPDATE ON mentor_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_mentor_profiles_updated_at();
 
 -- ================================================================
 -- DONE
