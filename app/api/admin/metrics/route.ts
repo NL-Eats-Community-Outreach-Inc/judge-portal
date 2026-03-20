@@ -11,6 +11,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { users, scores } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { avg } from 'drizzle-orm';
 
 export async function GET() {
   try {
