@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { events, organizations, eventParticipants } from '@/lib/db/schema';
+import { events, organizations, eventParticipants, competitions } from '@/lib/db/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 
 export async function GET() {
@@ -19,13 +19,15 @@ export async function GET() {
         description: events.description,
         status: events.status,
         maxTeamSize: events.maxTeamSize,
-        prize: events.prize,
-        tags: events.tags,
-        submissionDeadline: events.submissionDeadline,
         organizationName: organizations.name,
         createdAt: events.createdAt,
         registrationId: eventParticipants.id,
         registeredAt: eventParticipants.registeredAt,
+        // Competition fields - will be null if this event has no competition attached
+        prize: competitions.prize,
+        tags: competitions.tags,
+        deadline: competitions.deadline,
+        challengeType: competitions.challengeType,
       })
       .from(events)
       .leftJoin(organizations, eq(events.organizationId, organizations.id))
@@ -33,6 +35,7 @@ export async function GET() {
         eventParticipants,
         sql`${eventParticipants.eventId} = ${events.id} AND ${eventParticipants.participantId} = ${user.id}`
       )
+      .leftJoin(competitions, eq(competitions.eventId, events.id))
       .where(inArray(events.status, ['open', 'active']))
       .orderBy(events.createdAt);
 
@@ -42,13 +45,15 @@ export async function GET() {
       description: e.description,
       status: e.status,
       maxTeamSize: e.maxTeamSize,
-      prize: e.prize,
-      tags: e.tags,
-      submission_deadline: e.submissionDeadline,
       organizationName: e.organizationName,
       createdAt: e.createdAt,
       isRegistered: e.registrationId !== null,
       registeredAt: e.registeredAt,
+      //Competition fields - null if no competition is attached to this event
+      prize: e.prize ?? null,
+      tags: e.tags ?? null,
+      deadline: e.deadline ?? null,
+      challengeType: e.challengeType ?? null,
     }));
 
     return NextResponse.json({ events: result });

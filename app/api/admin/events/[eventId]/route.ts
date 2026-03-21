@@ -20,8 +20,7 @@ export async function PUT(
     const { eventId } = await params;
     await requireEventInOrg(eventId, orgId);
 
-    const { name, description, status, maxTeamSize, prize, tags, submissionDeadline } =
-      await request.json();
+    const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
@@ -35,9 +34,6 @@ export async function PUT(
         description: description?.trim() || null,
         status: status || 'setup',
         maxTeamSize: maxTeamSize ?? null,
-        prize: prize ?? null,
-        tags: tags ?? null,
-        submissionDeadline: submissionDeadline ?? null,
       })
       .where(eq(events.id, eventId))
       .returning();

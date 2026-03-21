@@ -45,8 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orgId = await getAdminOrgId(user.id);
-    const { name, description, status, maxTeamSize, prize, tags, submissionDeadline } =
-      await request.json();
+    const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
@@ -63,9 +62,6 @@ export async function POST(request: NextRequest) {
         status: eventStatus,
         organizationId: orgId,
         maxTeamSize: maxTeamSize ?? null,
-        prize: prize ?? null,
-        tags: tags ?? null,
-        submissionDeadline: submissionDeadline ?? null,
       })
       .returning();
 

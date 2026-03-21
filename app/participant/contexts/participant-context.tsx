@@ -9,13 +9,15 @@ export interface ParticipantEvent {
   description: string | null;
   status: 'open' | 'active';
   maxTeamSize: number | null;
-  prize: string | null;
-  tags: string[] | null;
-  submissionDeadline: string | null;
   organizationName: string | null;
   createdAt: string;
   isRegistered: boolean;
   registeredAt: string | null;
+  // Competition fields - only present when the event has been promoted to a competition
+  prize: string | null;
+  tags: string[] | null;
+  deadline: string | null;
+  challengeType: string | null;
 }
 
 export interface ParticipantTeam {

@@ -46,7 +46,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const event = events.find((e) => e.id === eventId);
   const team = getTeamForEvent(eventId);
   const tags = event?.tags ?? [];
-  const allTags = event?.country.toLowerCase() !== 'canada' ? [...tags, 'Global'] : tags;
+  const allTags = event?.challengeType === 'global' ? [...tags, 'Global'] : tags;
 
   // Loading state
   if (isLoading) {
@@ -208,12 +208,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <span>Started {new Date(event.createdAt).toLocaleDateString()}</span>
                   </div>
                   {/* Only renders if a submission deadline exists */}
-                  {event.submissionDeadline && (
+                  {event.deadline && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>
-                        Deadline: {new Date(event.submissionDeadline).toLocaleDateString()}
-                      </span>
+                      <span>Deadline: {new Date(event.deadline).toLocaleDateString()}</span>
                     </div>
                   )}
                 </div>
