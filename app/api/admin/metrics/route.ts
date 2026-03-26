@@ -9,9 +9,8 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { users, scores } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
-import { avg } from 'drizzle-orm';
+import { users, scores, teams } from '@/lib/db/schema';
+import { eq, sql, desc } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -21,31 +20,40 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const learners = await db
-      .select()
+    const learnerCountResult = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
       .from(users)
       .where(eq(users.role, 'participant'));
 
-    const recommendationRequests = await db
-      .select()
+    const recommendationCountResult = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
       .from(scores);
 
     const topTeams = await db
       .select({
         teamId: scores.teamId,
-        count: sql<number>`count(*)`,
+        teamName: teams.name,
+        recommendationCount: sql<number>`count(*)`,
       })
       .from(scores)
-      .groupBy(scores.teamId)
-      .orderBy(sql`count(*) DESC`)
+      .leftJoin(teams, eq(scores.teamId, teams.id))
+      .groupBy(scores.teamId, teams.name)
+      .orderBy(desc(sql`count(*)`))
       .limit(5);
 
-    // TODO: Implement real average response time calculation
     const metrics = {
-      totalRecommendationRequests: recommendationRequests.length,
-      mostFrequentlyRecommendedItems: topTeams,
-      totalLearnersServed: learners.length,
-      averageResponseTime: 0,
+      totalRecommendationRequests: Number(recommendationCountResult[0]?.count ?? 0),
+      mostFrequentlyRecommendedItems: topTeams.map((team) => ({
+        teamId: team.teamId,
+        teamName: team.teamName ?? 'Unknown Team',
+        count: Number(team.recommendationCount ?? 0),
+      })),
+      totalLearnersServed: Number(learnerCountResult[0]?.count ?? 0),
+      averageResponseTime: null,
     };
 
     return NextResponse.json(metrics);
