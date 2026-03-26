@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { events, teams, competitions } from '@/lib/db/schema';
+import { getCorsHeaders } from './utils';
 
-
-const VALID_STATUSES = [ 'open', 'active', 'completed'] as const;
+const VALID_STATUSES = ['open', 'active', 'completed'] as const;
 type ChallengeStatus = (typeof VALID_STATUSES)[number];
 
 function resolveStatus(request: NextRequest): ChallengeStatus {
@@ -15,21 +15,6 @@ function resolveStatus(request: NextRequest): ChallengeStatus {
   }
 
   return VALID_STATUSES.includes(status) ? status : 'open';
-}
-
-function getCorsHeaders(request: NextRequest): HeadersInit {
-  const allowedOrigin = process.env.LEARNWORLDS_ALLOWED_ORIGIN;
-  const requestOrigin = request.headers.get('origin');
-  const origin = allowedOrigin && requestOrigin === allowedOrigin ? allowedOrigin : undefined;
-
-  return {
-    'Access-Control-Allow-Origin': origin || '',
-
-    'Access-Control-Allow-Methods': 'GET,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400',
-    Vary: 'Origin',
-  };
 }
 
 export async function OPTIONS(request: NextRequest) {
@@ -55,53 +40,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-  // Parse pagination params
-  const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
-  const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
+    // Parse pagination params
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
 
-  const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 100);
-  const offset = Number.isNaN(rawOffset) ? 0 : Math.max(rawOffset, 0);
-  
-  
-  const challenges = await db
-    .select({
-      id: events.id,
-      title: sql<string>`COALESCE(${competitions.title}, ${events.name})`,
-      shortDescription: competitions.shortDescription,
-      coverImageUrl: competitions.coverImageUrl,
-      challengeType: competitions.challengeType,
-      tags: competitions.tags,
-      prize: competitions.prize,
-      deadline: competitions.deadline,
-      country: competitions.country,
-      participantSignupUrl: competitions.participantSignupUrl,
-      teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
-    })
-    .from(events)
-    .innerJoin(competitions, eq(competitions.eventId, events.id))
-    .leftJoin(teams, eq(teams.eventId, events.id))
-    .where(eq(events.status, status))
-    .groupBy(
-      events.id,
-      events.name,
-      events.createdAt,
-      competitions.title,
-      competitions.shortDescription,
-      competitions.coverImageUrl,
-      competitions.challengeType,
-      competitions.tags,
-      competitions.prize,
-      competitions.deadline,
-      competitions.country,
-      competitions.participantSignupUrl
-    )
-    .orderBy(events.createdAt)
-    .limit(limit)
+    const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 100);
+    const offset = Number.isNaN(rawOffset) ? 0 : Math.max(rawOffset, 0);
+
+    const challenges = await db
+      .select({
+        id: events.id,
+        title: sql<string>`COALESCE(${competitions.title}, ${events.name})`,
+        shortDescription: competitions.shortDescription,
+        coverImageUrl: competitions.coverImageUrl,
+        challengeType: competitions.challengeType,
+        tags: competitions.tags,
+        prize: competitions.prize,
+        deadline: competitions.deadline,
+        country: competitions.country,
+        participantSignupUrl: competitions.participantSignupUrl,
+        teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
+      })
+      .from(events)
+      .innerJoin(competitions, eq(competitions.eventId, events.id))
+      .leftJoin(teams, eq(teams.eventId, events.id))
+      .where(eq(events.status, status))
+      .groupBy(
+        events.id,
+        events.name,
+        events.createdAt,
+        competitions.title,
+        competitions.shortDescription,
+        competitions.coverImageUrl,
+        competitions.challengeType,
+        competitions.tags,
+        competitions.prize,
+        competitions.deadline,
+        competitions.country,
+        competitions.participantSignupUrl
+      )
+      .orderBy(events.createdAt)
+      .limit(limit)
       .offset(offset);
 
     const participantBaseUrl =
       process.env.PUBLIC_PARTICIPANT_SIGNUP_BASE_URL || request.nextUrl.origin;
-
 
     const responsePayload = {
       challenges: challenges.map((challenge) => ({
