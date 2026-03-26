@@ -224,3 +224,80 @@ test.describe('GET /api/challenges endpoint', () => {
     }
   });
 });
+
+test.describe('GET /api/challenges/[id] endpoint', () => {
+  const LEARNWORLDS_ORIGIN = process.env.LEARNWORLDS_ORIGIN ?? 'https://learnworlds.com';
+
+  test('should return challenge detail for a valid challenge ID', async ({ request }) => {
+    const listResponse = await request.get('/api/challenges');
+    expect(listResponse.status()).toBe(200);
+
+    const listData = await listResponse.json();
+    if (!Array.isArray(listData.challenges) || listData.challenges.length === 0) {
+      test.skip();
+      return;
+    }
+
+    const challengeId = listData.challenges[0].id;
+    const detailResponse = await request.get(`/api/challenges/${challengeId}`);
+
+    expect(detailResponse.status()).toBe(200);
+    const detailData = await detailResponse.json();
+    expect(detailData).toHaveProperty('challenge');
+    expect(detailData.challenge.id).toBe(challengeId);
+  });
+
+  test('should return snake_case fields in challenge detail response', async ({ request }) => {
+    const listResponse = await request.get('/api/challenges');
+    expect(listResponse.status()).toBe(200);
+
+    const listData = await listResponse.json();
+    if (!Array.isArray(listData.challenges) || listData.challenges.length === 0) {
+      test.skip();
+      return;
+    }
+
+    const challengeId = listData.challenges[0].id;
+    const detailResponse = await request.get(`/api/challenges/${challengeId}`);
+
+    expect(detailResponse.status()).toBe(200);
+    const data = await detailResponse.json();
+
+    expect(data.challenge).toHaveProperty('short_description');
+    expect(data.challenge).toHaveProperty('cover_image_url');
+    expect(data.challenge).toHaveProperty('challenge_type');
+    expect(data.challenge).toHaveProperty('prize_amount');
+    expect(data.challenge).toHaveProperty('teams_registered_count');
+    expect(data.challenge).toHaveProperty('participant_signup_url');
+  });
+
+  test('should return 400 for invalid UUID format', async ({ request }) => {
+    const response = await request.get('/api/challenges/not-a-uuid');
+
+    expect(response.status()).toBe(400);
+    const data = await response.json();
+    expect(data).toHaveProperty('error');
+    expect(data.error).toContain('Invalid challenge ID format');
+  });
+
+  test('should return 404 for non-existent challenge ID', async ({ request }) => {
+    const response = await request.get('/api/challenges/00000000-0000-0000-0000-000000000000');
+
+    expect(response.status()).toBe(404);
+    const data = await response.json();
+    expect(data).toHaveProperty('error');
+  });
+
+  test('should respond to OPTIONS preflight on detail endpoint', async ({ request }) => {
+    const response = await request.fetch('/api/challenges/00000000-0000-0000-0000-000000000000', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: LEARNWORLDS_ORIGIN,
+      },
+    });
+
+    expect(response.status()).toBe(204);
+    expect(response.headers()).toHaveProperty('access-control-allow-methods');
+    expect(response.headers()).toHaveProperty('access-control-allow-headers');
+  });
+});
