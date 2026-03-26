@@ -161,4 +161,66 @@ test.describe('GET /api/challenges endpoint', () => {
       expect(challenge.participant_signup_url).toContain(challenge.id);
     }
   });
+
+  test('should return 400 for setup status because it is not publicly exposed', async ({
+    request,
+  }) => {
+    const response = await request.get('/api/challenges?status=setup');
+
+    expect(response.status()).toBe(400);
+    const data = await response.json();
+    expect(data).toHaveProperty('error');
+    expect(data.error).toContain('Invalid status parameter');
+  });
+
+  test('should include pagination metadata with defaults', async ({ request }) => {
+    const response = await request.get('/api/challenges');
+
+    expect(response.status()).toBe(200);
+    const data = await response.json();
+
+    expect(data).toHaveProperty('pagination');
+    expect(data.pagination).toEqual(
+      expect.objectContaining({
+        limit: 50,
+        offset: 0,
+      })
+    );
+    expect(typeof data.pagination.count).toBe('number');
+    expect(data.pagination.count).toBe(data.challenges.length);
+  });
+
+  test('should clamp limit and normalize offset pagination params', async ({ request }) => {
+    const response = await request.get('/api/challenges?limit=999&offset=-8');
+
+    expect(response.status()).toBe(200);
+    const data = await response.json();
+
+    expect(data).toHaveProperty('pagination');
+    expect(data.pagination.limit).toBe(100);
+    expect(data.pagination.offset).toBe(0);
+  });
+
+  test('should fallback pagination params when values are invalid', async ({ request }) => {
+    const response = await request.get('/api/challenges?limit=abc&offset=xyz');
+
+    expect(response.status()).toBe(200);
+    const data = await response.json();
+
+    expect(data).toHaveProperty('pagination');
+    expect(data.pagination.limit).toBe(50);
+    expect(data.pagination.offset).toBe(0);
+  });
+
+  test('should include country field in challenge payload', async ({ request }) => {
+    const response = await request.get('/api/challenges');
+
+    expect(response.status()).toBe(200);
+    const data = await response.json();
+
+    if (data.challenges.length > 0) {
+      const challenge = data.challenges[0];
+      expect(challenge).toHaveProperty('country');
+    }
+  });
 });
