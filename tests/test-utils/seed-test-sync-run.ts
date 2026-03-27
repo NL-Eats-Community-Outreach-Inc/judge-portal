@@ -93,9 +93,7 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
   });
 
   if (!payloadsRes.ok) {
-    throw new Error(
-      `[seedTestSyncRun] Failed to create raw payloads: ${await payloadsRes.text()}`
-    );
+    throw new Error(`[seedTestSyncRun] Failed to create raw payloads: ${await payloadsRes.text()}`);
   }
 
   const insertedPayloads = (await payloadsRes.json()) as Array<{ id: string }>;
