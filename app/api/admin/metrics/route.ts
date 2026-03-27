@@ -11,16 +11,17 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { users, scores } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
-import { avg } from 'drizzle-orm';
 
 export async function GET() {
   try {
     const user = await getUserFromSession();
 
+    // Only admins can access this endpoint
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Query total learners (participants)
     const learners = await db
       .select()
       .from(users)
@@ -40,7 +41,6 @@ export async function GET() {
       .orderBy(sql`count(*) DESC`)
       .limit(5);
 
-    // TODO: Implement real average response time calculation
     const metrics = {
       totalRecommendationRequests: recommendationRequests.length,
       mostFrequentlyRecommendedItems: topTeams,
