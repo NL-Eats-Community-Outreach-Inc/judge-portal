@@ -260,6 +260,50 @@
   .dark .feature-card:hover {
     background-color: hsl(0 0% 10% / 0.8);
   }
+
+  /* Mentor card container */
+  .mentor-card {
+    @apply relative bg-card border-2 border-border transition-all duration-300 ease-out overflow-hidden;
+    transform: translateY(0);
+  }
+
+  /* Hover effect */
+  .mentor-card:hover {
+    @apply border-primary/40 shadow-lg;
+  }
+
+  /* Radial glow */
+  .mentor-card::after {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none;
+    background: radial-gradient(
+      circle at var(--mous-x, 50%) var(--mouse-y, 50%),
+      hsl(var(--primary) / 0.1) 0%,
+      transparent 70%
+    );
+    z-index: 1;
+  }
+
+  /* Hover effect for radial glow */
+  .mentor-card:hover::after {
+    @apply opacity-100;
+  }
+
+  /* Avatar container for mentor cards */
+  .mentor-avatar-container {
+    @apply relative h-16 w-16 shrink-0 rounded-full border-2 border-muted bg-muted
+      overflow-hidden transition-transform duration-0 ease-out flex items-center
+      justify-center;
+  }
+
+  /* Hover effect */
+  .mentor-card:hover .mentor-avatar-container {
+    @apply border-primary/20 scale-105;
+  }
+
+  .mentor-card-content {
+    @apply relative z-10 flex flex-col h-full;
+  }
 }
 
 @layer utilities {
