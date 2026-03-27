@@ -3,10 +3,16 @@ import { expect, test, type Page } from '@playwright/test';
 import { uniqueTestEmail } from './test-utils/create-unique-email';
 import { createTestUser } from './test-utils/create-test-user';
 import { cleanupTestUserById } from './test-utils/delete-test-user';
-import { seedTestSyncRun, cleanupTestSyncRun } from './test-utils/seed-test-sync-run';
+import {
+  seedTestSyncRun,
+  cleanupTestSyncRun,
+  isLearnworldsSchemaAvailable,
+} from './test-utils/seed-test-sync-run';
 
 const TEST_PASSWORD = 'UniqueTestPassphrase28940!';
 const NON_EXISTENT_UUID = '00000000-0000-0000-0000-000000000000';
+
+let isSchemaAvailable = true;
 
 async function login(page: Page, email: string, password: string, expectedPath: RegExp) {
   await page.goto('/auth/login', { waitUntil: 'networkidle' });
@@ -20,6 +26,10 @@ async function login(page: Page, email: string, password: string, expectedPath: 
 }
 
 test.describe('POST /api/admin/learnworlds/transform', () => {
+  test.beforeAll(async () => {
+    isSchemaAvailable = await isLearnworldsSchemaAvailable();
+  });
+
   // ── Auth guard tests (no DB setup required) ─────────────────────────────
 
   test('redirects unauthenticated request to login', async ({ request }) => {
@@ -83,8 +93,15 @@ test.describe('POST /api/admin/learnworlds/transform', () => {
         data: { syncRunId: NON_EXISTENT_UUID },
       });
 
-      expect(response.status()).toBe(404);
       const body = await response.json();
+
+      if (!isSchemaAvailable) {
+        expect(response.status()).toBe(503);
+        expect(body.error).toMatch(/schema is unavailable/i);
+        return;
+      }
+
+      expect(response.status()).toBe(404);
       expect(typeof body.error).toBe('string');
     } finally {
       await cleanupTestUserById(userId);
@@ -94,6 +111,8 @@ test.describe('POST /api/admin/learnworlds/transform', () => {
   // ── Integration tests (seed real DB rows, then exercise the endpoint) ────
 
   test('transforms valid raw payloads and skips invalid ones', async ({ page }) => {
+    test.skip(!isSchemaAvailable, 'LearnWorlds schema is not available in this environment');
+
     const uid = randomUUID().slice(0, 8);
     const email = uniqueTestEmail('judge');
     const userId = await createTestUser(email, TEST_PASSWORD, 'admin');
@@ -141,6 +160,8 @@ test.describe('POST /api/admin/learnworlds/transform', () => {
   });
 
   test('is idempotent: running transform twice produces the same counts', async ({ page }) => {
+    test.skip(!isSchemaAvailable, 'LearnWorlds schema is not available in this environment');
+
     const uid = randomUUID().slice(0, 8);
     const email = uniqueTestEmail('judge');
     const userId = await createTestUser(email, TEST_PASSWORD, 'admin');
