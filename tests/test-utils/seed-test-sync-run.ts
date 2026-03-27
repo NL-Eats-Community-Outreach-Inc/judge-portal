@@ -27,6 +27,20 @@ const deleteHeaders = {
   Prefer: 'return=minimal',
 };
 
+export async function isLearnworldsSchemaAvailable(): Promise<boolean> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_sync_runs?select=id&limit=1`, {
+    method: 'GET',
+    headers: insertHeaders,
+  });
+
+  if (response.ok) {
+    return true;
+  }
+
+  const body = await response.text();
+  return !body.includes('PGRST205');
+}
+
 export interface SeedRecord {
   learnerExternalId: string | null;
   courseExternalId: string | null;

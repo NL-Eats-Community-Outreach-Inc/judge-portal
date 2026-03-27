@@ -9,6 +9,25 @@ interface TransformRequestBody {
   syncRunId?: string;
 }
 
+function isLearnworldsSchemaUnavailableError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const errorWithCode = error as Error & {
+    code?: string;
+    cause?: { code?: string; message?: string };
+  };
+  const message = [error.message, errorWithCode.cause?.message].filter(Boolean).join(' ');
+
+  return (
+    errorWithCode.code === '42P01' ||
+    errorWithCode.cause?.code === '42P01' ||
+    (message.includes('learnworlds_') && message.includes('does not exist')) ||
+    (message.includes('learner_progress') && message.includes('does not exist'))
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromSession();
@@ -48,6 +67,13 @@ export async function POST(request: NextRequest) {
       skippedRecords: result.skippedRecords,
     });
   } catch (error) {
+    if (isLearnworldsSchemaUnavailableError(error)) {
+      return NextResponse.json(
+        { error: 'LearnWorlds sync schema is unavailable in this environment' },
+        { status: 503 }
+      );
+    }
+
     console.error('LearnWorlds transform error:', error);
     return NextResponse.json({ error: 'Internal server error during transform' }, { status: 500 });
   }
