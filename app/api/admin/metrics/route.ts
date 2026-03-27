@@ -22,14 +22,9 @@ export async function GET() {
     }
 
     // Query total learners (participants)
-    const learners = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, 'participant'));
+    const learners = await db.select().from(users).where(eq(users.role, 'participant'));
 
-    const recommendationRequests = await db
-      .select()
-      .from(scores);
+    const recommendationRequests = await db.select().from(scores);
 
     const topTeams = await db
       .select({

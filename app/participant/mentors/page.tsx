@@ -113,7 +113,9 @@ export default function MentorsPage() {
               type="button"
               variant={selectedExpertise === tag ? 'default' : 'outline'}
               onClick={() => setSelectedExpertise(tag)}
-              className={selectedExpertise === tag ? 'bg-teal-600 hover:bg-teal-700 text-white' : ''}
+              className={
+                selectedExpertise === tag ? 'bg-teal-600 hover:bg-teal-700 text-white' : ''
+              }
             >
               {tag}
             </Button>
