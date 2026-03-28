@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS competitions (
 );
 
 -- ================================================================
--- STEP 5: CREATE INDEXES
+-- STEP 2: CREATE INDEXES
 -- ================================================================
 
--- Challenges indexes
+-- Competitions indexes
 CREATE INDEX IF NOT EXISTS idx_competitions_event ON competitions(event_id);
 
 -- ================================================================
