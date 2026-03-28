@@ -313,6 +313,7 @@ export const organizationMembers = pgTable(
   })
 );
 
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
