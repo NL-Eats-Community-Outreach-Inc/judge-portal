@@ -10,27 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PasswordlessLogin } from '@/components/auth/passwordless-login';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { getLearnWorldsParams, getPostAuthRedirect } from '@/lib/utils/learnworlds-params';
+import { useState } from 'react';
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [signUpHref, setSignUpHref] = useState('/auth/sign-up');
   const router = useRouter();
-
-  // Pre-fill email from LearnWorlds params and preserve next param for sign-up link
-  useEffect(() => {
-    const params = getLearnWorldsParams();
-    if (params.isLearnWorlds && params.email) {
-      setEmail(params.email);
-    }
-    if (params.nextUrl) {
-      setSignUpHref(`/auth/sign-up?next=${encodeURIComponent(params.nextUrl)}`);
-    }
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +39,26 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
       if (roleError) {
         console.error('Error checking user role:', roleError);
-        router.push('/');
+        router.push('/'); // Let middleware handle the redirect
       } else {
         const userRole = roleData?.[0]?.role;
-        router.push(getPostAuthRedirect(userRole));
+
+        // Check for 'next' param for participant deep linking
+        const nextUrl = new URLSearchParams(window.location.search).get('next');
+        if (userRole === 'participant' && nextUrl?.startsWith('/participant')) {
+          router.push(nextUrl);
+          return;
+        }
+
+        if (userRole === 'admin') {
+          router.push('/admin');
+        } else if (userRole === 'judge') {
+          router.push('/judge');
+        } else if (userRole === 'participant') {
+          router.push('/participant');
+        } else {
+          router.push('/'); // Let middleware handle the redirect
+        }
       }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
@@ -127,7 +130,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
           <div className="mt-6 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Link href={signUpHref} className="underline underline-offset-4">
+            <Link href="/auth/sign-up" className="underline underline-offset-4">
               Sign up
             </Link>
           </div>

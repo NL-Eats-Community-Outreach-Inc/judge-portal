@@ -52,12 +52,13 @@ export function getLearnWorldsParams(): {
  * Get the clean deep-link path from the `next` URL param, stripping
  * LearnWorlds-specific query params (ref, email).
  *
- * Returns null if the URL is missing or fails validation.
+ * Returns null if the URL is missing, fails validation, or targets
+ * a non-participant path.
  *
  * Security: Only allows relative paths starting with `/participant`
  * to prevent open-redirect attacks (e.g., next=https://evil.com).
  */
-export function getCleanNextUrl(): string | null {
+export function getCleanParticipantNextUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -76,6 +77,7 @@ export function getCleanNextUrl(): string | null {
 
 /** Allowed role-based dashboard routes */
 const ROLE_DASHBOARDS: Record<string, string> = {
+  super_admin: '/super-admin',
   admin: '/admin',
   judge: '/judge',
   participant: '/participant',
@@ -85,13 +87,13 @@ const ROLE_DASHBOARDS: Record<string, string> = {
  * Determine the post-auth redirect path based on user role and
  * any LearnWorlds deep-link URL.
  *
- * Centralises redirect logic so every auth flow (password sign-up,
- * OTP sign-up, password login, passwordless login) behaves the same.
+ * Used by the sign-up flow only. Login and passwordless flows
+ * handle redirects via existing middleware `next` param logic.
  */
 export function getPostAuthRedirect(role: string | undefined): string {
   // For participants, honour a validated deep-link if present
   if (role === 'participant') {
-    const cleanNext = getCleanNextUrl();
+    const cleanNext = getCleanParticipantNextUrl();
     if (cleanNext) return cleanNext;
   }
 
