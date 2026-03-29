@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
+import { createHmac } from 'crypto';
 
 // Requires LEARNWORLDS_WEBHOOK_SECRET in env — skip in CI where it's not configured
 const WEBHOOK_SECRET = process.env.LEARNWORLDS_WEBHOOK_SECRET;
 test.skip(!WEBHOOK_SECRET, 'LEARNWORLDS_WEBHOOK_SECRET not set');
 
 const WEBHOOK_URL = '/api/webhooks/learnworlds/mentor';
+
+function signPayload(payload: object): string {
+  return createHmac('sha256', WEBHOOK_SECRET!).update(JSON.stringify(payload)).digest('hex');
+}
 
 const validPayload = {
   user_id: 'lw-user-001',
@@ -18,7 +23,7 @@ const validPayload = {
 };
 
 test.describe('Mentor webhook endpoint', () => {
-  test('rejects requests without webhook secret', async ({ request }) => {
+  test('rejects requests without signature', async ({ request }) => {
     const response = await request.post(WEBHOOK_URL, {
       data: validPayload,
     });
@@ -28,9 +33,9 @@ test.describe('Mentor webhook endpoint', () => {
     expect(body.error).toBe('Invalid signature');
   });
 
-  test('rejects requests with wrong webhook secret', async ({ request }) => {
+  test('rejects requests with wrong signature', async ({ request }) => {
     const response = await request.post(WEBHOOK_URL, {
-      headers: { 'x-webhook-secret': 'wrong-secret' },
+      headers: { 'x-lw-signature': 'wrong-signature' },
       data: validPayload,
     });
 
@@ -38,9 +43,10 @@ test.describe('Mentor webhook endpoint', () => {
   });
 
   test('rejects payload missing user_id', async ({ request }) => {
+    const payload = { name: 'No ID Mentor', cf_mentor_title: 'Consultant' };
     const response = await request.post(WEBHOOK_URL, {
-      headers: { 'x-webhook-secret': WEBHOOK_SECRET },
-      data: { name: 'No ID Mentor', cf_mentor_title: 'Consultant' },
+      headers: { 'x-lw-signature': signPayload(payload) },
+      data: payload,
     });
 
     expect(response.status()).toBe(400);
@@ -50,7 +56,7 @@ test.describe('Mentor webhook endpoint', () => {
 
   test('accepts valid mentor webhook payload', async ({ request }) => {
     const response = await request.post(WEBHOOK_URL, {
-      headers: { 'x-webhook-secret': WEBHOOK_SECRET },
+      headers: { 'x-lw-signature': signPayload(validPayload) },
       data: validPayload,
     });
 
@@ -60,16 +66,16 @@ test.describe('Mentor webhook endpoint', () => {
   });
 
   test('handles duplicate webhook (upsert)', async ({ request }) => {
-    // Send same payload twice — should not error
     const first = await request.post(WEBHOOK_URL, {
-      headers: { 'x-webhook-secret': WEBHOOK_SECRET },
+      headers: { 'x-lw-signature': signPayload(validPayload) },
       data: validPayload,
     });
     expect(first.ok()).toBeTruthy();
 
+    const updatedPayload = { ...validPayload, cf_mentor_title: 'Updated Title' };
     const second = await request.post(WEBHOOK_URL, {
-      headers: { 'x-webhook-secret': WEBHOOK_SECRET },
-      data: { ...validPayload, cf_mentor_title: 'Updated Title' },
+      headers: { 'x-lw-signature': signPayload(updatedPayload) },
+      data: updatedPayload,
     });
     expect(second.ok()).toBeTruthy();
   });
