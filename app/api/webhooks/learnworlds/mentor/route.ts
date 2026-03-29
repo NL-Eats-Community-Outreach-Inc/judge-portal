@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { mentorProfiles } from '@/lib/db/schema';
 
@@ -26,15 +26,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
     }
 
-    // Validate webhook secret with constant-time comparison
-    const signature = request.headers.get('x-webhook-secret') ?? '';
+    // LearnWorlds sends HMAC-SHA256 of the body in x-lw-signature
+    const signature = request.headers.get('x-lw-signature') ?? '';
+    const body = await request.text();
+    const expectedSig = createHmac('sha256', webhookSecret).update(body).digest('hex');
     const sigBuf = Buffer.from(signature);
-    const secretBuf = Buffer.from(webhookSecret);
-    if (sigBuf.length !== secretBuf.length || !timingSafeEqual(sigBuf, secretBuf)) {
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const payload = await request.json();
+    const payload = JSON.parse(body);
 
     const userId = payload.user_id || payload.id;
     const fullName = payload.name || payload.full_name || 'Unknown';
