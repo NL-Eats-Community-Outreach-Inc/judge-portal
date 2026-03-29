@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const payload = JSON.parse(body);
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 });
+    }
 
     const userId = payload.user_id || payload.id;
     const fullName = payload.name || payload.full_name || 'Unknown';
