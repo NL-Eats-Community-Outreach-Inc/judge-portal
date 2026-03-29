@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+// Requires LEARNWORLDS_WEBHOOK_SECRET in env — skip in CI where it's not configured
+const WEBHOOK_SECRET = process.env.LEARNWORLDS_WEBHOOK_SECRET;
+test.skip(!WEBHOOK_SECRET, 'LEARNWORLDS_WEBHOOK_SECRET not set');
+
 const WEBHOOK_URL = '/api/webhooks/learnworlds/mentor';
-const WEBHOOK_SECRET = process.env.LEARNWORLDS_WEBHOOK_SECRET || 'test-webhook-secret';
 
 const validPayload = {
   user_id: 'lw-user-001',
