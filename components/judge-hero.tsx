@@ -22,7 +22,7 @@ export function JudgeHero() {
         />
 
         <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 max-w-2xl mt-6">
-          It's a me, Freddie!
+          Freddie Time!
 
           Streamline your judging process with our comprehensive platform for competitions,
           evaluations, and assessments.
