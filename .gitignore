@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/coverage-report
+/tmp/v8-coverage
+.c8_output
 
 # next.js
 /.next/
