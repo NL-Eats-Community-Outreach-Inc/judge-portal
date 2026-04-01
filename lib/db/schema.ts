@@ -313,6 +313,36 @@ export const organizationMembers = pgTable(
   })
 );
 
+export const competitions = pgTable(
+  'competitions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: uuid('event_id')
+      .references(() => events.id, { onDelete: 'cascade' })
+      .notNull()
+      .unique(),
+    title: text('title'),
+    shortDescription: text('short_description'),
+    coverImageUrl: text('cover_image_url'),
+    challengeType: text('challenge_type').default('global').notNull(),
+    tags: text('tags').array(),
+    prize: text('prize'),
+    deadline: timestamp('deadline', { withTimezone: true, mode: 'string' }),
+    country: text('country'),
+    participantSignupUrl: text('participant_signup_url'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    eventIdx: index('idx_competitions_event').on(table.eventId),
+  })
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
@@ -335,3 +365,5 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 export type NewTeamMember = typeof teamMembers.$inferInsert;
 export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type NewOrganizationMember = typeof organizationMembers.$inferInsert;
+export type Competition = typeof competitions.$inferSelect;
+export type NewCompetition = typeof competitions.$inferInsert;
