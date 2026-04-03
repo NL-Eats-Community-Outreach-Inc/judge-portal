@@ -408,7 +408,7 @@ export default function EventManagement() {
                 Create Event
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="overflow-y-auto max-h-[80vh]">
               <DialogHeader>
                 <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
                 <DialogDescription>

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     //Verify the event belongs to the admin's org
     const [event] = await db
-      .select({ id: eventId })
+      .select({ id: events.id })
       .from(events)
       .where(and(eq(events.id, eventId), eq(events.organizationId, orgId)));
 
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     const [competition] = await db
       .insert(competitions)
       .values({
+        eventId: eventId,
         title: title || null,
         shortDescription: shortDescription || null,
         coverImageUrl: coverImageUrl || null,
