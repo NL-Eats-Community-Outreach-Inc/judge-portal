@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { competitions, events, teams } from '@/lib/db/schema';
 import { getCorsHeaders, isValidUuid } from '../utils';
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .from(events)
       .innerJoin(competitions, eq(competitions.eventId, events.id))
       .leftJoin(teams, eq(teams.eventId, events.id))
-      .where(and(eq(events.id, id)))
+      .where(eq(events.id, id))
       .groupBy(
         events.id,
         events.status,
@@ -63,7 +63,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       )
       .limit(1);
 
-    if (!challenge || challenge.status === 'setup') {
+    if (
+      !challenge ||
+      challenge.status === 'setup' ||
+      challenge.status === 'draft'
+    ) {
       return NextResponse.json(
         { error: 'Challenge not found' },
         { status: 404, headers: corsHeaders }
