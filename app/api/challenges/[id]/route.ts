@@ -79,21 +79,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(
       {
-        challenge: {
-          id: challenge.id,
-          title: challenge.title,
-          short_description: challenge.shortDescription || null,
-          cover_image_url: challenge.coverImageUrl || null,
-          challenge_type: challenge.challengeType || 'global',
-          tags: challenge.tags || [],
-          prize_amount: challenge.prize || null,
-          deadline: challenge.deadline || null,
-          teams_registered_count: challenge.teamsRegisteredCount,
-          country: challenge.country || null,
-          participant_signup_url:
-            challenge.participantSignupUrl ||
-            `${participantBaseUrl}/participant/event/${challenge.id}`,
-        },
+        id: challenge.id,
+        title: challenge.title,
+        short_description: challenge.shortDescription || null,
+        cover_image_url: challenge.coverImageUrl || null,
+        challenge_type: challenge.challengeType || 'global',
+        tags: challenge.tags || [],
+        prize_amount: challenge.prize || null,
+        deadline: challenge.deadline || null,
+        teams_registered_count: challenge.teamsRegisteredCount,
+        country: challenge.country || null,
+        participant_signup_url:
+          challenge.participantSignupUrl ||
+          `${participantBaseUrl}/participant/event/${challenge.id}`,
       },
       { headers: corsHeaders }
     );
