@@ -59,11 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       )
       .limit(1);
 
-    if (
-      !challenge ||
-      challenge.status === 'setup' ||
-      challenge.status === 'draft'
-    ) {
+    if (!challenge || challenge.status === 'setup') {
       return NextResponse.json(
         { error: 'Challenge not found' },
         { status: 404, headers: corsHeaders }
