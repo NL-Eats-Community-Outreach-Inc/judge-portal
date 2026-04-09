@@ -4,10 +4,6 @@ import { db } from '@/lib/db';
 import { competitions, events, teams } from '@/lib/db/schema';
 import { getCorsHeaders, isValidUuid } from '../utils';
 
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
-
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 204,
@@ -15,11 +11,11 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const corsHeaders = getCorsHeaders(request);
 
   try {
-    const { id } = await context.params;
+    const { id } = await params;
 
     if (!isValidUuid(id)) {
       return NextResponse.json(
