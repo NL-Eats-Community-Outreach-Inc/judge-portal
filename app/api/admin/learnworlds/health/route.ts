@@ -28,9 +28,12 @@ export async function GET() {
     const httpStatus = healthReport.status === 'failing' ? 503 : 200;
 
     return NextResponse.json(healthReport, { status: httpStatus });
-    
   } catch (error) {
     console.error('Failed to retrieve ingestion health:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to calculate ingestion health status.');
+    return sendApiError(
+      500,
+      'INTERNAL_SERVER_ERROR',
+      'Failed to calculate ingestion health status.'
+    );
   }
 }

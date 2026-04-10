@@ -20,7 +20,7 @@ export interface IngestionHealthReport {
 export async function getIngestionHealthStatus(): Promise<IngestionHealthReport> {
   const thresholdHours = Number(process.env.LEARNWORLDS_STALENESS_THRESHOLD_HOURS || '24');
   const thresholdMs = thresholdHours * 60 * 60 * 1000;
-    
+
   const [lastRun] = await db
     .select()
     .from(learnworldsSyncRuns)
