@@ -25,19 +25,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const [challenge] = await db
-    .select({
-      id: events.id,
-      status: events.status,
-      title: events.name,
-      shortDescription: events.description,
-      teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
-  })
-  .from(events)
-  .leftJoin(teams, eq(teams.eventId, events.id))
-  .where(eq(events.id, id))
-  .groupBy(events.id, events.status, events.name, events.description)
-  .limit(1);
-
+      .select({
+        id: events.id,
+        status: events.status,
+        title: events.name,
+        shortDescription: events.description,
+        teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
+      })
+      .from(events)
+      .leftJoin(teams, eq(teams.eventId, events.id))
+      .where(eq(events.id, id))
+      .groupBy(events.id, events.status, events.name, events.description)
+      .limit(1);
 
     if (!challenge || challenge.status === 'setup') {
       return NextResponse.json(
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           teams_registered_count: challenge.teamsRegisteredCount,
           country: null,
           participant_signup_url: `${participantBaseUrl}/participant/event/${challenge.id}`,
-        }
+        },
       },
       { headers: corsHeaders }
     );
