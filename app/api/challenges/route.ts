@@ -7,14 +7,21 @@ import { getCorsHeaders } from './utils';
 const VALID_STATUSES = ['open', 'active', 'completed'] as const;
 type ChallengeStatus = (typeof VALID_STATUSES)[number];
 
-function resolveStatus(request: NextRequest): ChallengeStatus {
-  const status = request.nextUrl.searchParams.get('status')?.trim() as ChallengeStatus | undefined;
+function resolveStatus(request: NextRequest): {
+  status: ChallengeStatus;
+  hasInvalidStatusParam: boolean;
+} {
+  const statusParam = request.nextUrl.searchParams.get('status')?.trim();
 
-  if (!status) {
-    return 'open';
+  if (!statusParam) {
+    return { status: 'open', hasInvalidStatusParam: false };
   }
 
-  return VALID_STATUSES.includes(status) ? status : 'open';
+  if (VALID_STATUSES.includes(statusParam as ChallengeStatus)) {
+    return { status: statusParam as ChallengeStatus, hasInvalidStatusParam: false };
+  }
+
+  return { status: 'open', hasInvalidStatusParam: true };
 }
 
 export async function OPTIONS(request: NextRequest) {
@@ -29,10 +36,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const statusParam = searchParams.get('status')?.trim();
-    const status = resolveStatus(request);
-
-    if (statusParam && !VALID_STATUSES.includes(statusParam as ChallengeStatus)) {
+    const { status, hasInvalidStatusParam } = resolveStatus(request);
+    if (hasInvalidStatusParam) {
       return NextResponse.json(
         { error: 'Invalid status parameter. Valid values: open, active, completed' },
         { status: 400, headers: corsHeaders }
