@@ -324,7 +324,7 @@ export const mentorProfiles = pgTable('mentor_profiles', {
   calendlyUrl: text('calendly_url'),
   photoUrl: text('photo_url'),
   tags: text('tags').array(),
-  isVisible: boolean('is_visible').default(true).notNull(),
+  isVisible: boolean('is_visible').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
     .default(sql`timezone('utc'::text, now())`)
     .notNull(),

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS mentor_profiles (
     calendly_url TEXT,
     photo_url TEXT,
     tags TEXT[],
-    is_visible BOOLEAN DEFAULT TRUE NOT NULL,
+    is_visible BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -50,6 +50,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS mentor_profiles_updated_at ON mentor_profiles;
 
 CREATE TRIGGER mentor_profiles_updated_at
     BEFORE UPDATE ON mentor_profiles
