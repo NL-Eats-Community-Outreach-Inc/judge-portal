@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { competitions, events, teams } from '@/lib/db/schema';
+import { events, teams } from '@/lib/db/schema';
 import { getCorsHeaders, isValidUuid } from '../utils';
 
 export async function OPTIONS(request: NextRequest) {
@@ -25,39 +25,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const [challenge] = await db
-      .select({
-        id: events.id,
-        status: events.status,
-        title: sql<string>`COALESCE(${competitions.title}, ${events.name})`,
-        shortDescription: competitions.shortDescription,
-        coverImageUrl: competitions.coverImageUrl,
-        challengeType: competitions.challengeType,
-        tags: competitions.tags,
-        prize: competitions.prize,
-        deadline: competitions.deadline,
-        country: competitions.country,
-        participantSignupUrl: competitions.participantSignupUrl,
-        teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
-      })
-      .from(events)
-      .innerJoin(competitions, eq(competitions.eventId, events.id))
-      .leftJoin(teams, eq(teams.eventId, events.id))
-      .where(eq(events.id, id))
-      .groupBy(
-        events.id,
-        events.status,
-        events.name,
-        competitions.title,
-        competitions.shortDescription,
-        competitions.coverImageUrl,
-        competitions.challengeType,
-        competitions.tags,
-        competitions.prize,
-        competitions.deadline,
-        competitions.country,
-        competitions.participantSignupUrl
-      )
-      .limit(1);
+    .select({
+      id: events.id,
+      status: events.status,
+      title: events.name,
+      shortDescription: events.description,
+      teamsRegisteredCount: sql<number>`count(${teams.id})::int`,
+  })
+  .from(events)
+  .leftJoin(teams, eq(teams.eventId, events.id))
+  .where(eq(events.id, id))
+  .groupBy(events.id, events.status, events.name, events.description)
+  .limit(1);
+
 
     if (!challenge || challenge.status === 'setup') {
       return NextResponse.json(
@@ -75,17 +55,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           id: challenge.id,
           title: challenge.title,
           short_description: challenge.shortDescription || null,
-          cover_image_url: challenge.coverImageUrl || null,
-          challenge_type: challenge.challengeType || 'global',
-          tags: challenge.tags || [],
-          prize_amount: challenge.prize || null,
-          deadline: challenge.deadline || null,
+          cover_image_url: null,
+          challenge_type: 'global',
+          tags: [],
+          prize_amount: null,
+          deadline: null,
           teams_registered_count: challenge.teamsRegisteredCount,
-          country: challenge.country || null,
-          participant_signup_url:
-            challenge.participantSignupUrl ||
-            `${participantBaseUrl}/participant/event/${challenge.id}`,
-        },
+          country: null,
+          participant_signup_url: `${participantBaseUrl}/participant/event/${challenge.id}`,
+        }
       },
       { headers: corsHeaders }
     );
