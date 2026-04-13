@@ -57,8 +57,7 @@ export default function MentorsPage() {
         mentor.full_name.toLowerCase().includes(normalizedSearch) ||
         mentor.organization.toLowerCase().includes(normalizedSearch);
 
-      const matchesExpertise =
-        selectedExpertise === '' || mentor.tags.includes(selectedExpertise);
+      const matchesExpertise = selectedExpertise === '' || mentor.tags.includes(selectedExpertise);
 
       return matchesSearch && matchesExpertise;
     });
