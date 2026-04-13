@@ -41,6 +41,10 @@ jobs:
           echo "✓ Created .env file ($(wc -l < .env) lines, $(wc -c < .env) bytes)"
           echo "First line check (should have no leading spaces):"
           head -n 1 .env | od -c | head -n 2
+      - name: Setup database with migrations and test data
+        run: npm run db:setup:seed
+      - name: Apply feature migrations
+        run: npm run db:update
       - name: Start Next.js server
         run: |
           npm run dev > server.log 2>&1 &
