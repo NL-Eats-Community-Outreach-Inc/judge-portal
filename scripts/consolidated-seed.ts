@@ -13,6 +13,7 @@
 
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 import { createClient } from '@supabase/supabase-js';
 import * as schema from '../lib/db/schema';
@@ -90,10 +91,29 @@ async function seed() {
       }
     }
     
-    const adminUser = createdUsers.find(u => u.role === 'admin');
     const judgeUsers = createdUsers.filter(u => u.role === 'judge');
+
+    // Step 2: Create organization
+    console.log('\n🏢 Creating organization...');
+
+    let organization = await db.query.organizations.findFirst({
+      where: eq(schema.organizations.name, 'NL Eats'),
+    });
+
+    if (!organization) {
+      [organization] = await db
+        .insert(schema.organizations)
+        .values({
+          name: 'NL Eats',
+          slug: 'nl-eats',
+          description: 'Empowering the leaders\nshaping our Food-Systems\nFuture',
+        })
+        .returning();
+    }
+
+    console.log(`  ✅ Organization ready: ${organization.name}`);
     
-    // Step 2: Create events with competitions
+    // Step 3: Create events with competitions
     console.log('\n📅 Creating events and competitions...');
 
     const eventsData = [
@@ -192,7 +212,13 @@ async function seed() {
     const createdEvents = [];
 
     for (const eventData of eventsData) {
-      const [createdEvent] = await db.insert(schema.events).values(eventData.event).returning();
+      const [createdEvent] = await db
+        .insert(schema.events)
+        .values({
+          ...eventData.event,
+          organizationId: organization.id,
+        })
+        .returning();
 
       await db.insert(schema.competitions).values({
         eventId: createdEvent.id,
@@ -344,6 +370,8 @@ async function seed() {
     console.log('  Judge 1: judge1@example.com / judge123');
     console.log('  Judge 2: judge2@example.com / judge123');
     console.log('  Judge 3: judge3@example.com / judge123');
+    console.log('\n🏢 Organization:');
+    console.log('  NL Eats - Empowering the leaders | shaping our Food-Systems | Future');
     console.log('\n� Events & Competitions:');
     console.log('  1. AgriTech Innovation Challenge 2025 (open)');
     console.log('  2. Future Food Systems Hackathon 2025 (open)');
