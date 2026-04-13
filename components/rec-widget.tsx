@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { Sparkles, Loader2 } from 'lucide-react';
 
 interface Recommendation {
@@ -48,7 +47,6 @@ export function RecommendationWidget() {
           - Row (flex-row) and large gap on desktop.
       */}
       <div className="flex flex-col lg:flex-row gap-12 items-start">
-        
         {/* Left Side: Text */}
         <div className="w-full lg:w-1/3 space-y-4">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
@@ -59,9 +57,7 @@ export function RecommendationWidget() {
           <p className="text-muted-foreground text-lg">{data.rationale}</p>
         </div>
 
-        {/* Right Side: Video 
-            - lg:w-2/3 makes the video take up the majority of the row.
-        */}
+        {/* Right Side: Video */}
         <div className="w-full lg:w-2/3">
           <div className="relative aspect-video w-full rounded-xl bg-black border shadow-lg overflow-hidden">
             <iframe
@@ -72,7 +68,6 @@ export function RecommendationWidget() {
             />
           </div>
         </div>
-
       </div>
     </div>
   );
