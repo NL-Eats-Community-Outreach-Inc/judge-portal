@@ -8,35 +8,35 @@ import { Badge } from '@/components/ui/badge';
 
 type Mentor = {
   id: string;
-  name: string;
-  company: string;
-  expertise: string[];
+  full_name: string;
+  organization: string;
+  tags: string[];
 };
 
 const mentors: Mentor[] = [
   {
     id: '1',
-    name: 'Sarah Ahmed',
-    company: 'AgriTech Labs',
-    expertise: ['AgriTech', 'Sustainability'],
+    full_name: 'Sarah Ahmed',
+    organization: 'AgriTech Labs',
+    tags: ['AgriTech', 'Sustainability'],
   },
   {
     id: '2',
-    name: 'David Chen',
-    company: 'AI Works',
-    expertise: ['AI', 'Machine Learning'],
+    full_name: 'David Chen',
+    organization: 'AI Works',
+    tags: ['AI', 'Machine Learning'],
   },
   {
     id: '3',
-    name: 'Maria Gonzalez',
-    company: 'Green Future',
-    expertise: ['Sustainability', 'Climate'],
+    full_name: 'Maria Gonzalez',
+    organization: 'Green Future',
+    tags: ['Sustainability', 'Climate'],
   },
   {
     id: '4',
-    name: 'James Patel',
-    company: 'BuildStack',
-    expertise: ['Web Development', 'AI'],
+    full_name: 'James Patel',
+    organization: 'BuildStack',
+    tags: ['Web Development', 'AI'],
   },
 ];
 
@@ -45,7 +45,7 @@ export default function MentorsPage() {
   const [selectedExpertise, setSelectedExpertise] = useState('');
 
   const expertiseTags = useMemo(() => {
-    return Array.from(new Set(mentors.flatMap((mentor) => mentor.expertise))).sort();
+    return Array.from(new Set(mentors.flatMap((mentor) => mentor.tags))).sort();
   }, []);
 
   const filteredMentors = useMemo(() => {
@@ -54,11 +54,11 @@ export default function MentorsPage() {
     return mentors.filter((mentor) => {
       const matchesSearch =
         normalizedSearch === '' ||
-        mentor.name.toLowerCase().includes(normalizedSearch) ||
-        mentor.company.toLowerCase().includes(normalizedSearch);
+        mentor.full_name.toLowerCase().includes(normalizedSearch) ||
+        mentor.organization.toLowerCase().includes(normalizedSearch);
 
       const matchesExpertise =
-        selectedExpertise === '' || mentor.expertise.includes(selectedExpertise);
+        selectedExpertise === '' || mentor.tags.includes(selectedExpertise);
 
       return matchesSearch && matchesExpertise;
     });
@@ -140,12 +140,12 @@ export default function MentorsPage() {
             <Card key={mentor.id} className="p-5">
               <div className="space-y-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">{mentor.name}</h2>
-                  <p className="text-sm text-muted-foreground">{mentor.company}</p>
+                  <h2 className="text-lg font-semibold text-foreground">{mentor.full_name}</h2>
+                  <p className="text-sm text-muted-foreground">{mentor.organization}</p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {mentor.expertise.map((tag) => (
+                  {mentor.tags.map((tag) => (
                     <Badge key={tag} variant="secondary">
                       {tag}
                     </Badge>
