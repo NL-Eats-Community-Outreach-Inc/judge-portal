@@ -4,11 +4,14 @@ import {
   text,
   timestamp,
   integer,
+  numeric,
+  jsonb,
   unique,
   check,
   index,
   pgEnum,
   boolean,
+  AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -343,6 +346,362 @@ export const competitions = pgTable(
   })
 );
 
+export const learnerRecommendations = pgTable(
+  'learner_recommendations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    recommendedItemId: text('recommended_item_id').notNull(),
+    recommendedItemType: text('recommended_item_type'),
+    recommendedTitle: text('recommended_title').notNull(),
+    rationale: text('rationale').notNull(),
+    source: text('source').default('rule').notNull(),
+    ruleMatched: text('rule_matched'),
+    modelVersion: text('model_version'),
+    score: numeric('score', { precision: 12, scale: 6 }),
+    generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    learnworldsUserIdx: index('idx_learner_recommendations_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    generatedAtIdx: index('idx_learner_recommendations_generated_at').on(table.generatedAt),
+    userGeneratedAtIdx: index('idx_learner_recommendations_user_generated_at').on(
+      table.learnworldsUserId,
+      table.generatedAt
+    ),
+    checkSource: check(
+      'check_learner_recommendations_source',
+      sql`${table.source} IN ('rule', 'ml', 'fallback')`
+    ),
+  })
+);
+
+export const learnerItemEvents = pgTable(
+  'learner_item_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    itemId: text('item_id').notNull(),
+    itemType: text('item_type').notNull(),
+    eventType: text('event_type').notNull(),
+    eventValue: numeric('event_value', { precision: 12, scale: 6 }),
+    eventTimestamp: timestamp('event_timestamp', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    source: text('source').default('system').notNull(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    learnworldsUserIdx: index('idx_learner_item_events_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    itemIdx: index('idx_learner_item_events_item').on(table.itemId),
+    eventTypeIdx: index('idx_learner_item_events_event_type').on(table.eventType),
+    eventTimestampIdx: index('idx_learner_item_events_event_timestamp').on(table.eventTimestamp),
+    userEventTimestampIdx: index('idx_learner_item_events_user_event_timestamp').on(
+      table.learnworldsUserId,
+      table.eventTimestamp
+    ),
+    checkItemType: check(
+      'check_learner_item_events_item_type',
+      sql`${table.itemType} IN ('course', 'module', 'lesson', 'challenge', 'recommendation')`
+    ),
+    checkEventType: check(
+      'check_learner_item_events_event_type',
+      sql`${table.eventType} IN ('viewed', 'started', 'progressed', 'completed', 'recommendation_clicked', 'recommendation_ignored', 'feedback_submitted')`
+    ),
+    checkSource: check(
+      'check_learner_item_events_source',
+      sql`${table.source} IN ('learnworlds', 'widget', 'api', 'system')`
+    ),
+  })
+);
+
+export const recommendationImpressions = pgTable(
+  'recommendation_impressions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recommendationId: uuid('recommendation_id')
+      .references(() => learnerRecommendations.id, { onDelete: 'cascade' })
+      .notNull(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    itemId: text('item_id').notNull(),
+    itemType: text('item_type'),
+    source: text('source').default('api').notNull(),
+    modelVersion: text('model_version'),
+    score: numeric('score', { precision: 12, scale: 6 }),
+    rankPosition: integer('rank_position'),
+    shownAt: timestamp('shown_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    recommendationIdx: index('idx_recommendation_impressions_recommendation').on(
+      table.recommendationId
+    ),
+    learnworldsUserIdx: index('idx_recommendation_impressions_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    userShownAtIdx: index('idx_recommendation_impressions_user_shown_at').on(
+      table.learnworldsUserId,
+      table.shownAt
+    ),
+    checkItemType: check(
+      'check_recommendation_impressions_item_type',
+      sql`${table.itemType} IS NULL OR ${table.itemType} IN ('course', 'module', 'lesson', 'challenge', 'recommendation')`
+    ),
+    checkRankPosition: check(
+      'check_recommendation_impressions_rank_position',
+      sql`${table.rankPosition} IS NULL OR ${table.rankPosition} >= 1`
+    ),
+  })
+);
+
+export const recommendationOutcomes = pgTable(
+  'recommendation_outcomes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recommendationImpressionId: uuid('recommendation_impression_id')
+      .references(() => recommendationImpressions.id, { onDelete: 'cascade' })
+      .notNull(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    itemId: text('item_id').notNull(),
+    outcomeType: text('outcome_type').notNull(),
+    labelValue: integer('label_value'),
+    outcomeTimestamp: timestamp('outcome_timestamp', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    impressionIdx: index('idx_recommendation_outcomes_impression').on(
+      table.recommendationImpressionId
+    ),
+    learnworldsUserIdx: index('idx_recommendation_outcomes_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    outcomeTypeIdx: index('idx_recommendation_outcomes_outcome_type').on(table.outcomeType),
+    userOutcomeTimestampIdx: index('idx_recommendation_outcomes_user_outcome_timestamp').on(
+      table.learnworldsUserId,
+      table.outcomeTimestamp
+    ),
+    checkOutcomeType: check(
+      'check_recommendation_outcomes_outcome_type',
+      sql`${table.outcomeType} IN ('clicked', 'started', 'completed', 'dismissed', 'no_action')`
+    ),
+    checkLabelValue: check(
+      'check_recommendation_outcomes_label_value',
+      sql`${table.labelValue} IS NULL OR ${table.labelValue} IN (0, 1)`
+    ),
+  })
+);
+
+export const recommendationFeedback = pgTable(
+  'recommendation_feedback',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recommendationId: uuid('recommendation_id').references(() => learnerRecommendations.id, {
+      onDelete: 'cascade',
+    }),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    recommendedItemId: text('recommended_item_id').notNull(),
+    feedbackType: text('feedback_type'),
+    rating: integer('rating'),
+    comment: text('comment'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    recommendationIdx: index('idx_recommendation_feedback_recommendation').on(
+      table.recommendationId
+    ),
+    learnworldsUserIdx: index('idx_recommendation_feedback_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    checkFeedbackType: check(
+      'check_recommendation_feedback_feedback_type',
+      sql`${table.feedbackType} IS NULL OR ${table.feedbackType} IN ('helpful', 'not_helpful')`
+    ),
+    checkRating: check(
+      'check_recommendation_feedback_rating',
+      sql`${table.rating} IS NULL OR (${table.rating} >= 1 AND ${table.rating} <= 5)`
+    ),
+  })
+);
+
+export const learningItems = pgTable(
+  'learning_items',
+  {
+    itemId: text('item_id').primaryKey(),
+    itemType: text('item_type').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    category: text('category'),
+    difficultyLevel: text('difficulty_level'),
+    estimatedDurationMinutes: integer('estimated_duration_minutes'),
+    prerequisiteItemId: text('prerequisite_item_id').references(
+      (): AnyPgColumn => learningItems.itemId,
+      {
+        onDelete: 'set null',
+      }
+    ),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    itemTypeIdx: index('idx_learning_items_item_type').on(table.itemType),
+    categoryIdx: index('idx_learning_items_category').on(table.category),
+    isActiveIdx: index('idx_learning_items_is_active').on(table.isActive),
+    checkItemType: check(
+      'check_learning_items_item_type',
+      sql`${table.itemType} IN ('course', 'module', 'lesson')`
+    ),
+    checkEstimatedDuration: check(
+      'check_learning_items_estimated_duration',
+      sql`${table.estimatedDurationMinutes} IS NULL OR ${table.estimatedDurationMinutes} >= 0`
+    ),
+  })
+);
+
+export const mlTrainingExamples = pgTable(
+  'ml_training_examples',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    candidateItemId: text('candidate_item_id').notNull(),
+    snapshotTime: timestamp('snapshot_time', { withTimezone: true, mode: 'string' }).notNull(),
+    totalItemsStarted: integer('total_items_started'),
+    totalItemsCompleted: integer('total_items_completed'),
+    completionRate: numeric('completion_rate', { precision: 12, scale: 6 }),
+    avgProgressPercentage: numeric('avg_progress_percentage', { precision: 12, scale: 6 }),
+    daysSinceLastActivity: integer('days_since_last_activity'),
+    activeCoursesCount: integer('active_courses_count'),
+    completedCoursesCount: integer('completed_courses_count'),
+    preferredCategory: text('preferred_category'),
+    preferredDifficulty: text('preferred_difficulty'),
+    itemType: text('item_type'),
+    itemCategory: text('item_category'),
+    itemDifficulty: text('item_difficulty'),
+    itemDurationMinutes: integer('item_duration_minutes'),
+    hasPrerequisite: boolean('has_prerequisite'),
+    isPrerequisiteCompleted: boolean('is_prerequisite_completed'),
+    candidatePopularity7d: integer('candidate_popularity_7d'),
+    candidateCompletionRate30d: numeric('candidate_completion_rate_30d', {
+      precision: 12,
+      scale: 6,
+    }),
+    sameCategoryAsRecentActivity: boolean('same_category_as_recent_activity'),
+    sameDifficultyAsRecentActivity: boolean('same_difficulty_as_recent_activity'),
+    learnworldsUserHasSeenItemBefore: boolean('learnworlds_user_has_seen_item_before'),
+    learnworldsUserStartedSimilarItemsBefore: boolean(
+      'learnworlds_user_started_similar_items_before'
+    ),
+    learnworldsUserCompletedPrerequisite: boolean('learnworlds_user_completed_prerequisite'),
+    candidateIsNextInPath: boolean('candidate_is_next_in_path'),
+    candidatePreviouslyIgnored: boolean('candidate_previously_ignored'),
+    labelEngaged: integer('label_engaged').notNull(),
+    split: text('split').notNull(),
+    modelingWindowStart: timestamp('modeling_window_start', { withTimezone: true, mode: 'string' }),
+    modelingWindowEnd: timestamp('modeling_window_end', { withTimezone: true, mode: 'string' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    learnworldsUserIdx: index('idx_ml_training_examples_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
+    candidateItemIdx: index('idx_ml_training_examples_candidate_item').on(table.candidateItemId),
+    splitIdx: index('idx_ml_training_examples_split').on(table.split),
+    checkSplit: check(
+      'check_ml_training_examples_split',
+      sql`${table.split} IN ('train', 'validation', 'test')`
+    ),
+    checkLabelEngaged: check(
+      'check_ml_training_examples_label_engaged',
+      sql`${table.labelEngaged} IN (0, 1)`
+    ),
+    checkTotalItemsStarted: check(
+      'check_ml_training_examples_total_items_started',
+      sql`${table.totalItemsStarted} IS NULL OR ${table.totalItemsStarted} >= 0`
+    ),
+    checkTotalItemsCompleted: check(
+      'check_ml_training_examples_total_items_completed',
+      sql`${table.totalItemsCompleted} IS NULL OR ${table.totalItemsCompleted} >= 0`
+    ),
+    checkDaysSinceLastActivity: check(
+      'check_ml_training_examples_days_since_last_activity',
+      sql`${table.daysSinceLastActivity} IS NULL OR ${table.daysSinceLastActivity} >= 0`
+    ),
+    checkActiveCoursesCount: check(
+      'check_ml_training_examples_active_courses_count',
+      sql`${table.activeCoursesCount} IS NULL OR ${table.activeCoursesCount} >= 0`
+    ),
+    checkCompletedCoursesCount: check(
+      'check_ml_training_examples_completed_courses_count',
+      sql`${table.completedCoursesCount} IS NULL OR ${table.completedCoursesCount} >= 0`
+    ),
+    checkItemDurationMinutes: check(
+      'check_ml_training_examples_item_duration_minutes',
+      sql`${table.itemDurationMinutes} IS NULL OR ${table.itemDurationMinutes} >= 0`
+    ),
+    checkCandidatePopularity7d: check(
+      'check_ml_training_examples_candidate_popularity_7d',
+      sql`${table.candidatePopularity7d} IS NULL OR ${table.candidatePopularity7d} >= 0`
+    ),
+  })
+);
+
+export const modelRegistry = pgTable(
+  'model_registry',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    modelVersion: text('model_version').notNull().unique(),
+    modelType: text('model_type').notNull(),
+    featureSchemaVersion: text('feature_schema_version').notNull(),
+    artifactPath: text('artifact_path').notNull(),
+    trainingStart: timestamp('training_start', { withTimezone: true, mode: 'string' }),
+    trainingEnd: timestamp('training_end', { withTimezone: true, mode: 'string' }),
+    isActive: boolean('is_active').default(false).notNull(),
+    metrics: jsonb('metrics'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    isActiveIdx: index('idx_model_registry_is_active').on(table.isActive),
+    checkModelType: check(
+      'check_model_registry_model_type',
+      sql`${table.modelType} IN ('logistic_regression', 'xgboost', 'lightgbm')`
+    ),
+  })
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
@@ -367,3 +726,19 @@ export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type NewOrganizationMember = typeof organizationMembers.$inferInsert;
 export type Competition = typeof competitions.$inferSelect;
 export type NewCompetition = typeof competitions.$inferInsert;
+export type LearnerRecommendation = typeof learnerRecommendations.$inferSelect;
+export type NewLearnerRecommendation = typeof learnerRecommendations.$inferInsert;
+export type LearnerItemEvent = typeof learnerItemEvents.$inferSelect;
+export type NewLearnerItemEvent = typeof learnerItemEvents.$inferInsert;
+export type RecommendationImpression = typeof recommendationImpressions.$inferSelect;
+export type NewRecommendationImpression = typeof recommendationImpressions.$inferInsert;
+export type RecommendationOutcome = typeof recommendationOutcomes.$inferSelect;
+export type NewRecommendationOutcome = typeof recommendationOutcomes.$inferInsert;
+export type RecommendationFeedback = typeof recommendationFeedback.$inferSelect;
+export type NewRecommendationFeedback = typeof recommendationFeedback.$inferInsert;
+export type LearningItem = typeof learningItems.$inferSelect;
+export type NewLearningItem = typeof learningItems.$inferInsert;
+export type MlTrainingExample = typeof mlTrainingExamples.$inferSelect;
+export type NewMlTrainingExample = typeof mlTrainingExamples.$inferInsert;
+export type ModelRegistry = typeof modelRegistry.$inferSelect;
+export type NewModelRegistry = typeof modelRegistry.$inferInsert;
