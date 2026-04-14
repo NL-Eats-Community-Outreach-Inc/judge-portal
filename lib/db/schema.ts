@@ -15,7 +15,6 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'open', 'active', 'completed']);
 export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'judge', 'participant']);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
@@ -498,51 +497,51 @@ export const mentorProfiles = pgTable('mentor_profiles', {
 });
 
 export const submissions = pgTable(
-  "submissions",
+  'submissions',
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: uuid('id').defaultRandom().primaryKey(),
 
-    eventId: uuid("event_id")
+    eventId: uuid('event_id')
       .notNull()
-      .references(() => events.id, { onDelete: "cascade" }),
+      .references(() => events.id, { onDelete: 'cascade' }),
 
-    teamId: uuid("team_id")
+    teamId: uuid('team_id')
       .notNull()
-      .references(() => teams.id, { onDelete: "cascade" }),
+      .references(() => teams.id, { onDelete: 'cascade' }),
 
-    submissionText: text("submission_text").notNull(),
+    submissionText: text('submission_text').notNull(),
 
-    createdAt: timestamp("created_at", {
+    createdAt: timestamp('created_at', {
       withTimezone: true,
-      mode: "string",
-    }).default(sql`timezone('utc'::text, now())`).notNull(),
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
   },
   (table) => ({
-    uniqueEventTeam: uniqueIndex("submissions_event_team_unique").on(
-      table.eventId,
-      table.teamId
-    ),
+    uniqueEventTeam: uniqueIndex('submissions_event_team_unique').on(table.eventId, table.teamId),
   })
 );
 
-export const submissionAiScores = pgTable("submission_ai_scores", {
-  id: uuid("id").defaultRandom().primaryKey(),
+export const submissionAiScores = pgTable('submission_ai_scores', {
+  id: uuid('id').defaultRandom().primaryKey(),
 
-  submissionId: uuid("submission_id")
+  submissionId: uuid('submission_id')
     .notNull()
-    .references(() => submissions.id, { onDelete: "cascade" }),
+    .references(() => submissions.id, { onDelete: 'cascade' }),
 
-  score: numeric("score").notNull(),
+  score: numeric('score').notNull(),
 
-  modelName: text("model_name"),
-  version: text("version"),
+  modelName: text('model_name'),
+  version: text('version'),
 
-  createdAt: timestamp("created_at", {
-      withTimezone: true,
-      mode: "string",
-  }).default(sql`timezone('utc'::text, now())`).notNull(),
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+    mode: 'string',
+  })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull(),
 });
-
 
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
