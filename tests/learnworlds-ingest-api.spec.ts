@@ -84,6 +84,12 @@ test.describe('POST /api/admin/learnworlds/ingest', () => {
       if (response.status() === 200) {
         expect(body.status).toBe('ok');
         expect(typeof body.syncRunId).toBe('string');
+        expect(typeof body.totalRecords).toBe('number');
+        expect(typeof body.validRecords).toBe('number');
+        expect(typeof body.invalidRecords).toBe('number');
+        expect(body.totalRecords).toBeGreaterThanOrEqual(body.validRecords);
+        expect(body.validRecords).toBeGreaterThanOrEqual(0);
+        expect(body.invalidRecords).toBe(body.totalRecords - body.validRecords);
       } else {
         expect(typeof body.error).toBe('string');
         expect(body.error.length).toBeGreaterThan(0);
