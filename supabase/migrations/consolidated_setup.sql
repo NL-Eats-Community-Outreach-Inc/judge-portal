@@ -98,6 +98,25 @@ CREATE TABLE IF NOT EXISTS event_judges (
   PRIMARY KEY (event_id, judge_id)
 );
 
+-- Submission Text Table
+CREATE TABLE IF NOT EXISTS submissions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  submission_text TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+  UNIQUE(event_id, team_id)
+);
+
+-- Submission AI Prescreening Table
+CREATE TABLE IF NOT EXISTS submission_ai_scores (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE NOT NULL,
+  score NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ================================================================
 -- STEP 3: CREATE FUNCTIONS
 -- ================================================================
@@ -160,6 +179,10 @@ CREATE INDEX IF NOT EXISTS idx_scores_judge_event ON scores(judge_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_event_judges_event ON event_judges(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_judges_judge ON event_judges(judge_id);
 
+-- AI Pre-screen Score indexes
+CREATE INDEX IF NOT EXISTS idx_submissions_event_team ON submissions(event_id, team_id);
+CREATE INDEX IF NOT EXISTS idx_submission_ai_scores_submission ON submission_ai_scores(submission_id);
+
 -- ================================================================
 -- STEP 6: ENABLE ROW LEVEL SECURITY ON ALL TABLES
 -- ================================================================
@@ -171,6 +194,8 @@ ALTER TABLE criteria ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_judges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE submission_ai_scores ENABLE ROW LEVEL SECURITY;
 
 -- ================================================================
 -- STEP 7: CREATE RLS POLICIES
@@ -327,6 +352,39 @@ CREATE POLICY "Admins can manage teams"
       AND users.role = 'admin'::user_role
     )
   );
+
+  -- submissions table policy
+CREATE POLICY "team members can insert submissions"
+  ON submissions
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM team_members tm
+      WHERE tm.team_id = submissions.team_id
+        AND tm.participant_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "team members can view submissions"
+  ON submissions
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM team_members tm
+      WHERE tm.team_id = submissions.team_id
+        AND tm.participant_id = auth.uid()
+    )
+  );
+
+-- submission ai scoring table policy
+CREATE POLICY "no client access to ai scores"
+  ON submission_ai_scores
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
 
 -- ================================================================
 -- STEP 8: SYNC EXISTING AUTH USERS
