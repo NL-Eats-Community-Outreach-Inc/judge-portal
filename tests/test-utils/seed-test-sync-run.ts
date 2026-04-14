@@ -172,7 +172,7 @@ export async function cleanupTestSyncRun(seeded: SeededSyncRun): Promise<void> {
   // (These have a foreign key reference to learnworlds_raw_payloads)
   if (learnerIds.length > 0) {
     await fetch(
-      `${SUPABASE_URL}/rest/v1/learner_progress?learner_id=in.(${learnerIds.join(',')})`,
+      `${SUPABASE_URL}/rest/v1/learner_progress?learnworlds_user_id=in.(${learnerIds.join(',')})`,
       { method: 'DELETE', headers: deleteHeaders }
     );
   }

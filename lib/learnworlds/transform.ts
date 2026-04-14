@@ -12,14 +12,16 @@ export interface TransformResult {
 
 /**
  * Reads all staged raw payloads for the given sync run, validates each row,
- * and upserts valid rows into learner_progress (idempotent on learnerId + courseId).
+ * and upserts valid rows into learner_progress (idempotent on
+ * learnworldsUserId + courseId).
  *
  * A row is considered invalid — and therefore skipped — when either
  * learnerExternalId or courseExternalId is null.
  *
  * completedModules is computed as the count of distinct moduleExternalId values
- * for each learner+course combination in this sync run. This value is included
- * in both insert and upsert operations to ensure it reflects the current state.
+ * with completionStatus='completed' for each learner+course combination in this
+ * sync run. This value is included in both insert and upsert operations to
+ * ensure it reflects the current state.
  */
 export async function runLearnworldsTransform(syncRunId: string): Promise<TransformResult> {
   const rawPayloads = await db
@@ -35,27 +37,14 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
   const skippedRecords = processedRecords - validPayloads.length;
 
   if (validPayloads.length > 0) {
-    // Compute completedModules: count distinct modules per learner+course for this sync run
-    const moduleCounts = new Map<string, number>();
+    // Count distinct completed modules per learner+course for this sync run.
+    const completedModuleSets = new Map<string, Set<string>>();
     validPayloads.forEach((p) => {
-      const key = `${p.learnerExternalId}:${p.courseExternalId}`;
-      if (p.moduleExternalId) {
-        // Use a Set to track distinct modules per key
-        if (!moduleCounts.has(key)) {
-          moduleCounts.set(key, 0);
-        }
-        // Re-scan to find all records with this learner+course to get accurate distinct count
-        const distinctModules = new Set(
-          validPayloads
-            .filter(
-              (x) =>
-                x.learnerExternalId === p.learnerExternalId &&
-                x.courseExternalId === p.courseExternalId &&
-                x.moduleExternalId
-            )
-            .map((x) => x.moduleExternalId!)
-        );
-        moduleCounts.set(key, distinctModules.size);
+      if (p.moduleExternalId && p.completionStatus === 'completed') {
+        const key = `${p.learnerExternalId}:${p.courseExternalId}`;
+        const moduleSet = completedModuleSets.get(key) ?? new Set<string>();
+        moduleSet.add(p.moduleExternalId);
+        completedModuleSets.set(key, moduleSet);
       }
     });
 
@@ -63,9 +52,10 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
       .insert(learnerProgress)
       .values(
         validPayloads.map((p) => {
-          const moduleCount = moduleCounts.get(`${p.learnerExternalId}:${p.courseExternalId}`) || 0;
+          const moduleCount =
+            completedModuleSets.get(`${p.learnerExternalId}:${p.courseExternalId}`)?.size ?? 0;
           return {
-            learnerId: p.learnerExternalId!,
+            learnworldsUserId: p.learnerExternalId!,
             courseId: p.courseExternalId!,
             progressPercentage: p.progressPercentage ?? 0,
             completedModules: moduleCount,
@@ -77,7 +67,7 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
         })
       )
       .onConflictDoUpdate({
-        target: [learnerProgress.learnerId, learnerProgress.courseId],
+        target: [learnerProgress.learnworldsUserId, learnerProgress.courseId],
         set: {
           progressPercentage: sql`EXCLUDED.progress_percentage`,
           completedModules: sql`EXCLUDED.completed_modules`,
