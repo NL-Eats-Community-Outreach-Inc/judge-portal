@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS learnworlds_raw_payloads (
 
 CREATE TABLE IF NOT EXISTS learner_progress (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  learner_id TEXT NOT NULL,
+  learnworlds_user_id TEXT NOT NULL,
   course_id TEXT NOT NULL,
   progress_percentage INTEGER DEFAULT 0 NOT NULL,
   completed_modules INTEGER DEFAULT 0 NOT NULL,
@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS learner_progress (
   raw_payload_id UUID REFERENCES learnworlds_raw_payloads(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  CONSTRAINT learner_progress_learner_id_course_id_unique UNIQUE (learner_id, course_id),
+  CONSTRAINT learner_progress_learnworlds_user_id_course_id_unique
+    UNIQUE (learnworlds_user_id, course_id),
   CONSTRAINT check_learner_progress_percentage
     CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
   CONSTRAINT check_learner_progress_completed_modules
@@ -82,6 +83,43 @@ CREATE TABLE IF NOT EXISTS learner_progress (
   CONSTRAINT check_learner_progress_completion_status
     CHECK (completion_status IN ('in_progress', 'completed', 'failed', 'not_started'))
 );
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'learner_progress' AND column_name = 'learner_id'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'learner_progress' AND column_name = 'learnworlds_user_id'
+  ) THEN
+    ALTER TABLE learner_progress RENAME COLUMN learner_id TO learnworlds_user_id;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'learner_progress_learner_id_course_id_unique'
+  ) THEN
+    ALTER TABLE learner_progress RENAME CONSTRAINT learner_progress_learner_id_course_id_unique TO learner_progress_learnworlds_user_id_course_id_unique;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class
+    WHERE relkind = 'i' AND relname = 'idx_learner_progress_learner'
+  ) THEN
+    ALTER INDEX idx_learner_progress_learner RENAME TO idx_learner_progress_learnworlds_user;
+  END IF;
+END $$;
 
 -- ================================================================
 -- SECTION 4: INDEXES
@@ -105,8 +143,8 @@ CREATE INDEX IF NOT EXISTS idx_lw_raw_payloads_course
 CREATE INDEX IF NOT EXISTS idx_lw_raw_payloads_received_at
   ON learnworlds_raw_payloads(received_at);
 
-CREATE INDEX IF NOT EXISTS idx_learner_progress_learner
-  ON learner_progress(learner_id);
+CREATE INDEX IF NOT EXISTS idx_learner_progress_learnworlds_user
+  ON learner_progress(learnworlds_user_id);
 
 CREATE INDEX IF NOT EXISTS idx_learner_progress_course
   ON learner_progress(course_id);

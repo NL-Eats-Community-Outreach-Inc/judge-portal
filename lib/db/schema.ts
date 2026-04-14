@@ -430,7 +430,7 @@ export const learnerProgress = pgTable(
   'learner_progress',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    learnerId: text('learner_id').notNull(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
     courseId: text('course_id').notNull(),
     progressPercentage: integer('progress_percentage').default(0).notNull(),
     completedModules: integer('completed_modules').default(0).notNull(),
@@ -454,8 +454,10 @@ export const learnerProgress = pgTable(
       .$onUpdate(() => sql`timezone('utc'::text, now())`),
   },
   (table) => ({
-    uniqueLearnerCourse: unique().on(table.learnerId, table.courseId),
-    learnerIdx: index('idx_learner_progress_learner').on(table.learnerId),
+    uniqueLearnworldsUserCourse: unique().on(table.learnworldsUserId, table.courseId),
+    learnworldsUserIdx: index('idx_learner_progress_learnworlds_user').on(
+      table.learnworldsUserId
+    ),
     courseIdx: index('idx_learner_progress_course').on(table.courseId),
     lastActivityIdx: index('idx_learner_progress_last_activity').on(table.lastActivityTimestamp),
     sourceSyncedIdx: index('idx_learner_progress_source_synced').on(table.sourceSyncedAt),
