@@ -455,9 +455,7 @@ export const learnerProgress = pgTable(
   },
   (table) => ({
     uniqueLearnworldsUserCourse: unique().on(table.learnworldsUserId, table.courseId),
-    learnworldsUserIdx: index('idx_learner_progress_learnworlds_user').on(
-      table.learnworldsUserId
-    ),
+    learnworldsUserIdx: index('idx_learner_progress_learnworlds_user').on(table.learnworldsUserId),
     courseIdx: index('idx_learner_progress_course').on(table.courseId),
     lastActivityIdx: index('idx_learner_progress_last_activity').on(table.lastActivityTimestamp),
     sourceSyncedIdx: index('idx_learner_progress_source_synced').on(table.sourceSyncedAt),
