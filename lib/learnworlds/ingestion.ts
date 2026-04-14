@@ -82,9 +82,9 @@ export async function runLearnworldsIngestion(
       );
     }
 
-    const totalRecords = fetched.records.length;
+    const totalRecords = fetched.rawCount;
     const validRecords = fetched.records.length;
-    const invalidRecords = 0;
+    const invalidRecords = Math.max(0, totalRecords - validRecords);
 
     await db
       .update(learnworldsSyncRuns)

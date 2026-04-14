@@ -8,6 +8,8 @@ interface LearnworldsClientConfig {
   clientSecret: string;
   clientHeaderValue: string;
   timeoutMs: number;
+  pageSize: number;
+  maxPages: number;
 }
 
 interface OAuthTokenResponse {
@@ -44,6 +46,8 @@ function getClientConfig(): LearnworldsClientConfig {
   const clientSecret = getRequiredEnv('LEARNWORLDS_CLIENT_SECRET');
   const clientHeaderValue = getRequiredEnv('LEARNWORLDS_CLIENT_HEADER_VALUE');
   const timeoutMs = Number.parseInt(process.env.LEARNWORLDS_TIMEOUT_MS || '15000', 10);
+  const pageSize = Number.parseInt(process.env.LEARNWORLDS_PAGE_SIZE || '100', 10);
+  const maxPages = Number.parseInt(process.env.LEARNWORLDS_MAX_PAGES || '100', 10);
 
   if (!tokenUrl.startsWith('https://') || !apiBaseUrl.startsWith('https://')) {
     throw new LearnworldsConfigError('LearnWorlds URLs must use HTTPS');
@@ -57,7 +61,16 @@ function getClientConfig(): LearnworldsClientConfig {
     clientSecret,
     clientHeaderValue,
     timeoutMs: Number.isNaN(timeoutMs) ? 15000 : timeoutMs,
+    pageSize: Number.isNaN(pageSize) ? 100 : pageSize,
+    maxPages: Number.isNaN(maxPages) ? 100 : maxPages,
   };
+}
+
+function buildPaginatedEndpoint(endpoint: string, page: number, pageSize: number): string {
+  const url = new URL(endpoint);
+  url.searchParams.set('page', String(page));
+  url.searchParams.set('per_page', String(pageSize));
+  return url.toString();
 }
 
 function readStringValue(input: Record<string, unknown>, keys: string[]): string | null {
@@ -226,35 +239,59 @@ export async function fetchLearnworldsProgressData(): Promise<LearnworldsFetchRe
   const token = await getAccessToken(config);
 
   const endpoint = `${config.apiBaseUrl}${config.progressEndpoint}`;
-  const response = await fetchWithRetries(
-    endpoint,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Lw-Client': config.clientHeaderValue,
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    },
-    config.timeoutMs
-  );
+  const allRawRecords: Record<string, unknown>[] = [];
+  let firstPageStatus = 200;
 
-  if (!response.ok) {
-    throw new LearnworldsFetchError(
-      `LearnWorlds progress fetch failed with status ${response.status}`
+  for (let page = 1; page <= config.maxPages; page += 1) {
+    const paginatedEndpoint = buildPaginatedEndpoint(endpoint, page, config.pageSize);
+
+    const response = await fetchWithRetries(
+      paginatedEndpoint,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Lw-Client': config.clientHeaderValue,
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+      },
+      config.timeoutMs
     );
+
+    if (!response.ok) {
+      throw new LearnworldsFetchError(
+        `LearnWorlds progress fetch failed with status ${response.status} on page ${page}`
+      );
+    }
+
+    if (page === 1) {
+      firstPageStatus = response.status;
+    }
+
+    const rawPayload = await response.json();
+    const pageRecords = parseResponsePayload(rawPayload);
+    allRawRecords.push(...pageRecords);
+
+    if (pageRecords.length < config.pageSize) {
+      break;
+    }
+
+    if (page === config.maxPages) {
+      throw new LearnworldsFetchError(
+        `Reached LearnWorlds pagination limit at ${config.maxPages} pages`
+      );
+    }
   }
 
-  const rawPayload = await response.json();
-  const rawRecords = parseResponsePayload(rawPayload);
-  const records = rawRecords
+  const records = allRawRecords
     .map(normalizeProgressRecord)
     .filter((record): record is LearnworldsProgressRecord => record !== null);
 
   return {
     records,
+    rawCount: allRawRecords.length,
     endpoint: config.progressEndpoint,
-    httpStatus: response.status,
+    httpStatus: firstPageStatus,
   };
 }

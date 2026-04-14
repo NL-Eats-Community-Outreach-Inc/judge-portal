@@ -20,6 +20,7 @@ export interface LearnworldsIngestionResult {
 
 export interface LearnworldsFetchResponse {
   records: LearnworldsProgressRecord[];
+  rawCount: number;
   endpoint: string;
   httpStatus: number;
 }
