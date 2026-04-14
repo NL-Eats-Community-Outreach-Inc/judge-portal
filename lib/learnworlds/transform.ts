@@ -16,6 +16,10 @@ export interface TransformResult {
  *
  * A row is considered invalid — and therefore skipped — when either
  * learnerExternalId or courseExternalId is null.
+ *
+ * completedModules is computed as the count of distinct moduleExternalId values
+ * for each learner+course combination in this sync run. This value is included
+ * in both insert and upsert operations to ensure it reflects the current state.
  */
 export async function runLearnworldsTransform(syncRunId: string): Promise<TransformResult> {
   const rawPayloads = await db
@@ -31,24 +35,52 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
   const skippedRecords = processedRecords - validPayloads.length;
 
   if (validPayloads.length > 0) {
+    // Compute completedModules: count distinct modules per learner+course for this sync run
+    const moduleCounts = new Map<string, number>();
+    validPayloads.forEach((p) => {
+      const key = `${p.learnerExternalId}:${p.courseExternalId}`;
+      if (p.moduleExternalId) {
+        // Use a Set to track distinct modules per key
+        if (!moduleCounts.has(key)) {
+          moduleCounts.set(key, 0);
+        }
+        // Re-scan to find all records with this learner+course to get accurate distinct count
+        const distinctModules = new Set(
+          validPayloads
+            .filter(
+              (x) =>
+                x.learnerExternalId === p.learnerExternalId &&
+                x.courseExternalId === p.courseExternalId &&
+                x.moduleExternalId
+            )
+            .map((x) => x.moduleExternalId!)
+        );
+        moduleCounts.set(key, distinctModules.size);
+      }
+    });
+
     await db
       .insert(learnerProgress)
       .values(
-        validPayloads.map((p) => ({
-          learnerId: p.learnerExternalId!,
-          courseId: p.courseExternalId!,
-          progressPercentage: p.progressPercentage ?? 0,
-          completedModules: 0,
-          completionStatus: p.completionStatus ?? 'in_progress',
-          lastActivityTimestamp: p.lastActivityTimestamp,
-          rawPayloadId: p.id,
-          sourceSyncedAt: new Date().toISOString(),
-        }))
+        validPayloads.map((p) => {
+          const moduleCount = moduleCounts.get(`${p.learnerExternalId}:${p.courseExternalId}`) || 0;
+          return {
+            learnerId: p.learnerExternalId!,
+            courseId: p.courseExternalId!,
+            progressPercentage: p.progressPercentage ?? 0,
+            completedModules: moduleCount,
+            completionStatus: p.completionStatus ?? 'in_progress',
+            lastActivityTimestamp: p.lastActivityTimestamp,
+            rawPayloadId: p.id,
+            sourceSyncedAt: new Date().toISOString(),
+          };
+        })
       )
       .onConflictDoUpdate({
         target: [learnerProgress.learnerId, learnerProgress.courseId],
         set: {
           progressPercentage: sql`EXCLUDED.progress_percentage`,
+          completedModules: sql`EXCLUDED.completed_modules`,
           completionStatus: sql`EXCLUDED.completion_status`,
           lastActivityTimestamp: sql`EXCLUDED.last_activity_timestamp`,
           rawPayloadId: sql`EXCLUDED.raw_payload_id`,

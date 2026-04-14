@@ -9,6 +9,14 @@ interface TransformRequestBody {
   syncRunId?: string;
 }
 
+/**
+ * Determines if an error indicates that the LearnWorlds schema tables are not available.
+ * This is used to provide graceful handling in test environments where the LearnWorlds
+ * schema may not exist or may be mocked.
+ *
+ * Checks for PostgreSQL error code 42P01 (undefined table) and common LearnWorlds table names
+ * in the error message.
+ */
 function isLearnworldsSchemaUnavailableError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;

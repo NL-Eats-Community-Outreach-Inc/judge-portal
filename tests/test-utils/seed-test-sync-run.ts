@@ -14,6 +14,7 @@ if (process.env.ALLOW_TEST_UTILITIES !== 'true') {
   );
 }
 
+// HTTP headers for insert operations (returns representation for verification)
 const insertHeaders = {
   apikey: SERVICE_ROLE_KEY,
   Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
@@ -21,12 +22,21 @@ const insertHeaders = {
   Prefer: 'return=representation',
 };
 
+// HTTP headers for delete operations (minimal response for efficiency)
 const deleteHeaders = {
   apikey: SERVICE_ROLE_KEY,
   Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
   Prefer: 'return=minimal',
 };
 
+// Batch size for inserting raw payloads. Smaller batches reduce memory overhead
+// and prevent request timeouts on large test datasets.
+const BATCH_SIZE = 100;
+
+/**
+ * Checks if the LearnWorlds schema tables are available in the test database.
+ * Used to gracefully skip LearnWorlds tests when the schema is not provisioned.
+ */
 export async function isLearnworldsSchemaAvailable(): Promise<boolean> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_sync_runs?select=id&limit=1`, {
     method: 'GET',
@@ -54,13 +64,28 @@ export interface SeededSyncRun {
   learnerIds: string[];
 }
 
+/**
+ * Computes a SHA256 hash of the payload for deduplication and integrity checks.
+ */
 function hashPayload(payload: Record<string, unknown>): string {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
+/**
+ * Seeds the database with a test sync run and raw payment records.
+ *
+ * This function:
+ * 1. Creates a sync run record to track the ingestion
+ * 2. Inserts raw payload records in batches to ensure scalability
+ * 3. Returns metadata (IDs) for later cleanup
+ *
+ * Batching is used to prevent request timeouts and excessive memory usage
+ * when handling large numbers of test records.
+ */
 export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSyncRun> {
   const validCount = records.filter((r) => r.learnerExternalId && r.courseExternalId).length;
 
+  // Step 1: Create the sync run record
   const syncRunRes = await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_sync_runs`, {
     method: 'POST',
     headers: insertHeaders,
@@ -80,6 +105,7 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
   const [syncRun] = (await syncRunRes.json()) as Array<{ id: string }>;
   const syncRunId = syncRun.id;
 
+  // Step 2: Transform seed records into payload rows
   const payloadRows = records.map((record, i) => {
     const raw = {
       learner_id: record.learnerExternalId,
@@ -100,17 +126,26 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
     };
   });
 
-  const payloadsRes = await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_raw_payloads`, {
-    method: 'POST',
-    headers: insertHeaders,
-    body: JSON.stringify(payloadRows),
-  });
+  // Step 3: Insert raw payloads in batches for scalability
+  const insertedPayloads: Array<{ id: string }> = [];
+  for (let i = 0; i < payloadRows.length; i += BATCH_SIZE) {
+    const batch = payloadRows.slice(i, i + BATCH_SIZE);
+    const payloadsRes = await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_raw_payloads`, {
+      method: 'POST',
+      headers: insertHeaders,
+      body: JSON.stringify(batch),
+    });
 
-  if (!payloadsRes.ok) {
-    throw new Error(`[seedTestSyncRun] Failed to create raw payloads: ${await payloadsRes.text()}`);
+    if (!payloadsRes.ok) {
+      throw new Error(
+        `[seedTestSyncRun] Failed to create raw payloads batch ${Math.floor(i / BATCH_SIZE) + 1}: ${await payloadsRes.text()}`
+      );
+    }
+
+    const batchResults = (await payloadsRes.json()) as Array<{ id: string }>;
+    insertedPayloads.push(...batchResults);
   }
 
-  const insertedPayloads = (await payloadsRes.json()) as Array<{ id: string }>;
   const rawPayloadIds = insertedPayloads.map((p) => p.id);
 
   const learnerIds = records
@@ -120,10 +155,21 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
   return { syncRunId, rawPayloadIds, learnerIds };
 }
 
+/**
+ * Cleans up test data in reverse foreign key dependency order.
+ *
+ * Deletion order (FK-aware):
+ * 1. learner_progress rows - depends on raw payload IDs via foreign key
+ * 2. learnworlds_raw_payloads rows - dependencies cleared
+ * 3. learnworlds_sync_runs - no foreign key constraints
+ *
+ * This order prevents constraint violations during cleanup.
+ */
 export async function cleanupTestSyncRun(seeded: SeededSyncRun): Promise<void> {
   const { syncRunId, rawPayloadIds, learnerIds } = seeded;
 
   // 1. Remove any persisted learner_progress rows written by the transform
+  // (These have a foreign key reference to learnworlds_raw_payloads)
   if (learnerIds.length > 0) {
     await fetch(
       `${SUPABASE_URL}/rest/v1/learner_progress?learner_id=in.(${learnerIds.join(',')})`,
@@ -132,6 +178,7 @@ export async function cleanupTestSyncRun(seeded: SeededSyncRun): Promise<void> {
   }
 
   // 2. Remove the staged raw payload rows
+  // (These are referenced by learner_progress, so must be deleted after step 1)
   if (rawPayloadIds.length > 0) {
     await fetch(
       `${SUPABASE_URL}/rest/v1/learnworlds_raw_payloads?id=in.(${rawPayloadIds.join(',')})`,
@@ -140,6 +187,7 @@ export async function cleanupTestSyncRun(seeded: SeededSyncRun): Promise<void> {
   }
 
   // 3. Remove the sync run record
+  // (No constraints on this, can be deleted last)
   await fetch(`${SUPABASE_URL}/rest/v1/learnworlds_sync_runs?id=eq.${syncRunId}`, {
     method: 'DELETE',
     headers: deleteHeaders,
