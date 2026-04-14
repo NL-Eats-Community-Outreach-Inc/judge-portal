@@ -43,6 +43,69 @@ function hashRecord(record: LearnworldsProgressRecord): string {
   return createHash('sha256').update(JSON.stringify(record.raw)).digest('hex');
 }
 
+interface LearnworldsFailureNotificationPayload {
+  syncRunId: string;
+  triggerMode: LearnworldsTriggerMode;
+  errorMessage: string;
+}
+
+function getFailureWebhookUrl(): string | null {
+  const value = process.env.LEARNWORLDS_FAILURE_WEBHOOK_URL?.trim();
+  if (!value) {
+    return null;
+  }
+
+  if (!value.startsWith('https://')) {
+    console.warn('LEARNWORLDS_FAILURE_WEBHOOK_URL must use HTTPS; skipping notification');
+    return null;
+  }
+
+  return value;
+}
+
+async function notifyFailedIngestion(
+  payload: LearnworldsFailureNotificationPayload
+): Promise<void> {
+  const webhookUrl = getFailureWebhookUrl();
+  if (!webhookUrl) {
+    return;
+  }
+
+  const timeoutMs = Number.parseInt(
+    process.env.LEARNWORLDS_FAILURE_NOTIFY_TIMEOUT_MS || '5000',
+    10
+  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number.isNaN(timeoutMs) ? 5000 : timeoutMs);
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event: 'learnworlds.ingestion.failed',
+        syncRunId: payload.syncRunId,
+        triggerMode: payload.triggerMode,
+        errorMessage: payload.errorMessage,
+        occurredAt: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'unknown',
+      }),
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.error(`LearnWorlds failure notification webhook returned status ${response.status}`);
+    }
+  } catch (notifyError) {
+    console.error('LearnWorlds failure notification failed:', notifyError);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function runLearnworldsIngestion(
   triggerMode: LearnworldsTriggerMode = 'manual'
 ): Promise<LearnworldsIngestionResult> {
@@ -118,6 +181,12 @@ export async function runLearnworldsIngestion(
         finishedAt: new Date().toISOString(),
       })
       .where(eq(learnworldsSyncRuns.id, syncRun.id));
+
+    await notifyFailedIngestion({
+      syncRunId: syncRun.id,
+      triggerMode,
+      errorMessage: safeErrorMessage,
+    });
 
     throw error;
   }
