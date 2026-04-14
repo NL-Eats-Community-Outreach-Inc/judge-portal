@@ -35,37 +35,56 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
     (p) => p.learnerExternalId !== null && p.courseExternalId !== null
   );
   const skippedRecords = processedRecords - validPayloads.length;
+  let persistedRecords = 0;
 
   if (validPayloads.length > 0) {
     // Count distinct completed modules per learner+course for this sync run.
     const completedModuleSets = new Map<string, Set<string>>();
+    const latestByLearnerCourse = new Map<
+      string,
+      {
+        learnworldsUserId: string;
+        courseId: string;
+        progressPercentage: number;
+        completionStatus: string;
+        lastActivityTimestamp: string | null;
+        rawPayloadId: string;
+      }
+    >();
+
     validPayloads.forEach((p) => {
+      const key = `${p.learnerExternalId}:${p.courseExternalId}`;
+
       if (p.moduleExternalId && p.completionStatus === 'completed') {
-        const key = `${p.learnerExternalId}:${p.courseExternalId}`;
         const moduleSet = completedModuleSets.get(key) ?? new Set<string>();
         moduleSet.add(p.moduleExternalId);
         completedModuleSets.set(key, moduleSet);
       }
+
+      // Keep the most recently iterated payload as the source of scalar fields
+      // for each learner+course pair.
+      latestByLearnerCourse.set(key, {
+        learnworldsUserId: p.learnerExternalId!,
+        courseId: p.courseExternalId!,
+        progressPercentage: p.progressPercentage ?? 0,
+        completionStatus: p.completionStatus ?? 'in_progress',
+        lastActivityTimestamp: p.lastActivityTimestamp,
+        rawPayloadId: p.id,
+      });
     });
+
+    const sourceSyncedAt = new Date().toISOString();
+    const upsertRows = Array.from(latestByLearnerCourse.entries()).map(([key, row]) => ({
+      ...row,
+      completedModules: completedModuleSets.get(key)?.size ?? 0,
+      sourceSyncedAt,
+    }));
+
+    persistedRecords = upsertRows.length;
 
     await db
       .insert(learnerProgress)
-      .values(
-        validPayloads.map((p) => {
-          const moduleCount =
-            completedModuleSets.get(`${p.learnerExternalId}:${p.courseExternalId}`)?.size ?? 0;
-          return {
-            learnworldsUserId: p.learnerExternalId!,
-            courseId: p.courseExternalId!,
-            progressPercentage: p.progressPercentage ?? 0,
-            completedModules: moduleCount,
-            completionStatus: p.completionStatus ?? 'in_progress',
-            lastActivityTimestamp: p.lastActivityTimestamp,
-            rawPayloadId: p.id,
-            sourceSyncedAt: new Date().toISOString(),
-          };
-        })
-      )
+      .values(upsertRows)
       .onConflictDoUpdate({
         target: [learnerProgress.learnworldsUserId, learnerProgress.courseId],
         set: {
@@ -82,7 +101,7 @@ export async function runLearnworldsTransform(syncRunId: string): Promise<Transf
   return {
     syncRunId,
     processedRecords,
-    persistedRecords: validPayloads.length,
+    persistedRecords,
     skippedRecords,
   };
 }

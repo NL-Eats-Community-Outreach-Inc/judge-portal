@@ -56,6 +56,8 @@ export interface SeedRecord {
   courseExternalId: string | null;
   progressPercentage: number | null;
   completionStatus: string | null;
+  moduleExternalId?: string | null;
+  lessonExternalId?: string | null;
 }
 
 export interface SeededSyncRun {
@@ -110,6 +112,8 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
     const raw = {
       learner_id: record.learnerExternalId,
       course_id: record.courseExternalId,
+      module_id: record.moduleExternalId ?? null,
+      lesson_id: record.lessonExternalId ?? null,
       seed_index: i,
       test_nonce: randomUUID(),
     };
@@ -119,6 +123,8 @@ export async function seedTestSyncRun(records: SeedRecord[]): Promise<SeededSync
       http_status: 200,
       learner_external_id: record.learnerExternalId,
       course_external_id: record.courseExternalId,
+      module_external_id: record.moduleExternalId ?? null,
+      lesson_external_id: record.lessonExternalId ?? null,
       completion_status: record.completionStatus,
       progress_percentage: record.progressPercentage,
       record_hash: hashPayload(raw),
