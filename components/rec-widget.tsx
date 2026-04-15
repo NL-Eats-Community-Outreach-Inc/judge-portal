@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Sparkles, Loader2, Star, X } from 'lucide-react';
-import { useParticipant } from '@/app/participant/contexts/participant-context';
+import { authClient } from '@/lib/auth/client';
 import { toast } from 'sonner';
 
 interface Recommendation {
@@ -21,7 +21,8 @@ const MOCK_DATA: Recommendation = {
 
 export function RecommendationWidget() {
   const [data, setData] = useState<Recommendation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Feedback Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,16 +30,26 @@ export function RecommendationWidget() {
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Access participant context
-  const { myTeams } = useParticipant();
-
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setData(MOCK_DATA);
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    async function init() {
+      setIsLoading(true);
+      try {
+        // Fetch user from authClient
+        const user = await authClient.getUser();
+        if (user) {
+          setUserId(user.id);
+        }
+
+        // Simulate data fetch (MOCK_DATA)
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setData(MOCK_DATA);
+      } catch (error) {
+        console.error('Initialization error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
   }, []);
 
   const handleSubmitFeedback = async () => {
@@ -50,15 +61,11 @@ export function RecommendationWidget() {
     setIsSubmitting(true);
 
     try {
-      // Attempting to find a learner ID from team data if available
-      // otherwise, the backend session usually handles this.
-      const learnerId = myTeams[0]?.id || 'unknown-learner';
-
       const response = await fetch('/api/recommendations/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          learner_id: learnerId,
+          learner_id: userId || 'anonymous',
           recommendation_id: data?.id,
           feedback_type: 'rating',
           rating_value: rating,
@@ -66,17 +73,16 @@ export function RecommendationWidget() {
         }),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit feedback');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit feedback');
       }
 
       toast.success('Thank you for your feedback!');
       setIsModalOpen(false);
       setRating(0);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error submitting feedback');
+      toast.error(error instanceof Error ? error.message : 'Something went wrong');
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +114,7 @@ export function RecommendationWidget() {
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 shadow-sm"
           >
             Give Feedback
           </button>
@@ -140,7 +146,7 @@ export function RecommendationWidget() {
           <div className="relative bg-background border rounded-xl shadow-2xl max-w-sm w-full p-8 animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 disabled:pointer-events-none"
+              className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100"
               disabled={isSubmitting}
             >
               <X className="h-4 w-4" />
@@ -181,7 +187,7 @@ export function RecommendationWidget() {
                 <button
                   onClick={handleSubmitFeedback}
                   disabled={isSubmitting || rating === 0}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 disabled:opacity-50 transition-all"
                 >
                   {isSubmitting ? (
                     <>
@@ -195,7 +201,7 @@ export function RecommendationWidget() {
                 <button
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 transition-colors"
                 >
                   Cancel
                 </button>
