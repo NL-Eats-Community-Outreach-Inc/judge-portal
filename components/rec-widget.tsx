@@ -22,7 +22,7 @@ const MOCK_DATA: Recommendation = {
 export function RecommendationWidget() {
   const [data, setData] = useState<Recommendation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Feedback Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rating, setRating] = useState(0);
@@ -131,14 +131,14 @@ export function RecommendationWidget() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => !isSubmitting && setIsModalOpen(false)}
           />
-          
+
           {/* Dialog Content */}
           <div className="relative bg-background border rounded-xl shadow-2xl max-w-sm w-full p-8 animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setIsModalOpen(false)}
               className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 disabled:pointer-events-none"
               disabled={isSubmitting}
@@ -146,7 +146,7 @@ export function RecommendationWidget() {
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </button>
-            
+
             <div className="text-center space-y-4">
               <div className="space-y-2">
                 <h4 className="text-xl font-bold tracking-tight">Rate Recommendation</h4>
@@ -154,7 +154,7 @@ export function RecommendationWidget() {
                   Was this video helpful for your training?
                 </p>
               </div>
-              
+
               <div className="flex justify-center gap-1 py-4">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -168,8 +168,8 @@ export function RecommendationWidget() {
                   >
                     <Star
                       className={`h-8 w-8 transition-colors ${
-                        (hoveredRating || rating) >= star 
-                          ? 'fill-yellow-400 text-yellow-400' 
+                        (hoveredRating || rating) >= star
+                          ? 'fill-yellow-400 text-yellow-400'
                           : 'text-muted-foreground'
                       }`}
                     />
