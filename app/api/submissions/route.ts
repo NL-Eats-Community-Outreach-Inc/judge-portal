@@ -57,14 +57,25 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+    } catch (error: unknown) {
     // Handle duplicate submission
-    if (error?.code === '23505') {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === '23505'
+    ) {
       return NextResponse.json(
         { error: 'Submission already exists for this team' },
         { status: 400 }
       );
     }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 
     console.error(error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
