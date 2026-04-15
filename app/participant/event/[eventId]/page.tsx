@@ -318,7 +318,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
             {/* Has team — show team detail */}
             {team ? (
-              <TeamDetailPanel teamId={team.id} />
+                <TeamDetailPanel teamId={team.id} />
+
             ) : isOpen ? (
               /* No team, event is open — show create/join options */
               <>
@@ -448,6 +449,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         onSuccess={refreshAll}
       />
       <JoinTeamDialog open={showJoinTeam} onOpenChange={setShowJoinTeam} onSuccess={refreshAll} />
+      
     </div>
   );
 }

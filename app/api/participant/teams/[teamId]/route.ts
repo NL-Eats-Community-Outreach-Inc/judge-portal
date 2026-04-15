@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { teams, teamMembers, events } from '@/lib/db/schema';
-import { eq, count } from 'drizzle-orm';
+import { teams, teamMembers, events, submissions } from '@/lib/db/schema';
+import { eq, count, and } from 'drizzle-orm';
 import {
   requireTeamMembership,
   requireTeamCreator,
@@ -51,6 +51,20 @@ export async function GET(
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
+    // Check if submission exists for this team + event
+    const submission = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.teamId, teamId),
+          eq(submissions.eventId, team.eventId)
+        )
+      )
+      .limit(1);
+
+    const hasSubmitted = submission.length > 0;
+
     // Get member count
     const [countResult] = await db
       .select({ memberCount: count(teamMembers.id) })
@@ -62,6 +76,7 @@ export async function GET(
         ...team,
         isCreator: membership.isCreator,
         memberCount: Number(countResult.memberCount),
+        hasSubmitted, 
       },
     });
   } catch (error) {
