@@ -1,24 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, BookOpen } from 'lucide-react';
 
-interface Recommendation {
-  id: string;
-  title: string;
+interface RecommendationResponse {
+  learner_id: string;
+  recommended_item_id: string;
+  recommended_title: string;
   rationale: string;
-  video_url: string;
 }
 
-const MOCK_DATA: Recommendation = {
-  id: 'rec-fr-10',
-  title: 'Video title',
-  rationale: 'Based on your recent history, this video will help you with your training.',
-  video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+const MOCK_DATA: RecommendationResponse = {
+  learner_id: '123',
+  recommended_item_id: 'COURSE_456',
+  recommended_title: 'Advanced Food Safety',
+  rationale:
+    'Since you completed Food Safety Basics, this course will help you master professional kitchen protocols.',
 };
 
 export function RecommendationWidget() {
-  const [data, setData] = useState<Recommendation | null>(null);
+  const [data, setData] = useState<RecommendationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -42,30 +43,50 @@ export function RecommendationWidget() {
 
   return (
     <div className="w-full max-w-7xl mx-auto py-12 px-6">
-      {/* Main Layout: 
-          - Stacked (flex-col) on mobile. 
-          - Row (flex-row) and large gap on desktop.
-      */}
-      <div className="flex flex-col lg:flex-row gap-12 items-start">
-        {/* Left Side: Text */}
+      <div className="flex flex-col lg:flex-row gap-12 items-center">
+        {/* Left Side: Header & Context */}
         <div className="w-full lg:w-1/3 space-y-4">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
             <Sparkles className="h-4 w-4" />
             Recommended
           </div>
-          <h3 className="text-4xl font-extrabold">{data.title}</h3>
-          <p className="text-muted-foreground text-lg">{data.rationale}</p>
+          <h3 className="text-4xl font-extrabold tracking-tight">Your Next Step</h3>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            We've analyzed your progress to find the best path forward for your training.
+          </p>
         </div>
 
-        {/* Right Side: Video */}
+        {/* Right Side: Recommendation Card (Replacing Video) */}
         <div className="w-full lg:w-2/3">
-          <div className="relative aspect-video w-full rounded-xl bg-black border shadow-lg overflow-hidden">
-            <iframe
-              src={data.video_url}
-              className="absolute inset-0 h-full w-full border-0"
-              allowFullScreen
-              title="Recommendation Video"
-            />
+          <div className="group relative overflow-hidden rounded-2xl border bg-card p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              {/* Icon/Visual Anchor */}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BookOpen className="h-8 w-8" />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 space-y-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
+                  ID: {data.recommended_item_id}
+                </span>
+                <h4 className="text-2xl font-bold group-hover:text-primary transition-colors">
+                  {data.recommended_title}
+                </h4>
+                <p className="text-muted-foreground">{data.rationale}</p>
+              </div>
+
+              {/* Action */}
+              <div className="pt-4 md:pt-0">
+                <button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90">
+                  Start Now
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Subtle background decoration */}
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
           </div>
         </div>
       </div>
