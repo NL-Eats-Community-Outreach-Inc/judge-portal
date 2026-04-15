@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       );
     }
 
-    //insert submission ( 1 per team+event)
+    // insert submission (1 per team + event)
     await db.insert(submissions).values({
       eventId,
       teamId,
@@ -57,8 +57,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-    } catch (error: unknown) {
-    // Handle duplicate submission
+  } catch (error: unknown) {
+    console.error(error);
+
+    // Handle duplicate submission (DB constraint safety net)
     if (
       typeof error === 'object' &&
       error !== null &&
@@ -71,13 +73,6 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-
-    console.error(error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
