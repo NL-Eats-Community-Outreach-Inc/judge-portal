@@ -343,6 +343,27 @@ export const competitions = pgTable(
   })
 );
 
+export const mentorProfiles = pgTable('mentor_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  learnworldsUserId: text('learnworlds_user_id').unique().notNull(),
+  fullName: text('full_name').notNull(),
+  title: text('title'),
+  organization: text('organization'),
+  bio: text('bio'),
+  linkedinUrl: text('linkedin_url'),
+  calendlyUrl: text('calendly_url'),
+  photoUrl: text('photo_url'),
+  tags: text('tags').array(),
+  isVisible: boolean('is_visible').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull()
+    .$onUpdate(() => sql`timezone('utc'::text, now())`),
+});
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type Event = typeof events.$inferSelect;
@@ -367,3 +388,5 @@ export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type NewOrganizationMember = typeof organizationMembers.$inferInsert;
 export type Competition = typeof competitions.$inferSelect;
 export type NewCompetition = typeof competitions.$inferInsert;
+export type MentorProfile = typeof mentorProfiles.$inferSelect;
+export type NewMentorProfile = typeof mentorProfiles.$inferInsert;
