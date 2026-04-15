@@ -1,7 +1,6 @@
 import { eq, desc, and, isNull, sql } from 'drizzle-orm';
-import { db } from '../db'; 
+import { db } from '../db';
 import * as schema from '../db/schema';
-
 
 /*
     Define important threshold for model decisions
@@ -9,7 +8,7 @@ import * as schema from '../db/schema';
 const RULES_CONFIG = {
   INACTIVITY_THRESHOLD_DAYS: 14,
   HIGH_PROGRESS_THRESHOLD: 80,
-  DEFAULT_FALLBACK_ITEM_ID: 'BIO-340'
+  DEFAULT_FALLBACK_ITEM_ID: 'BIO-340',
 };
 
 /*
@@ -26,8 +25,9 @@ export type RecommendationResult = {
 /**
     Evaluates the learner's state against deterministic rules (IC-25)
  */
-export async function generateRuleBasedRecommendation(learnworldsUserId: string): Promise<RecommendationResult> {
-  
+export async function generateRuleBasedRecommendation(
+  learnworldsUserId: string
+): Promise<RecommendationResult> {
   const [latestEvent] = await db
     .select()
     .from(schema.learnerItemEvents)
@@ -41,8 +41,8 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
     .where(eq(schema.learnerProgress.learnworldsUserId, learnworldsUserId))
     .orderBy(desc(schema.learnerProgress.progressPercentage));
 
-  const completedCourses = activeProgress.filter(p => p.completionStatus === 'completed');
-  const inProgressCourses = activeProgress.filter(p => p.completionStatus === 'in_progress');
+  const completedCourses = activeProgress.filter((p) => p.completionStatus === 'completed');
+  const inProgressCourses = activeProgress.filter((p) => p.completionStatus === 'in_progress');
 
   let recommendation: RecommendationResult | null = null;
 
@@ -51,7 +51,7 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
     Result: If true it recommends the last course the user was interacting with 
   */
   if (latestEvent && inProgressCourses.length > 0) {
-    const daysSinceLastEvent = 
+    const daysSinceLastEvent =
       (new Date().getTime() - new Date(latestEvent.eventTimestamp).getTime()) / (1000 * 3600 * 24);
 
     if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS) {
@@ -66,7 +66,7 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
           recommendedTitle: itemDetails.title,
           rationale: 'It has been a while! Pick up right where you left off.',
           ruleMatched: 'resume_inactivity',
-          source: 'rule'
+          source: 'rule',
         };
       }
     }
@@ -78,8 +78,8 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
     Result: encourage user to complete this course 
   */
   if (!recommendation && inProgressCourses.length > 0) {
-    const closestToCompletion = inProgressCourses[0]; 
-    
+    const closestToCompletion = inProgressCourses[0];
+
     if (Number(closestToCompletion.progressPercentage) >= RULES_CONFIG.HIGH_PROGRESS_THRESHOLD) {
       const [itemDetails] = await db
         .select({ title: schema.learningItems.title })
@@ -92,7 +92,7 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
           recommendedTitle: itemDetails.title,
           rationale: 'You are so close to finishing! Complete this course today.',
           ruleMatched: 'high_progress',
-          source: 'rule'
+          source: 'rule',
         };
       }
     }
@@ -103,8 +103,8 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
     Result: find a course whose prerequisite is one of the completed courses 
   */
   if (!recommendation && completedCourses.length > 0) {
-    const completedCourseIds = completedCourses.map(c => c.courseId!);
-    
+    const completedCourseIds = completedCourses.map((c) => c.courseId!);
+
     const [nextItem] = await db
       .select()
       .from(schema.learningItems)
@@ -122,12 +122,11 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
         recommendedTitle: nextItem.title,
         rationale: 'Based on your recent completions, this is the logical next step.',
         ruleMatched: 'next_step_progression',
-        source: 'rule'
+        source: 'rule',
       };
     }
   }
 
-  
   /*
     Case: cold start, new user
     Result: recommends default course 
@@ -143,14 +142,15 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
       recommendedTitle: fallbackItem?.title || 'Foundations Course',
       rationale: 'A popular starting point for new learners.',
       ruleMatched: 'default_popular',
-      source: 'fallback'
+      source: 'fallback',
     };
   }
 
   /*
     Insert recommendation into table 
   */
-  const [persistedRec] = await db.insert(schema.learnerRecommendations)
+  const [persistedRec] = await db
+    .insert(schema.learnerRecommendations)
     .values({
       learnworldsUserId,
       recommendedItemId: recommendation.recommendedItemId,
@@ -158,7 +158,7 @@ export async function generateRuleBasedRecommendation(learnworldsUserId: string)
       rationale: recommendation.rationale,
       ruleMatched: recommendation.ruleMatched,
       source: recommendation.source,
-      score: '1.0' 
+      score: '1.0',
     })
     .returning();
 
