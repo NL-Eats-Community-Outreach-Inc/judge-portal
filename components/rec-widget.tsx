@@ -65,9 +65,8 @@ export function RecommendationWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          learner_id: userId || data?.learner_id || 'anonymous',
+          learner_id: userId || data?.learner_id || 'ERROR FETCHING ID',
           recommendation_id: data?.recommended_item_id,
-          feedback_type: 'rating',
           rating_value: rating,
           timestamp: new Date().toISOString(),
         }),
@@ -82,7 +81,7 @@ export function RecommendationWidget() {
       setIsModalOpen(false);
       setRating(0);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Something went wrong');
+      toast.error('Something went wrong');
     } finally {
       setIsSubmitting(false);
     }
