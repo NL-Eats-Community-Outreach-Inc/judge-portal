@@ -55,12 +55,7 @@ export async function GET(
     const submission = await db
       .select()
       .from(submissions)
-      .where(
-        and(
-          eq(submissions.teamId, teamId),
-          eq(submissions.eventId, team.eventId)
-        )
-      )
+      .where(and(eq(submissions.teamId, teamId), eq(submissions.eventId, team.eventId)))
       .limit(1);
 
     const hasSubmitted = submission.length > 0;
@@ -76,7 +71,7 @@ export async function GET(
         ...team,
         isCreator: membership.isCreator,
         memberCount: Number(countResult.memberCount),
-        hasSubmitted, 
+        hasSubmitted,
       },
     });
   } catch (error) {

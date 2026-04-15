@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Users,
   Crown,
@@ -100,7 +100,6 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const [showSubmit, setShowSubmit] = useState(false);
   const [submissionText, setSubmissionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
 
   const fetchTeam = useCallback(async () => {
     setIsLoadingTeam(true);
@@ -153,7 +152,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   }, [editName, editDescription, editDemoUrl, editRepoUrl, team]);
 
   const isLocked = team?.eventStatus === 'active';
-  const canSubmit =  team?.eventStatus === 'open' && !team?.hasSubmitted;
+  const canSubmit = team?.eventStatus === 'open' && !team?.hasSubmitted;
 
   const handleSave = async () => {
     if (!team || !hasChanges) return;
@@ -248,7 +247,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
       setIsDeleting(false);
     }
   };
-  
+
   const handleSubmit = async () => {
     if (!submissionText.trim()) {
       toast.error('Submission cannot be empty');
@@ -264,7 +263,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          eventId: team?.eventId,   // important
+          eventId: team?.eventId, // important
           teamId: team?.id,
           submissionText: submissionText.trim(),
         }),
@@ -279,7 +278,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
       toast.success('Project submitted successfully!');
       setShowSubmit(false);
       setSubmissionText('');
-      await fetchTeam(); 
+      await fetchTeam();
       await refreshAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Submission failed');
@@ -359,9 +358,10 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                 onClick={() => setShowSubmit(true)}
                 disabled={!canSubmit}
                 className={`
-                  ${canSubmit 
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md' 
-                    : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                  ${
+                    canSubmit
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                   }
                 `}
               >
@@ -374,10 +374,8 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                   'Submit'
                 )}
               </Button>
-             
             </div>
           </div>
-
 
           {/* Stats */}
           <div className="flex items-center justify-end flex-1 gap-4 sm:gap-6">
@@ -566,7 +564,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           )}
         </div>
       </Card>
-      
+
       {/* SUBMISSION PANEL */}
       <Dialog open={showSubmit} onOpenChange={setShowSubmit}>
         <DialogContent className="sm:max-w-lg">
@@ -592,12 +590,12 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
               disabled={isSubmitting}
               className="bg-teal-600 hover:bg-teal-700 text-white"
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-     
+
       {/* Actions Card - only when not locked */}
       {!isLocked && (
         <Card className="p-4 sm:p-6 border-destructive/20">
@@ -678,7 +676,6 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           </div>
         </Card>
       )}
-      
     </div>
   );
 }
