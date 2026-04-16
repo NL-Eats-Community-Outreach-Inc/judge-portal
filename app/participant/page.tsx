@@ -60,16 +60,16 @@ export default function ParticipantPage() {
     // Pre-populate core categories
     allTags.add('Global');
     allTags.add('Local');
-    
-    events.forEach(event => {
+
+    events.forEach((event) => {
       const tags = getEventTags(event);
-      tags.forEach(tag => allTags.add(tag));
+      tags.forEach((tag) => allTags.add(tag));
     });
     return ['All', ...Array.from(allTags)];
   }, [events]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    return events.filter((event) => {
       const tags = getEventTags(event);
 
       const matchesSearch =
@@ -196,7 +196,7 @@ export default function ParticipantPage() {
           {/* Filter Chips Container */}
           {!isLoading && events.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
-              {availableCategories.map(category => (
+              {availableCategories.map((category) => (
                 <Badge
                   key={category}
                   variant={selectedCategory === category ? 'default' : 'outline'}
@@ -246,13 +246,11 @@ export default function ParticipantPage() {
               <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
                 <Search className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-2">
-                No challenges found
-              </h3>
+              <h3 className="text-base font-semibold text-foreground mb-2">No challenges found</h3>
               <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
                 We couldn't find any challenges matching your search or selected category.
               </p>
-              <button 
+              <button
                 className="text-sm font-medium text-teal-600 hover:underline"
                 onClick={clearFilters}
               >
