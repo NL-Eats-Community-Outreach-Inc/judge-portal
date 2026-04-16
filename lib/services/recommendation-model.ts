@@ -1,4 +1,4 @@
-import { eq, desc, and, isNull, sql } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
 
@@ -149,7 +149,7 @@ export async function generateRuleBasedRecommendation(
   /*
     Insert recommendation into table 
   */
-  const [persistedRec] = await db
+  await db
     .insert(schema.learnerRecommendations)
     .values({
       learnworldsUserId,
