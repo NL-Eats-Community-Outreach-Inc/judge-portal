@@ -55,7 +55,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const router = useRouter();
   const { events, isLoading, registerForEvent, unregisterFromEvent, getTeamForEvent, refreshAll } =
     useParticipant();
-
+ 
   const [isRegistering, setIsRegistering] = useState(false);
   const [isUnregistering, setIsUnregistering] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);

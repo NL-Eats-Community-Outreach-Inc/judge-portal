@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,22 +14,34 @@ interface EventCardProps {
   onRegister: (eventId: string) => Promise<boolean>;
 }
 
-function getEventTags(name: string): string[] {
-  const lower = name.toLowerCase();
-  const tags: string[] = [];
-  if (lower.includes('hack')) tags.push('Hackathon');
-  if (lower.includes('innov')) tags.push('Innovation');
-  if (lower.includes('ai') || lower.includes('ml')) tags.push('AI/ML');
-  if (lower.includes('web')) tags.push('Web Dev');
-  if (lower.includes('mobile')) tags.push('Mobile');
-  if (lower.includes('data')) tags.push('Data');
-  if (lower.includes('design')) tags.push('Design');
-  if (lower.includes('iot')) tags.push('IoT');
-  if (lower.includes('game')) tags.push('Gaming');
-  if (lower.includes('sustain') || lower.includes('green')) tags.push('Sustainability');
-  if (tags.length === 0) tags.push('Challenge');
-  if (tags.length < 2) tags.push('Open');
-  return tags.slice(0, 3);
+export function getEventTags(event: ParticipantEvent): string[] {
+  const customTags: string[] = [];
+  
+  if (event.challengeType) {
+    customTags.push(event.challengeType.charAt(0).toUpperCase() + event.challengeType.slice(1));
+  }
+  
+  if (event.challengeTags && event.challengeTags.length > 0) {
+    customTags.push(...event.challengeTags);
+  } else {
+    const lower = event.name.toLowerCase();
+    if (lower.includes('hack')) customTags.push('Hackathon');
+    if (lower.includes('innov')) customTags.push('Innovation');
+    if (lower.includes('ai') || lower.includes('ml')) customTags.push('AI/ML');
+    if (lower.includes('web')) customTags.push('Web Dev');
+    if (lower.includes('mobile')) customTags.push('Mobile');
+    if (lower.includes('data')) customTags.push('Data');
+    if (lower.includes('design')) customTags.push('Design');
+    if (lower.includes('iot')) customTags.push('IoT');
+    if (lower.includes('game')) customTags.push('Gaming');
+    if (lower.includes('sustain') || lower.includes('green')) customTags.push('Sustainability');
+    
+    // Only add defaults if we literally have just the challengeType
+    if (customTags.length === 1) customTags.push('Challenge');
+    if (customTags.length < 2) customTags.push('Open');
+  }
+
+  return Array.from(new Set(customTags)).slice(0, 3);
 }
 
 const tagColors = [
@@ -42,7 +54,7 @@ const tagColors = [
 export function EventCard({ event, team, onRegister }: EventCardProps) {
   const [isRegistering, setIsRegistering] = useState(false);
 
-  const tags = getEventTags(event.name);
+  const tags = getEventTags(event);
 
   const handleRegister = async (e: React.MouseEvent) => {
     e.preventDefault();

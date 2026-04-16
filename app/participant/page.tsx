@@ -1,10 +1,13 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Target, Sparkles, Users, Clock, Rocket, ChevronRight } from 'lucide-react';
+import { Target, Sparkles, Users, Clock, Rocket, ChevronRight, Search, X } from 'lucide-react';
 import { useParticipant } from './contexts/participant-context';
-import { EventCard } from './components/event-card';
+import { EventCard, getEventTags } from './components/event-card';
 import { TeamCard } from './components/team-card';
+import { useState, useMemo } from 'react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
 function SkeletonCard() {
@@ -49,6 +52,40 @@ function SkeletonTeamCard() {
 
 export default function ParticipantPage() {
   const { events, myTeams, isLoading, registerForEvent, getTeamForEvent } = useParticipant();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+
+  const availableCategories = useMemo(() => {
+    const allTags = new Set<string>();
+    // Pre-populate core categories
+    allTags.add('Global');
+    allTags.add('Local');
+    
+    events.forEach(event => {
+      const tags = getEventTags(event);
+      tags.forEach(tag => allTags.add(tag));
+    });
+    return ['All', ...Array.from(allTags)];
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      const tags = getEventTags(event);
+
+      const matchesSearch =
+        event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (event.description?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+
+      const matchesCategory = selectedCategory === 'All' || tags.includes(selectedCategory);
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [events, searchQuery, selectedCategory]);
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('All');
+  };
 
   return (
     <div className="min-h-full">
@@ -126,7 +163,7 @@ export default function ParticipantPage() {
 
         {/* Events section */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500" />
               <h2 className="text-lg sm:text-xl font-semibold text-foreground">
@@ -134,21 +171,68 @@ export default function ParticipantPage() {
               </h2>
               {!isLoading && (
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {events.length}
+                  {filteredEvents.length}
                 </span>
               )}
             </div>
+
+            {/* Search Input Area */}
+            {!isLoading && events.length > 0 && (
+              <div className="relative w-full sm:w-64">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Search challenges..."
+                  className="pl-9 pr-4 h-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
+          {/* Filter Chips Container */}
+          {!isLoading && events.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {availableCategories.map(category => (
+                <Badge
+                  key={category}
+                  variant={selectedCategory === category ? 'default' : 'outline'}
+                  className={`cursor-pointer transition-colors ${
+                    selectedCategory === category
+                      ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                      : 'hover:bg-muted'
+                  }`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Badge>
+              ))}
+
+              {/* Show Clear button if any filter is heavily active */}
+              {(searchQuery || selectedCategory !== 'All') && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 ml-2"
+                >
+                  <X className="h-3 w-3" /> Clear Filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Event Cards Grid */}
           {isLoading ? (
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
             </div>
-          ) : events.length > 0 ? (
+          ) : filteredEvents.length > 0 ? (
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              {events.map((event) => (
+              {filteredEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
@@ -156,6 +240,24 @@ export default function ParticipantPage() {
                   onRegister={registerForEvent}
                 />
               ))}
+            </div>
+          ) : events.length > 0 ? (
+            <div className="text-center py-10 sm:py-12 bg-muted/20 rounded-xl border border-dashed">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <Search className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold text-foreground mb-2">
+                No challenges found
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+                We couldn't find any challenges matching your search or selected category.
+              </p>
+              <button 
+                className="text-sm font-medium text-teal-600 hover:underline"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
             <div className="text-center py-10 sm:py-12">

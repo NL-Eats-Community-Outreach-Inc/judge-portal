@@ -13,6 +13,8 @@ export interface ParticipantEvent {
   createdAt: string;
   isRegistered: boolean;
   registeredAt: string | null;
+  challengeType?: string;
+  challengeTags?: string[];
 }
 
 export interface ParticipantTeam {

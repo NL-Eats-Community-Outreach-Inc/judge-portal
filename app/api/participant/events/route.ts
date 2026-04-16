@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { events, organizations, eventParticipants } from '@/lib/db/schema';
+import { events, organizations, eventParticipants, competitions } from '@/lib/db/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 
 export async function GET() {
@@ -23,9 +23,12 @@ export async function GET() {
         createdAt: events.createdAt,
         registrationId: eventParticipants.id,
         registeredAt: eventParticipants.registeredAt,
+        challengeType: competitions.challengeType,
+        tags: competitions.tags,
       })
       .from(events)
       .leftJoin(organizations, eq(events.organizationId, organizations.id))
+      .leftJoin(competitions, eq(events.id, competitions.eventId))
       .leftJoin(
         eventParticipants,
         sql`${eventParticipants.eventId} = ${events.id} AND ${eventParticipants.participantId} = ${user.id}`
@@ -43,6 +46,8 @@ export async function GET() {
       createdAt: e.createdAt,
       isRegistered: e.registrationId !== null,
       registeredAt: e.registeredAt,
+      challengeType: e.challengeType || 'global',
+      challengeTags: e.tags || [],
     }));
 
     return NextResponse.json({ events: result });
