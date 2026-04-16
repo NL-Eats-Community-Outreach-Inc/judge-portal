@@ -57,7 +57,6 @@ export default function ParticipantPage() {
 
   const availableCategories = useMemo(() => {
     const allTags = new Set<string>();
-    // Pre-populate core categories
     allTags.add('Global');
     allTags.add('Local');
 
@@ -248,7 +247,7 @@ export default function ParticipantPage() {
               </div>
               <h3 className="text-base font-semibold text-foreground mb-2">No challenges found</h3>
               <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-                We couldn't find any challenges matching your search or selected category.
+                We couldn&apos;t find any challenges matching your search or selected category.
               </p>
               <button
                 className="text-sm font-medium text-teal-600 hover:underline"

@@ -35,8 +35,6 @@ export function getEventTags(event: ParticipantEvent): string[] {
     if (lower.includes('iot')) customTags.push('IoT');
     if (lower.includes('game')) customTags.push('Gaming');
     if (lower.includes('sustain') || lower.includes('green')) customTags.push('Sustainability');
-
-    // Only add defaults if we literally have just the challengeType
     if (customTags.length === 1) customTags.push('Challenge');
     if (customTags.length < 2) customTags.push('Open');
   }
