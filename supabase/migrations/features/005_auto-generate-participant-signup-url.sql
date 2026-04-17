@@ -8,19 +8,28 @@
 -- Trigger function to set participant_signup_url based on event_id on INSERT or UPDATE
 CREATE OR REPLACE FUNCTION public.set_competition_participant_signup_url()
 RETURNS trigger
-SECURITY DEFINER
-SET search_path = public
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  base_url text;
 BEGIN
-  IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND (OLD.event_id IS DISTINCT FROM new.event_id)) THEN
-    new.participant_signup_url := 'https://judgeportal.com/participant/challenges/' || new.event_id::text;
+  base_url := current_setting('app.settings.participant_base_url', true);
+
+  -- Error handling for missing base_url configuration
+  IF base_url IS NULL OR base_url = '' THEN
+    RAISE EXCEPTION 'Database Configuration Error: "app.settings.participant_base_url" is missing.';
   END IF;
-  RETURN new;
-EXCEPTION 
-  WHEN OTHERS THEN
-    RAISE WARNING 'Error in set_competition_participant_signup_url for %',  SQLERRM;
-    RETURN new;
+
+  -- URL generation
+  IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND (OLD.event_id IS DISTINCT FROM NEW.event_id)) THEN
+    IF NEW.event_id IS NULL THEN
+      NEW.participant_signup_url := NULL;
+    ELSE
+      NEW.participant_signup_url := base_url || '/participant/event/' || NEW.event_id::text;
+    END IF;
+  END IF;
+
+  RETURN NEW;
 END;
 $$;
 
@@ -32,11 +41,20 @@ CREATE TRIGGER trg_set_competition_participant_signup_url
 
 -- Backfill existing rows
 DO $$
+DECLARE
+  base_url text;
 BEGIN
+  base_url := current_setting('app.settings.participant_base_url', true);
+
+  -- Error handling for missing base_url configuration
+  IF base_url IS NULL OR base_url = '' THEN
+    RAISE EXCEPTION 'Database Configuration Error: "app.settings.participant_base_url" is missing.';
+  END IF;
+
   UPDATE public.competitions
-  SET participant_signup_url = 'https://judgeportal.com/participant/challenges/' || event_id::text
+  SET participant_signup_url = base_url || '/participant/event/' || event_id::text
   WHERE event_id IS NOT NULL
-    AND (participant_signup_url IS NULL OR participant_signup_url != ('https://judgeportal.com/participant/challenges/' || event_id::text));
+    AND (participant_signup_url IS NULL OR participant_signup_url != (base_url || '/participant/event/' || event_id::text));
 END $$;
 
 -- Success Message
