@@ -13,11 +13,14 @@ AS $$
 DECLARE
   base_url text;
 BEGIN
-  base_url := current_setting('app.settings.participant_base_url', true);
+  SELECT decrypted_secret INTO base_url 
+  FROM vault.decrypted_secrets 
+  WHERE name = 'participant_signup_base_url'
+  LIMIT 1;
 
-  -- Error handling for missing base_url configuration
+  -- Error handling for missing base_url secret
   IF base_url IS NULL OR base_url = '' THEN
-    RAISE EXCEPTION 'Database Configuration Error: "app.settings.participant_base_url" is missing.';
+    RAISE EXCEPTION 'Vault Error: Secret "participant_signup_base_url" is missing.';
   END IF;
 
   -- URL generation
@@ -44,17 +47,16 @@ DO $$
 DECLARE
   base_url text;
 BEGIN
-  base_url := current_setting('app.settings.participant_base_url', true);
+  SELECT decrypted_secret INTO base_url FROM vault.decrypted_secrets WHERE name = 'participant_signup_base_url' LIMIT 1;
 
-  -- Error handling for missing base_url configuration
+  -- Error handling for missing base_url secret during backfill
   IF base_url IS NULL OR base_url = '' THEN
-    RAISE EXCEPTION 'Database Configuration Error: "app.settings.participant_base_url" is missing.';
+    RAISE EXCEPTION 'Vault Error: Secret "participant_signup_base_url" is missing during backfill.';
   END IF;
 
   UPDATE public.competitions
   SET participant_signup_url = base_url || '/participant/event/' || event_id::text
-  WHERE event_id IS NOT NULL
-    AND (participant_signup_url IS NULL OR participant_signup_url != (base_url || '/participant/event/' || event_id::text));
+  WHERE event_id IS NOT NULL;
 END $$;
 
 -- Success Message
