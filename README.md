@@ -101,16 +101,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 
 3. **Configure Environment Variables**
 
-   Create a `.env.local` file in the root directory:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
-   DATABASE_URL=your-database-url
-   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token  # Optional: for email template setup
-   ```
 
-   > **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
 
 4. **Set up the Database**
 
@@ -141,8 +132,55 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 
    Open [http://localhost:3000](http://localhost:3000) in your browser
 
-### Create Your First Admin
+## Environment Variables
+The application relies on the following environment variables for configuration.
 
+### Required Variables
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+  - Supabase project URL
+
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - Public anonymous key for client-side access
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+  - Service role key for secure server-side operations
+
+- `DATABASE_URL`
+  - PostgreSQL connection string used by Drizzle ORM
+
+---
+
+### Optional Variables
+
+- `SUPABASE_ACCESS_TOKEN`
+  - Required for email template setup scripts
+
+- `VERCEL_URL`
+  - Automatically set in Vercel deployments
+
+- `VERCEL_ENV`
+  - Indicates deployment environment (`development`, `preview`, `production`)
+
+- `BASE_URL`
+  - Used in testing configurations (Playwright)
+
+---
+
+### Example `.env.local`
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+DATABASE_URL=your_database_url
+
+# Optional
+SUPABASE_ACCESS_TOKEN=your_token
+BASE_URL=http://localhost:3000
+```
+
+### Creating Your First Admin
 1. **Sign up** at `/auth/sign-up`
 2. **Promote to super admin** (for platform management):
    - Go to Supabase Dashboard
@@ -284,19 +322,68 @@ judgeportal/
 
 ## 📊 Database Schema
 
-The system uses eleven main tables:
+The system uses PostgreSQL with Drizzle ORM and is built around a multi-tenant architecture.
 
-- **organizations** - Multi-tenant organizations with name, slug, and branding
-- **events** - Event management with 4-stage lifecycle (setup/open/active/completed) and org scoping
-- **users** - User accounts with role assignments (super_admin/admin/judge/participant) and org association
-- **teams** - Team information with award types, join codes, and org-scoped events
-- **criteria** - Weighted scoring criteria with categories per event
-- **event_judges** - Judge assignment system for event access control
-- **scores** - Individual judge scores and comments with event context
-- **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
-- **event_participants** - Participant-event registration tracking
-- **team_members** - Team membership with creator flag and join timestamps
-- **organization_members** - Judge-organization many-to-many membership
+### Core Tables
+
+**organizations**
+  - Stores organization data (name, slug, branding)
+  - Used for multi-tenant isolation
+
+**users**
+  - Stores all platform users
+  - Includes role (`super_admin`, `admin`, `judge`, `participant`)
+  - Linked to organizations
+
+**organization_members**
+  - Many-to-many relationship between users and organizations
+  - Used for judge membership across multiple orgs
+
+### Events & Competitions
+
+**events**
+  - Main event entity
+  - Includes lifecycle: `setup → open → active → completed`
+  - Scoped to an organization
+
+**competitions**
+  - Linked 1:1 with events
+  - Stores competition-specific metadata (title, description, etc.)
+
+### Teams & Participation
+
+**teams**
+  - Stores team data per event
+  - Includes join codes and award type (Technical / Business / Both)
+
+**team_members**
+  - Tracks users in teams
+  - Includes creator flag and join timestamps
+
+**event_participants**
+  - Tracks which users are registered for which events
+
+### Judging System
+
+**criteria**
+  - Scoring criteria per event
+  - Includes weights and categories
+
+**event_judges**
+  - Assigns judges to events
+  - Controls access to scoring
+
+**scores**
+  - Stores judge scores and comments per team
+
+### Invitations System
+
+**invitations**
+  - Stores invite tokens
+  - Supports roles (admin, judge, participant)
+  - Used for onboarding users into organizations/events
+
+> Note: The schema is managed using Drizzle ORM and updated via scripts in the `/scripts` directory.
 
 ## 🛠️ Development Commands
 
