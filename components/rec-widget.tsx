@@ -24,11 +24,10 @@ export function RecommendationWidget() {
   const [data, setData] = useState<RecommendationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-
-  // Feedback State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -40,7 +39,6 @@ export function RecommendationWidget() {
           setUserId(user.id);
         }
 
-        // Simulate fetch
         await new Promise((resolve) => setTimeout(resolve, 800));
         setData(MOCK_DATA);
       } catch (error) {
@@ -69,6 +67,7 @@ export function RecommendationWidget() {
           recommendation_id: data?.recommended_item_id,
           rating_value: rating,
           timestamp: new Date().toISOString(),
+          comment: comment,
         }),
       });
 
@@ -100,7 +99,6 @@ export function RecommendationWidget() {
   return (
     <div className="w-full max-w-7xl mx-auto py-12 px-6">
       <div className="flex flex-col lg:flex-row gap-12 items-center">
-        {/* Left Side: Header & Context */}
         <div className="w-full lg:w-1/3 space-y-4">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
             <Sparkles className="h-4 w-4" />
@@ -118,7 +116,6 @@ export function RecommendationWidget() {
           </button>
         </div>
 
-        {/* Right Side: Recommendation Card */}
         <div className="w-full lg:w-2/3">
           <div className="group relative overflow-hidden rounded-2xl border bg-card p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
             <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -128,7 +125,7 @@ export function RecommendationWidget() {
 
               <div className="flex-1 space-y-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
-                  ID: {data.recommended_item_id}
+                  Item Ref: {data.recommended_item_id}
                 </span>
                 <h4 className="text-2xl font-bold group-hover:text-primary transition-colors">
                   {data.recommended_title}
@@ -143,13 +140,11 @@ export function RecommendationWidget() {
                 </button>
               </div>
             </div>
-
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
           </div>
         </div>
       </div>
 
-      {/* Feedback Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -164,18 +159,17 @@ export function RecommendationWidget() {
               disabled={isSubmitting}
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
             </button>
 
             <div className="text-center space-y-4">
               <div className="space-y-2">
                 <h4 className="text-xl font-bold tracking-tight">Rate Recommendation</h4>
                 <p className="text-sm text-muted-foreground">
-                  Was this recommendation helpful for your training?
+                  How accurate was this recommendation?
                 </p>
               </div>
 
-              <div className="flex justify-center gap-1 py-4">
+              <div className="flex justify-center gap-1 py-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -197,17 +191,31 @@ export function RecommendationWidget() {
                 ))}
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="text-left space-y-2">
+                <label
+                  htmlFor="comment"
+                  className="text-xs font-semibold uppercase text-muted-foreground"
+                >
+                  Additional Comments (Optional)
+                </label>
+                <textarea
+                  id="comment"
+                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Tell us why this was or wasn't helpful..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
                 <button
                   onClick={handleSubmitFeedback}
                   disabled={isSubmitting || rating === 0}
                   className="inline-flex items-center justify-center rounded-md text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 disabled:opacity-50 transition-all"
                 >
                   {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
-                    </>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     'Submit Feedback'
                   )}
