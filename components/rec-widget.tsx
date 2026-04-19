@@ -6,19 +6,12 @@ import { authClient } from '@/lib/auth/client';
 import { toast } from 'sonner';
 
 interface RecommendationResponse {
+  id: string;
   learner_id: string;
   recommended_item_id: string;
   recommended_title: string;
   rationale: string;
 }
-
-const MOCK_DATA: RecommendationResponse = {
-  learner_id: '123',
-  recommended_item_id: 'COURSE_456',
-  recommended_title: 'Advanced Food Safety',
-  rationale:
-    'Since you completed Food Safety Basics, this course will help you master professional kitchen protocols.',
-};
 
 export function RecommendationWidget() {
   const [data, setData] = useState<RecommendationResponse | null>(null);
@@ -35,14 +28,15 @@ export function RecommendationWidget() {
       setIsLoading(true);
       try {
         const user = await authClient.getUser();
-        if (user) {
-          setUserId(user.id);
-        }
+        if (user) setUserId(user.id);
 
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setData(MOCK_DATA);
+        const response = await fetch('/api/recommendations');
+        if (!response.ok) throw new Error('Failed to load');
+
+        const result = await response.json();
+        setData(result);
       } catch (error) {
-        console.error('Initialization error:', error);
+        toast.error('Could not load recommendation');
       } finally {
         setIsLoading(false);
       }
@@ -51,36 +45,30 @@ export function RecommendationWidget() {
   }, []);
 
   const handleSubmitFeedback = async () => {
-    if (rating === 0) {
-      toast.error('Please select a rating before submitting.');
-      return;
-    }
+    if (!data || rating === 0) return;
 
     setIsSubmitting(true);
-
     try {
       const response = await fetch('/api/recommendations/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          learner_id: userId || data?.learner_id || 'ERROR FETCHING ID',
-          recommendation_id: data?.recommended_item_id,
-          rating_value: rating,
-          timestamp: new Date().toISOString(),
+          recommendationId: data.id,
+          recommendedItemId: data.recommended_item_id,
+          rating: rating,
+          feedbackType: rating >= 4 ? 'helpful' : 'not_helpful',
           comment: comment,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit feedback');
-      }
+      if (!response.ok) throw new Error('Submission failed');
 
-      toast.success('Thank you for your feedback!');
+      toast.success('Thanks for your feedback!');
       setIsModalOpen(false);
       setRating(0);
+      setComment('');
     } catch (error) {
-      toast.error('Something went wrong');
+      toast.error('Failed to save feedback.');
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +113,7 @@ export function RecommendationWidget() {
 
               <div className="flex-1 space-y-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
-                  Item Ref: {data.recommended_item_id}
+                  {data.recommended_item_id}
                 </span>
                 <h4 className="text-2xl font-bold group-hover:text-primary transition-colors">
                   {data.recommended_title}
