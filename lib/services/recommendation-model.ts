@@ -9,6 +9,7 @@ const RULES_CONFIG = {
   INACTIVITY_THRESHOLD_DAYS: 14,
   HIGH_PROGRESS_THRESHOLD: 80,
   DEFAULT_FALLBACK_ITEM_ID: 'BIO-340',
+  HOURS_FRESHNESS: 72,
 };
 
 /*
@@ -22,6 +23,35 @@ export type RecommendationResult = {
   source: 'rule' | 'fallback';
 };
 
+/*
+    Freshnesss Policy:
+    Review database query and checks time stamp before generating another recommendation
+*/
+export async function generateValidRecommendation(
+  learnworldsUserId: string
+): Promise<RecommendationResult | null> {
+  const [latestRec] = await db
+    .select()
+    .from(schema.learnerRecommendations)
+    .where(eq(schema.learnerRecommendations.learnworldsUserId, learnworldsUserId))
+    .orderBy(desc(schema.learnerRecommendations.createdAt))
+    .limit(1)
+
+  if (latestRec && latestRec.createdAt) {
+    const generated_at = new Date(latestRec.createdAt).getTime();
+    const current = new Date().getTime();
+    if ((current - generated_at) / (1000 * 3600) < RULES_CONFIG.HOURS_FRESHNESS) {
+      return {
+        recommendedItemId: latestRec.recommendedItemId,
+        recommendedTitle: latestRec.recommendedTitle,
+        rationale: latestRec.rationale,
+        ruleMatched: latestRec.ruleMatched || 'Unknown rule',
+        source: latestRec.source as 'rule' | 'fallback',
+      };
+    }
+  }
+  return await generateRuleBasedRecommendation(learnworldsUserId)
+}
 /**
     Evaluates the learner's state against deterministic rules (IC-25)
  */
