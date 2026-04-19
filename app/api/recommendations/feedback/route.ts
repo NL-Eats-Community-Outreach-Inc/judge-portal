@@ -6,21 +6,17 @@ import { recommendationFeedback } from '@/lib/db/schema';
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    
-    const { 
-      recommendationId, 
-      recommendedItemId, 
-      feedbackType, 
-      rating, 
-      comment 
-    } = body;
+
+    const { recommendationId, recommendedItemId, feedbackType, rating, comment } = body;
 
     console.log(recommendationId);
     console.log(recommendedItemId);
@@ -30,7 +26,7 @@ export async function POST(request: Request) {
 
     if (!recommendationId || !recommendedItemId) {
       return NextResponse.json(
-        { error: 'Missing required fields: recommendationId or recommendedItemId' }, 
+        { error: 'Missing required fields: recommendationId or recommendedItemId' },
         { status: 400 }
       );
     }
@@ -47,16 +43,12 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json({ 
-      success: true, 
-      data: newFeedback 
+    return NextResponse.json({
+      success: true,
+      data: newFeedback,
     });
-
   } catch (error) {
     console.error('Feedback Submission Error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

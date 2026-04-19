@@ -1,30 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server'; // Use your server-side Supabase helper
+import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 import { learnerRecommendations } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    const supabase = await createClient(); // Get the server-side client
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [recommendation] = await db
-    .select({
+      .select({
         id: learnerRecommendations.id,
         learnworldsUserId: learnerRecommendations.learnworldsUserId,
         recommendedItemId: learnerRecommendations.recommendedItemId,
         recommendedTitle: learnerRecommendations.recommendedTitle,
         rationale: learnerRecommendations.rationale,
-    })
-    .from(learnerRecommendations)
-    .where(eq(learnerRecommendations.learnworldsUserId, user.id))
-    .orderBy(desc(learnerRecommendations.createdAt))
-    .limit(1);
+      })
+      .from(learnerRecommendations)
+      .where(eq(learnerRecommendations.learnworldsUserId, user.id))
+      .orderBy(desc(learnerRecommendations.createdAt))
+      .limit(1);
 
     if (!recommendation) {
       // Fallback
