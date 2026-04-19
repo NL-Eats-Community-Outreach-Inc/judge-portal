@@ -192,7 +192,7 @@ export default function EventManagement() {
         challengeType: existing.challengeType || 'global',
         tags: existing.tags?.join(', ') || '', //Tags come back as an array from db, join them as a comma seperated string
         prize: existing.prize || '',
-        deadline: existing.deadline || '',
+        deadline: existing.deadline ? existing.deadline.slice(0, 16) : '', // Slices ISO deadline to the YYYY-MM-DDTHH:mm datetime-local format
         country: existing.country || '',
         participantSignupUrl: existing.participantSignupUrl || '',
       });
