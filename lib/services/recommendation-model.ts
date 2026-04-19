@@ -35,7 +35,7 @@ export async function generateValidRecommendation(
     .from(schema.learnerRecommendations)
     .where(eq(schema.learnerRecommendations.learnworldsUserId, learnworldsUserId))
     .orderBy(desc(schema.learnerRecommendations.createdAt))
-    .limit(1)
+    .limit(1);
 
   if (latestRec && latestRec.createdAt) {
     const generated_at = new Date(latestRec.createdAt).getTime();
@@ -50,7 +50,7 @@ export async function generateValidRecommendation(
       };
     }
   }
-  return await generateRuleBasedRecommendation(learnworldsUserId)
+  return await generateRuleBasedRecommendation(learnworldsUserId);
 }
 /**
     Evaluates the learner's state against deterministic rules (IC-25)
