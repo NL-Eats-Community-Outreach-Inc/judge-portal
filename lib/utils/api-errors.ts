@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
  * The system shall validate API inputs and return appropriate HTTP status codes with structured JSON error messages.
 
  */
-export type ApiErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 500;
+export type ApiErrorStatus = 300 | 400 | 401 | 403 | 404 | 409 | 422 | 500;
 
 export function sendApiError(status: ApiErrorStatus, errorCode: string, errorMessage: string) {
   return NextResponse.json({ error_code: errorCode, error_message: errorMessage }, { status });
