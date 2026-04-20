@@ -29,8 +29,9 @@ export function RecommendationWidget() {
       try {
         const user = await authClient.getUser();
         if (user) setUserId(user.id);
+        else return;
 
-        const response = await fetch('/api/recommendations');
+        const response = await fetch('/api/recommendations/' + user.id);
         if (!response.ok) throw new Error('Failed to load');
 
         const result = await response.json();

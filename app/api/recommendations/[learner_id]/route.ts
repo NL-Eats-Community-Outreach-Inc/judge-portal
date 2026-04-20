@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 import { learnerRecommendations } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(
+  request: Request,
+  { params }: { params: { learner_id: string } }
+) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { learner_id } = await params;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!learner_id) {
+      return NextResponse.json({ error: 'Missing learner_id' }, { status: 400 });
     }
 
     const [recommendation] = await db
@@ -24,7 +23,7 @@ export async function GET() {
         rationale: learnerRecommendations.rationale,
       })
       .from(learnerRecommendations)
-      .where(eq(learnerRecommendations.learnworldsUserId, user.id))
+      .where(eq(learnerRecommendations.learnworldsUserId, learner_id))
       .orderBy(desc(learnerRecommendations.createdAt))
       .limit(1);
 
@@ -32,7 +31,7 @@ export async function GET() {
       // Fallback
       return NextResponse.json({
         id: '1d8ca39d-4318-4365-8fe0-293e790495eb',
-        learner_id: user.id,
+        learner_id: 'DEFAULT',
         recommended_item_id: 'course-default',
         recommended_title: 'Default Title',
         rationale: 'Default Rationale',
