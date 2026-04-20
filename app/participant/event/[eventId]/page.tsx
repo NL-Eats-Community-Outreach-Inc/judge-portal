@@ -19,29 +19,12 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
+  MapPin,
 } from 'lucide-react';
 import { useParticipant } from '../../contexts/participant-context';
 import { CreateTeamDialog } from '../../components/create-team-dialog';
 import { JoinTeamDialog } from '../../components/join-team-dialog';
 import { TeamDetailPanel } from '../../components/team-detail-panel';
-
-function getEventTags(name: string): string[] {
-  const lower = name.toLowerCase();
-  const tags: string[] = [];
-  if (lower.includes('hack')) tags.push('Hackathon');
-  if (lower.includes('innov')) tags.push('Innovation');
-  if (lower.includes('ai') || lower.includes('ml')) tags.push('AI/ML');
-  if (lower.includes('web')) tags.push('Web Dev');
-  if (lower.includes('mobile')) tags.push('Mobile');
-  if (lower.includes('data')) tags.push('Data');
-  if (lower.includes('design')) tags.push('Design');
-  if (lower.includes('iot')) tags.push('IoT');
-  if (lower.includes('game')) tags.push('Gaming');
-  if (lower.includes('sustain') || lower.includes('green')) tags.push('Sustainability');
-  if (tags.length === 0) tags.push('Challenge');
-  if (tags.length < 2) tags.push('Innovation');
-  return tags.slice(0, 3);
-}
 
 const tagColors = [
   'bg-teal-500/10 text-teal-700 dark:text-teal-400',
@@ -63,7 +46,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
   const event = events.find((e) => e.id === eventId);
   const team = getTeamForEvent(eventId);
-  const tags = event ? getEventTags(event.name) : [];
+  const tags = event?.tags ?? [];
+  const allTags =
+    event?.country?.toLowerCase() !== 'canada' && event?.challengeType === 'global'
+      ? [...tags, 'Global']
+      : tags;
 
   // Loading state
   if (isLoading) {
@@ -166,6 +153,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">
                 {event.name}
               </h1>
+              {event.title && (
+                <p className="text-sm text-muted-foreground mb-1">
+                  Competition: <span className="font-medium text-foreground">{event.title}</span>
+                </p>
+              )}
               {event.organizationName && (
                 <p className="text-sm text-muted-foreground">
                   by <span className="font-medium text-foreground">{event.organizationName}</span>
@@ -176,7 +168,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
-            {tags.map((tag, index) => (
+            {allTags.map((tag, index) => (
               <span
                 key={tag}
                 className={`text-xs sm:text-sm px-2.5 py-1 rounded-full font-medium ${tagColors[index % tagColors.length]}`}
@@ -196,14 +188,33 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             {/* Main content */}
             <div className="md:col-span-2 space-y-4 sm:space-y-6">
               <Card className="p-4 sm:p-5 md:p-6">
-                <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Target className="h-5 w-5 text-teal-500" />
                   About This Event
                 </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {event.description ||
-                    'An exciting innovation challenge awaits. Register to learn more about the event details, criteria, and start building with your team!'}
-                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
+                      Event Description
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed font-normal">
+                      {event.description ||
+                        'An exciting innovation challenge awaits. Register to learn more about the event details, criteria, and start building with your team!'}
+                    </p>
+                  </div>
+
+                  {event.shortDescription && (
+                    <div>
+                      <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
+                        Competition Description
+                      </p>
+                      <p className="text-sm text-muted-foreground leading-relaxed font-normal">
+                        {event.shortDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </Card>
 
               <Card className="p-4 sm:p-5 md:p-6">
@@ -216,14 +227,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <Users className="h-4 w-4" />
                     <span>Max team size: {event.maxTeamSize || 'Unlimited'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    <span>Prize: TBA</span>
-                  </div>
+                  {event.country && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4" />
+                      <span>Country: {event.country} </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>Started {new Date(event.createdAt).toLocaleDateString()}</span>
                   </div>
+                  {/* Only renders if a deadline/country exists */}
+                  {event.deadline && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>Deadline: {new Date(event.deadline).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {event.prize && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Sparkles className="h-4 w-4 text-amber-500" />
+                      <span>Prize: {event.prize || 'TBA'} </span>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
@@ -264,7 +290,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                 <div className="text-center">
                   <Sparkles className="h-7 w-7 mx-auto mb-2 text-amber-500" />
                   <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>
-                  <p className="text-xl font-bold text-foreground">TBA</p>
+                  <p className="text-xl font-bold text-foreground"> {event.prize || 'TBA'} </p>
                 </div>
               </Card>
             </div>
@@ -301,10 +327,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <Target className="h-5 w-5 text-teal-500" />
                     About This Event
                   </h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {event.description ||
-                      'An exciting innovation challenge. Create or join a team below to start participating!'}
-                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
+                        Event Description
+                      </p>
+                      <p className="text-sm text-muted-foreground leading-relaxed font-normal">
+                        {event.description ||
+                          'An exciting innovation challenge awaits. Register to learn more about the event details, criteria, and start building with your team!'}
+                      </p>
+                    </div>
+
+                    {event.shortDescription && (
+                      <div>
+                        <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
+                          Competition Description
+                        </p>
+                        <p className="text-sm text-muted-foreground leading-relaxed font-normal">
+                          {event.shortDescription}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-3 mt-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
@@ -312,7 +356,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Sparkles className="h-4 w-4 text-amber-500" />
-                      <span>Prize: TBA</span>
+                      <span>Prize: {event.prize || 'TBA'} </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      <span>Country: {event.country} </span>
                     </div>
                   </div>
                 </Card>
@@ -382,7 +430,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="h-4 w-4 text-amber-500" />
-                    <span>Prize: TBA</span>
+                    <span>Prize: {event.prize || 'TBA'} </span>
                   </div>
                 </div>
               </Card>
