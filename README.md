@@ -170,14 +170,14 @@ The application relies on the following environment variables for configuration.
 ### Example `.env.local`
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-DATABASE_URL=your_database_url
+NEXT_PUBLIC_SUPABASE_URL=your-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
+DATABASE_URL=your-db-url
 
-# Optional
-SUPABASE_ACCESS_TOKEN=your_token
-BASE_URL=http://localhost:3000
+# LearnWorlds Integration
+LEARNWORLDS_API_URL=your-learnworlds-url
+LEARNWORLDS_API_KEY=your-api-key
 ```
 
 ### Creating Your First Admin
@@ -338,6 +338,33 @@ The system uses PostgreSQL with Drizzle ORM and is built around a multi-tenant a
 **organization_members**
   - Many-to-many relationship between users and organizations
   - Used for judge membership across multiple orgs
+
+### LearnWorlds Integration & Personalization
+
+**learnworlds_sync_runs**
+   - Tracks ingestion/sync operations from LearnWorlds
+   - Stores metadata such as status, trigger type, and record counts
+   - Used for monitoring and debugging data sync processes
+
+**learnworlds_raw_payloads**
+   - Stores raw data received from LearnWorlds API endpoints
+   - Includes course, module, and lesson-level activity data
+   - Acts as a staging layer before normalization
+
+**learner_progress**
+   - Stores normalized learner progress data
+   - Tracks course progress, completion status, and activity timestamps
+   - Linked to LearnWorlds users via `learnworlds_user_id`
+   - Used for analytics and future personalized recommendations
+
+### Mentorship & Profiles
+
+**mentor_profiles**
+   - Stores mentor information separate from the core `users` table
+   - Includes fields like name, title, bio, tags, and external links
+   - Linked to LearnWorlds users via `learnworlds_user_id`
+   - Supports mentor search and filtering functionality
+   - Visibility controlled via `is_visible` flag
 
 ### Events & Competitions
 
