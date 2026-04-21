@@ -423,4 +423,252 @@ This setup ensures both code quality and consistent formatting while maintaining
 
 ---
 
+## 🌐 API Documentation Reference
+
+---
+
+### API 1 — LearnWorlds Data Ingestion
+
+**Endpoint:** `POST /api/admin/learnworlds/ingest`
+
+**Authentication:** Admin session cookie required. Must be logged in at `/auth/login` as a user with `role = admin` in the `users` table.
+
+**Request Body (JSON):**
+
+| Field | Type | Required | Values | Default |
+|---|---|---|---|---|
+| `triggerMode` | string | No | `manual`, `scheduled`, `webhook` | `manual` |
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:3000/api/admin/learnworlds/ingest \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <admin-session-cookie>" \
+  -d '{"triggerMode": "manual"}'
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "ok",
+  "syncRunId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "totalRecords": 250,
+  "validRecords": 248,
+  "invalidRecords": 2
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Cause |
+|---|---|---|
+| 302/307 | Redirect to `/auth/login` | Not authenticated |
+| 400 | `Invalid triggerMode value` | Unsupported `triggerMode` string |
+| 401 | `Unauthorized` | Authenticated but not `admin` role |
+| 500 | `LearnWorlds integration is not configured correctly` | Missing required env vars |
+| 502 | `Failed to authenticate with LearnWorlds` | Bad client credentials |
+| 502 | `Failed to fetch LearnWorlds data` | API fetch failure |
+
+**Required Environment Variables:**
+
+```env
+LEARNWORLDS_TOKEN_URL=https://api.learnworlds.com/oauth2/token
+LEARNWORLDS_API_BASE_URL=https://api.learnworlds.com
+LEARNWORLDS_CLIENT_ID=your_client_id
+LEARNWORLDS_CLIENT_SECRET=your_client_secret
+LEARNWORLDS_CLIENT_HEADER_VALUE=your_base64_encoded_credentials
+```
+
+**Optional Environment Variables:**
+
+```env
+LEARNWORLDS_PROGRESS_ENDPOINT=/progress      # default: /progress
+LEARNWORLDS_TIMEOUT_MS=15000                 # default: 15000
+LEARNWORLDS_PAGE_SIZE=100                    # default: 100
+LEARNWORLDS_MAX_PAGES=100                    # default: 100
+LEARNWORLDS_FAILURE_WEBHOOK_URL=https://...  # HTTPS only; fires on failure
+LEARNWORLDS_FAILURE_NOTIFY_TIMEOUT_MS=5000   # default: 5000
+```
+
+---
+
+### API 2 — Data Transformation & Persistence (Internal)
+
+There is no separate HTTP route for transformation. Transformation and persistence happen automatically inside `POST /api/admin/learnworlds/ingest` via the `runLearnworldsIngestion` service.
+
+**Processing pipeline (per ingestion run):**
+
+1. Creates a `learnworlds_sync_runs` row with `status = running`
+2. Fetches paginated progress records from LearnWorlds using OAuth2 client credentials
+3. Normalizes each record — tolerates alternate source key names:
+   - Learner ID: `learner_id` | `learnerId` | `user_id` | `userId`
+   - Course ID: `course_id` | `courseId` | `product_id` | `productId`
+   - Progress: `progress_percentage` | `progressPercentage` | `progress`
+   - Timestamp: `last_activity_timestamp` | `lastActivityTimestamp` | `last_activity_at` | `updated_at`
+4. Validates and clamps `progress_percentage` to `0–100`
+5. Converts timestamps to ISO 8601 or `null`
+6. SHA-256 hashes each raw record (deduplication key per sync run)
+7. Bulk-inserts valid records into `learnworlds_raw_payloads`
+8. Updates sync run to `succeeded` or `failed` with counts
+9. On failure: fires optional webhook to `LEARNWORLDS_FAILURE_WEBHOOK_URL`
+
+**Database tables written:**
+
+| Table | Purpose |
+|---|---|
+| `learnworlds_sync_runs` | Audit trail of every ingestion run |
+| `learnworlds_raw_payloads` | Staged raw records with field extraction |
+| `learner_progress` | Normalized per-learner per-course progress (schema ready) |
+
+---
+
+### API 3 — Public Challenges
+
+No authentication required. CORS-enabled for the origin configured in `LEARNWORLDS_ALLOWED_ORIGIN`.
+
+> ⚠️ Events in `setup` stage are never returned by any challenges endpoint.
+
+---
+
+#### `GET /api/challenges`
+
+Returns a paginated list of challenges (events with a linked competition record).
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Values | Default |
+|---|---|---|---|---|
+| `status` | string | No | `open`, `active`, `completed` | `open` |
+| `limit` | integer | No | `1–100` (clamped) | `50` |
+| `offset` | integer | No | `≥ 0` (negative values set to 0) | `0` |
+
+**Example Requests:**
+```bash
+# Default — open challenges
+GET http://localhost:3000/api/challenges
+
+# Active challenges, paginated
+GET http://localhost:3000/api/challenges?status=active&limit=10&offset=0
+
+# Completed challenges
+GET http://localhost:3000/api/challenges?status=completed
+```
+
+**Success Response (200):**
+```json
+{
+  "challenges": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "title": "AI Innovation Challenge",
+      "short_description": "Build a solution using AI to solve a real-world problem.",
+      "cover_image_url": "https://example.com/images/ai-challenge.jpg",
+      "challenge_type": "global",
+      "tags": ["AI", "Machine Learning"],
+      "prize_amount": "$5,000",
+      "deadline": "2026-06-01T23:59:59Z",
+      "teams_registered_count": 12,
+      "country": "United States",
+      "participant_signup_url": "http://localhost:3000/participant/event/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "count": 1
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Cause |
+|---|---|---|
+| 400 | `Invalid status parameter. Valid values: open, active, completed` | Invalid `status` value (e.g. `setup`, `draft`) |
+| 500 | `Internal server error` | Unexpected database error |
+
+---
+
+#### `GET /api/challenges/:id`
+
+Returns a single challenge by UUID.
+
+**Path Parameter:**
+
+| Parameter | Type | Required | Constraint |
+|---|---|---|---|
+| `id` | string (UUID) | Yes | Must be a valid UUID v4 format |
+
+**Example Request:**
+```bash
+GET http://localhost:3000/api/challenges/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+**Success Response (200):**
+```json
+{
+  "challenge": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "title": "AI Innovation Challenge",
+    "short_description": "Build a solution using AI to solve a real-world problem.",
+    "cover_image_url": "https://example.com/images/ai-challenge.jpg",
+    "challenge_type": "global",
+    "tags": ["AI", "Machine Learning"],
+    "prize_amount": "$5,000",
+    "deadline": "2026-06-01T23:59:59Z",
+    "teams_registered_count": 12,
+    "country": "United States",
+    "participant_signup_url": "http://localhost:3000/participant/event/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Cause |
+|---|---|---|
+| 400 | `Invalid challenge ID format` | `:id` is not a valid UUID |
+| 404 | `Challenge not found` | No matching challenge, or challenge is in `setup` stage |
+| 500 | `Internal server error` | Unexpected database error |
+
+---
+
+#### CORS
+
+Both challenges endpoints support CORS preflight (`OPTIONS`) and include `Access-Control-Allow-Origin` on `GET` responses.
+
+**Required Environment Variable:**
+```env
+LEARNWORLDS_ALLOWED_ORIGIN=https://nleats.learnworlds.com
+```
+
+When the incoming `Origin` header matches `LEARNWORLDS_ALLOWED_ORIGIN`, the response includes:
+```
+Access-Control-Allow-Origin: https://nleats.learnworlds.com
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+Access-Control-Max-Age: 86400
+Vary: Origin
+```
+
+---
+
+### Challenge Response Field Reference
+
+| Field | Type | Nullable | Description |
+|---|---|---|---|
+| `id` | string (UUID) | No | Event UUID |
+| `title` | string | No | Competition title, falls back to event name |
+| `short_description` | string | Yes | Brief summary of the challenge |
+| `cover_image_url` | string | Yes | URL to cover image |
+| `challenge_type` | string | No | Default: `global` |
+| `tags` | string[] | No | Empty array if none set |
+| `prize_amount` | string | Yes | Free-text prize description |
+| `deadline` | string (ISO 8601) | Yes | Submission deadline |
+| `teams_registered_count` | number | No | Count of registered teams |
+| `country` | string | Yes | Country scope of the challenge |
+| `participant_signup_url` | string | No | Direct link to register; falls back to `PUBLIC_PARTICIPANT_SIGNUP_BASE_URL/participant/event/:id` |
+
+---
+
 Built with ❤️ for hackathon organizers and judges by NL Eats Community Outreach Inc.
