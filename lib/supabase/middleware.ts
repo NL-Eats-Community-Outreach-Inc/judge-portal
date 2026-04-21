@@ -111,91 +111,131 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Role-based routing - user should exist at this point
-    const role = userRole;
+    const role = userRole?.toLowerCase().trim();
+    console.log('DEBUG NORMALIZED ROLE:', JSON.stringify(role));
     console.log('Middleware: User role:', role, 'Path:', pathname);
+
+    const superAdminHome = '/super-admin';
+    const adminHome = '/protected';
+    const judgeHome = '/judge';
+    const participantHome = '/participant';
 
     // Root path - redirect based on role
     if (pathname === '/') {
       const url = request.nextUrl.clone();
+
       if (role === 'super_admin') {
-        url.pathname = '/super-admin';
+        url.pathname = superAdminHome;
       } else if (role === 'admin') {
-        url.pathname = '/admin';
+        url.pathname = adminHome;
       } else if (role === 'participant') {
-        url.pathname = '/participant';
+        url.pathname = participantHome;
       } else {
-        url.pathname = '/judge';
+        url.pathname = judgeHome;
       }
+
       console.log('Middleware: Redirecting from root to:', url.pathname);
       return NextResponse.redirect(url);
     }
 
-    // Super admin routes - only super_admin can access
+    // Auth routes - authenticated users should be redirected away
+    if (pathname.startsWith('/auth')) {
+      const url = request.nextUrl.clone();
+
+      if (role === 'super_admin') {
+        url.pathname = superAdminHome;
+      } else if (role === 'admin') {
+        url.pathname = adminHome;
+      } else if (role === 'participant') {
+        url.pathname = participantHome;
+      } else {
+        url.pathname = judgeHome;
+      }
+
+      console.log('Middleware: Authenticated user on auth route, redirecting to:', url.pathname);
+      return NextResponse.redirect(url);
+    }
+
+    // Super admin routes - only super admin can access
     if (pathname.startsWith('/super-admin')) {
       if (role !== 'super_admin') {
         console.log(
-          'Middleware: Non-super_admin trying to access super-admin route, redirecting based on role'
+          'Middleware: Non-super-admin trying to access super-admin route, redirecting based on role'
         );
+
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'admin' ? '/admin' : role === 'participant' ? '/participant' : '/judge';
+          role === 'admin'
+            ? adminHome
+            : role === 'participant'
+              ? participantHome
+              : judgeHome;
+
         return NextResponse.redirect(url);
       }
+
       console.log('Middleware: Super admin access granted to super-admin route');
       return supabaseResponse;
     }
 
-    // Admin routes - only admins can access (super_admin CANNOT access /admin)
-    if (pathname.startsWith('/admin')) {
-      if (role !== 'admin') {
+    // Protected admin routes - admin and super_admin can access
+    if (pathname.startsWith('/protected') || pathname.startsWith('/api/admin')) {
+      if (role !== 'admin' && role !== 'super_admin') {
         console.log(
-          'Middleware: Non-admin trying to access admin route, redirecting based on role'
+          'Middleware: Non-admin trying to access protected/admin route, redirecting based on role'
         );
+
         const url = request.nextUrl.clone();
-        url.pathname =
-          role === 'super_admin'
-            ? '/super-admin'
-            : role === 'participant'
-              ? '/participant'
-              : '/judge';
+        url.pathname = role === 'participant' ? participantHome : judgeHome;
         return NextResponse.redirect(url);
       }
-      console.log('Middleware: Admin access granted to admin route');
+
+      console.log('Middleware: Admin access granted to protected/admin route');
       return supabaseResponse;
     }
 
-    // Judge routes - only judges can access
+    // Judge routes - only judge can access
     if (pathname.startsWith('/judge')) {
       if (role !== 'judge') {
         console.log(
           'Middleware: Non-judge trying to access judge route, redirecting based on role'
         );
+
         const url = request.nextUrl.clone();
         url.pathname =
           role === 'super_admin'
-            ? '/super-admin'
+            ? superAdminHome
             : role === 'admin'
-              ? '/admin'
+              ? adminHome
               : role === 'participant'
-                ? '/participant'
-                : '/';
+                ? participantHome
+                : '/auth/login';
+
         return NextResponse.redirect(url);
       }
+
       console.log('Middleware: Judge access granted to judge route');
       return supabaseResponse;
     }
 
-    // Participant routes - only participants can access
+    // Participant routes - only participant can access
     if (pathname.startsWith('/participant')) {
       if (role !== 'participant') {
         console.log(
           'Middleware: Non-participant trying to access participant route, redirecting based on role'
         );
+
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'super_admin' ? '/super-admin' : role === 'admin' ? '/admin' : '/judge';
+          role === 'super_admin'
+            ? superAdminHome
+            : role === 'admin'
+              ? adminHome
+              : judgeHome;
+
         return NextResponse.redirect(url);
       }
+
       console.log('Middleware: Participant access granted to participant route');
       return supabaseResponse;
     }
