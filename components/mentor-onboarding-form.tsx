@@ -17,7 +17,6 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Stores data inputted into form
   const [formData, setFormData] = useState({
     cf_mentor_title: '',
     cf_mentor_org: '',
@@ -25,9 +24,9 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
     cf_mentor_linkedin: '',
     cf_mentor_email: '',
     cf_mentor_calendly: '',
+    cf_mentor_photo: '',
   });
 
-  // Initialized with empty array
   const [expertise, setExpertise] = useState<string[]>([]);
 
   // Mock data
@@ -40,37 +39,33 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
     'Other',
   ];
 
-  // Changes form data on input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  // Handles button inputs for expertise options
   const toggleExpertise = (option: string) => {
     setExpertise((prev) =>
       prev.includes(option) ? prev.filter((i) => i !== option) : [...prev, option]
     );
   };
 
-  // Handles submission, displays success message
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const supabase = createClient();
-
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          ...formData,
-          cf_mentor_expertise: expertise,
-          is_mentor_applicant: true,
-        },
+      const res = await fetch('/api/mentor-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, cf_mentor_expertise: expertise }),
       });
 
-      if (updateError) throw updateError;
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Submission failed');
+      }
 
       setShowSuccess(true);
     } catch (err: any) {
@@ -80,7 +75,6 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
     }
   };
 
-  // Success Message
   if (showSuccess) {
     return (
       <div className={cn('w-full max-w-2xl', className)}>
@@ -103,7 +97,6 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
     );
   }
 
-  // Mentor form
   return (
     <div className={cn('w-full max-w-2xl', className)}>
       <Card>
@@ -203,6 +196,16 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
                   value={formData.cf_mentor_calendly}
                   onChange={handleInputChange}
                   placeholder="https://calendly.com/..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="cf_mentor_photo">Profile Photo URL</Label>
+                <Input
+                  id="cf_mentor_photo"
+                  type="url"
+                  value={formData.cf_mentor_photo}
+                  onChange={handleInputChange}
+                  placeholder="https://..."
                 />
               </div>
             </div>
