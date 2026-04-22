@@ -512,8 +512,6 @@ LEARNWORLDS_FAILURE_NOTIFY_TIMEOUT_MS=5000   # default: 5000
 |---|---|
 | `learnworlds_sync_runs` | Audit trail of every ingestion run |
 | `learnworlds_raw_payloads` | Staged raw records with field extraction |
-| `learner_progress` | Normalized per-learner per-course progress (schema ready) |
-
 ---
 
 ### API 2 - LearnWorlds Transform and Persist
@@ -568,6 +566,11 @@ Idempotency:
 - Running transform multiple times for the same syncRunId does not create duplicate learner_progress rows.
 - The same learner can have multiple rows across different courses.
 
+**Database tables written:**
+
+| Table | Purpose |
+|---|---|
+| `learner_progress` | Normalized per-learner per-course progress (schema ready) |
 ---
 
 ### API 3 — Public Challenges
