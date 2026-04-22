@@ -277,7 +277,7 @@
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none;
     background: radial-gradient(
-      circle at var(--mous-x, 50%) var(--mouse-y, 50%),
+      circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
       hsl(var(--primary) / 0.1) 0%,
       transparent 70%
     );
