@@ -490,12 +490,6 @@ LEARNWORLDS_FAILURE_WEBHOOK_URL=https://...  # HTTPS only; fires on failure
 LEARNWORLDS_FAILURE_NOTIFY_TIMEOUT_MS=5000   # default: 5000
 ```
 
----
-
-### API 2 — Data Transformation & Persistence (Internal)
-
-There is no separate HTTP route for transformation. Transformation and persistence happen automatically inside `POST /api/admin/learnworlds/ingest` via the `runLearnworldsIngestion` service.
-
 **Processing pipeline (per ingestion run):**
 
 1. Creates a `learnworlds_sync_runs` row with `status = running`
@@ -519,6 +513,60 @@ There is no separate HTTP route for transformation. Transformation and persisten
 | `learnworlds_sync_runs` | Audit trail of every ingestion run |
 | `learnworlds_raw_payloads` | Staged raw records with field extraction |
 | `learner_progress` | Normalized per-learner per-course progress (schema ready) |
+
+---
+
+### API 2 - LearnWorlds Transform and Persist
+
+This  introduces an explicit transform/persist endpoint.
+
+**Endpoint:** POST /api/admin/learnworlds/transform
+
+**Authentication:** Admin session required. Caller must be logged in and have role = admin.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| syncRunId | string (UUID) | Yes | Existing ID from learnworlds_sync_runs |
+
+**Validation and error behavior:**
+
+| Status | Error | Meaning |
+|---|---|---|
+| 400 | syncRunId is required in the request body | Missing syncRunId |
+| 401 | Unauthorized | User is not admin |
+| 404 | Sync run '<id>' not found | syncRunId does not exist |
+| 503 | LearnWorlds sync schema is unavailable in this environment | LearnWorlds tables are not present |
+| 500 | Internal server error during transform | Unhandled transform failure |
+
+**Success response (200):**
+
+```json
+{
+   "status": "ok",
+   "syncRunId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+   "processedRecords": 10,
+   "persistedRecords": 8,
+   "skippedRecords": 2
+}
+```
+
+**Transform and persistence rules:**
+
+1. Reads all records from learnworlds_raw_payloads for the given syncRunId.
+2. processedRecords = total rows found for that syncRunId.
+3. Skips rows where learnerExternalId is null or courseExternalId is null.
+4. Groups valid rows by learnerExternalId + courseExternalId.
+5. completedModules is computed as count of distinct moduleExternalId values where completionStatus is completed for each learner+course group.
+6. For scalar fields, the latest iterated payload for each learner+course group is used as source.
+7. Upserts into learner_progress using unique key (learnworlds_user_id, course_id).
+8. On conflict, updates progress_percentage, completed_modules, completion_status, last_activity_timestamp, raw_payload_id, source_synced_at.
+
+Idempotency:
+
+- Running transform multiple times for the same syncRunId does not create duplicate learner_progress rows.
+- The same learner can have multiple rows across different courses.
 
 ---
 
