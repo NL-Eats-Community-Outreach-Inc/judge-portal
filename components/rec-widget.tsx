@@ -55,6 +55,7 @@ export function RecommendationWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recommendationId: data.id,
+          learnworldsUserId: data.learner_id,
           recommendedItemId: data.recommended_item_id,
           rating: rating,
           feedbackType: rating >= 4 ? 'helpful' : 'not_helpful',

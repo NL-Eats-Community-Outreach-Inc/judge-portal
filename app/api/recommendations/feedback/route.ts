@@ -16,13 +16,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { recommendationId, recommendedItemId, feedbackType, rating, comment } = body;
-
-    console.log(recommendationId);
-    console.log(recommendedItemId);
-    console.log(feedbackType);
-    console.log(rating);
-    console.log(comment);
+    const { recommendationId, learnworldsUserId, recommendedItemId, feedbackType, rating, comment } = body;
 
     if (!recommendationId || !recommendedItemId) {
       return NextResponse.json(
@@ -35,7 +29,7 @@ export async function POST(request: Request) {
       .insert(recommendationFeedback)
       .values({
         recommendationId,
-        learnworldsUserId: user.id,
+        learnworldsUserId,
         recommendedItemId,
         feedbackType,
         rating,
