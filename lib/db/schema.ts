@@ -532,9 +532,6 @@ export const submissionAiScores = pgTable('submission_ai_scores', {
 
   score: numeric('score').notNull(),
 
-  modelName: text('model_name'),
-  version: text('version'),
-
   createdAt: timestamp('created_at', {
     withTimezone: true,
     mode: 'string',
