@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS submissions (
 CREATE TABLE IF NOT EXISTS submission_ai_scores (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE NOT NULL,
-  score NUMERIC NOT NULL,
+  score NUMERIC NOT NULL CHECK (score >= 0 AND score <= 100),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
