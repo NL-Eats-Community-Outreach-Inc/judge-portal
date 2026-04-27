@@ -353,16 +353,20 @@ CREATE POLICY "Admins can manage teams"
     )
   );
 
-  -- submissions table policy
+-- submissions table policy
 CREATE POLICY "team members can insert submissions"
   ON submissions
   FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM team_members tm
+      SELECT 1
+      FROM team_members tm
+      JOIN teams t ON t.id = tm.team_id
+      JOIN events e ON e.id = t.event_id
       WHERE tm.team_id = submissions.team_id
         AND tm.participant_id = auth.uid()
+        AND e.status = 'open'
     )
   );
 
