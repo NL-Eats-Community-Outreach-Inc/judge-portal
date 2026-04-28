@@ -5,7 +5,7 @@ import { getIngestionHealthStatus } from '@/lib/learnworlds/health';
 
 export async function GET() {
   const timestamp = new Date().toISOString();
-  
+
   let dbStatus = 'connected';
   let globalStatus = 'healthy';
   let httpStatus = 200;
@@ -28,7 +28,7 @@ export async function GET() {
   if (dbStatus === 'connected') {
     try {
       const ingestionReport = await getIngestionHealthStatus();
-      
+
       ingestionStatus = {
         status: ingestionReport.status,
         lastRunAt: ingestionReport.lastRunAt,
@@ -37,11 +37,10 @@ export async function GET() {
       if (ingestionReport.status === 'failing' || ingestionReport.status === 'stale') {
         globalStatus = 'degraded';
       }
-
     } catch (error) {
       console.error('Health Check failed to retrieve ingestion subsystem health:', error);
       ingestionStatus.status = 'unknown';
-      globalStatus = 'degraded'; 
+      globalStatus = 'degraded';
     }
   }
 
