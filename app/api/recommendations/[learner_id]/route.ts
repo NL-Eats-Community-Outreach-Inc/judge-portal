@@ -19,7 +19,7 @@ export async function GET(
       );
     }
 
-    /*const [learnerExists] = await db
+    const [learnerExists] = await db
       .select()
       .from(schema.learnerProgress)
       .where(eq(schema.learnerProgress.learnworldsUserId, learner_id))
@@ -30,7 +30,7 @@ export async function GET(
         { error: 'Learner not found' }, 
         { status: 404 }
       );
-    }*/
+    }
 
     const [recommendation] = await db
       .select({
