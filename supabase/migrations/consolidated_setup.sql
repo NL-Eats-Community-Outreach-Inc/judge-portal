@@ -57,6 +57,16 @@ CREATE TABLE IF NOT EXISTS teams (
   UNIQUE(event_id, name)
 );
 
+-- Team members table
+CREATE TABLE IF NOT EXISTS team_members (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  participant_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  is_creator BOOLEAN DEFAULT FALSE,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(team_id, participant_id)
+);
+
 -- Criteria table
 CREATE TABLE IF NOT EXISTS criteria (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

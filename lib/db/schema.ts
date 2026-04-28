@@ -572,3 +572,7 @@ export type LearnerProgress = typeof learnerProgress.$inferSelect;
 export type NewLearnerProgress = typeof learnerProgress.$inferInsert;
 export type MentorProfile = typeof mentorProfiles.$inferSelect;
 export type NewMentorProfile = typeof mentorProfiles.$inferInsert;
+export type Submission = typeof submissions.$inferSelect;
+export type NewSubmission = typeof submissions.$inferInsert;
+export type SubmissionAiScore = typeof submissionAiScores.$inferSelect;
+export type NewSubmissionAiScore = typeof submissionAiScores.$inferInsert;

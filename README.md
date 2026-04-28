@@ -294,6 +294,8 @@ The system uses eleven main tables:
 - **event_judges** - Judge assignment system for event access control
 - **scores** - Individual judge scores and comments with event context
 - **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
+- **submissions** - Stores participant/team challenge submission text and links for an event.
+- **submission_ai_scores** - Stores AI-generated relevance scores for submissions, including model metadata such as model name and version.
 - **event_participants** - Participant-event registration tracking
 - **team_members** - Team membership with creator flag and join timestamps
 - **organization_members** - Judge-organization many-to-many membership
