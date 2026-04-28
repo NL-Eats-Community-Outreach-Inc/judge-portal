@@ -10,6 +10,7 @@ interface RecommendationResponse {
   rationale: string;
 }
 
+// Mock Data -- To be replaced with API response
 const MOCK_DATA: RecommendationResponse = {
   learner_id: '123',
   recommended_item_id: 'COURSE_456',
@@ -35,6 +36,7 @@ export function RecommendationWidget() {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="sr-only">Loading recommendation...</span>
       </div>
     );
   }
@@ -56,11 +58,10 @@ export function RecommendationWidget() {
           </p>
         </div>
 
-        {/* Right Side: Recommendation Card (Replacing Video) */}
+        {/* Right Side: Recommendation Card */}
         <div className="w-full lg:w-2/3">
           <div className="group relative overflow-hidden rounded-2xl border bg-card p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
             <div className="flex flex-col md:flex-row md:items-center gap-6">
-              {/* Icon/Visual Anchor */}
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <BookOpen className="h-8 w-8" />
               </div>
@@ -76,7 +77,7 @@ export function RecommendationWidget() {
                 <p className="text-muted-foreground">{data.rationale}</p>
               </div>
 
-              {/* Action */}
+              {/* Content Link: When content source is provided, will link to content source */}
               <div className="pt-4 md:pt-0">
                 <button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90">
                   Start Now
@@ -85,7 +86,7 @@ export function RecommendationWidget() {
               </div>
             </div>
 
-            {/* Subtle background decoration */}
+            {/* Background decoration */}
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
           </div>
         </div>
