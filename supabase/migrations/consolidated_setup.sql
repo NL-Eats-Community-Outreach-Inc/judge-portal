@@ -7,7 +7,7 @@
 -- ================================================================
 
 -- Event status enum
-CREATE TYPE event_status AS ENUM ('setup', 'active', 'completed');
+CREATE TYPE event_status AS ENUM ('setup', 'open', 'active', 'completed');
 
 -- User role enum
 CREATE TYPE user_role AS ENUM ('admin', 'judge');
@@ -399,6 +399,22 @@ CREATE POLICY "no client access to ai scores"
   TO authenticated
   USING (false)
   WITH CHECK (false);
+
+-- Allow backend/service role to manage submissions during seed and server-side workflows
+CREATE POLICY "service role can manage submissions"
+  ON submissions
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Allow backend/service role to manage AI scores during seed and server-side workflows
+CREATE POLICY "service role can manage submission ai scores"
+  ON submission_ai_scores
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- ================================================================
 -- STEP 8: SYNC EXISTING AUTH USERS
