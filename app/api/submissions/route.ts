@@ -9,13 +9,13 @@ export async function POST(req: Request) {
   try {
     const user = await getUserFromSession();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const { teamId, submissionText } = await req.json();
 
     if (!submissionText) {
-      return NextResponse.json({ error: 'Missing submission text' }, { status: 400 });
+      return sendApiError(400, 'MISSING_SUBMISSION_TEXT', 'Missing submission text');
     }
 
     // Verify user is on the team
@@ -26,13 +26,13 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (membership.length === 0) {
-      return NextResponse.json({ error: 'Not part of this team' }, { status: 403 });
+      return sendApiError(403, 'NOT_TEAM_MEMBER', 'Not part of this team');
     }
 
     const teamRecord = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
 
     if (teamRecord.length === 0) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'TEAM_NOT_FOUND', 'Team not found');
     }
 
     const eventId = teamRecord[0].eventId;
@@ -44,13 +44,14 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json(
-        { error: 'Submission already exists for this team' },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'SUBMISSION_ALREADY_EXISTS',
+        'Submission already exists for this team'
       );
     }
 
-    // insert submission (1 per team + event)
+    // Insert submission
     await db.insert(submissions).values({
       eventId,
       teamId,
@@ -68,12 +69,13 @@ export async function POST(req: Request) {
       'code' in error &&
       (error as { code?: string }).code === '23505'
     ) {
-      return NextResponse.json(
-        { error: 'Submission already exists for this team' },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'SUBMISSION_ALREADY_EXISTS',
+        'Submission already exists for this team'
       );
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
