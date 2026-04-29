@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles, Loader2, ArrowRight, BookOpen } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, BookOpen, Star, X } from 'lucide-react';
 
 interface RecommendationResponse {
   learner_id: string;
@@ -21,7 +21,7 @@ const MOCK_DATA: RecommendationResponse = {
 
 export function RecommendationWidget() {
   const [data, setData] = useState<RecommendationResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
@@ -54,7 +54,7 @@ export function RecommendationWidget() {
           </div>
           <h3 className="text-4xl font-extrabold tracking-tight">Your Next Step</h3>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            We've analyzed your progress to find the best path forward for your training.
+            We have analyzed your progress to find the best path forward for your training.
           </p>
         </div>
 
