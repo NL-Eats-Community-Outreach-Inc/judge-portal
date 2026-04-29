@@ -76,8 +76,7 @@ export function RecommendationWidget() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit feedback');
+        throw new Error('Failed to submit feedback');
       }
 
       toast.success('Thank you for your feedback!');
@@ -85,7 +84,8 @@ export function RecommendationWidget() {
       setIsModalOpen(false);
       setRating(0);
     } catch (error) {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong:');
+      console.error('Feedback Submission error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +113,7 @@ export function RecommendationWidget() {
           </div>
           <h3 className="text-4xl font-extrabold tracking-tight">Your Next Step</h3>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            We\'ve analyzed your progress to find the best path forward for your training.
+            We have analyzed your progress to find the best path forward for your training.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
