@@ -8,6 +8,7 @@ import {
   requireTeamCreator,
   requireTeamEventOpen,
 } from '@/lib/auth/participant';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(
   _request: NextRequest,

@@ -3,6 +3,7 @@ import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
 import { submissions, teamMembers, teams } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function POST(req: Request) {
   try {

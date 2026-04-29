@@ -272,7 +272,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Submission failed');
+        throw new Error(data.error_message || 'Submission failed');
       }
 
       toast.success('Project submitted successfully!');
