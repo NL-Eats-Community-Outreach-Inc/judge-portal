@@ -135,7 +135,7 @@ export function RecommendationWidget() {
               {/* Content */}
               <div className="flex-1 space-y-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
-                  Item Ref: {data.recommended_item_id}
+                  ID: {data.recommended_item_id}
                 </span>
                 <h4 className="text-2xl font-bold group-hover:text-primary transition-colors">
                   {data.recommended_title}
