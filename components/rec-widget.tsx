@@ -39,6 +39,8 @@ export function RecommendationWidget() {
         const user = await authClient.getUser();
         if (user) {
           setUserId(user.id);
+        } else {
+          throw new Error('Failed to get user id.');
         }
 
         await new Promise((resolve) => setTimeout(resolve, 800));
@@ -111,7 +113,7 @@ export function RecommendationWidget() {
           </div>
           <h3 className="text-4xl font-extrabold tracking-tight">Your Next Step</h3>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            We've analyzed your progress to find the best path forward for your training.
+            We\'ve analyzed your progress to find the best path forward for your training.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
