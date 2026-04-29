@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles, Loader2, ArrowRight, BookOpen, Star, X } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, BookOpen } from 'lucide-react';
 
 interface RecommendationResponse {
   learner_id: string;
