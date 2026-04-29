@@ -4,7 +4,17 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Users, ChevronRight, Sparkles, Zap, CheckCircle2, Loader2 } from 'lucide-react';
+import {
+  Trophy,
+  Users,
+  ChevronRight,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  Calendar,
+} from 'lucide-react';
 import Link from 'next/link';
 import type { ParticipantEvent, ParticipantTeam } from '../contexts/participant-context';
 
@@ -53,6 +63,11 @@ export function EventCard({ event, team, onRegister }: EventCardProps) {
   const [isRegistering, setIsRegistering] = useState(false);
 
   const tags = getEventTags(event);
+  const tags = event.tags ?? [];
+  const allTags =
+    event.country?.toLowerCase() !== 'canada' && event.challengeType === 'global'
+      ? [...tags, 'Global']
+      : tags;
 
   const handleRegister = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -96,6 +111,11 @@ export function EventCard({ event, team, onRegister }: EventCardProps) {
               <h3 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors line-clamp-2">
                 {event.name}
               </h3>
+              {event.title && (
+                <p className="text-sm text-muted-foreground mb-1">
+                  Competition: <span className="font-medium text-foreground">{event.title}</span>
+                </p>
+              )}
               {event.organizationName && (
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
                   by {event.organizationName}
@@ -114,29 +134,45 @@ export function EventCard({ event, team, onRegister }: EventCardProps) {
           </p>
 
           {/* Tags */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {tags.map((tag, index) => (
-              <span
-                key={tag}
-                className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium ${tagColors[index % tagColors.length]}`}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {allTags.map((tag, index) => (
+                <span
+                  key={tag}
+                  className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium ${tagColors[index % tagColors.length]}`}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Stats row */}
-          <div className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground mb-4">
+          <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-muted-foreground mb-4">
             {event.maxTeamSize && (
               <div className="flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" />
                 <span>Max {event.maxTeamSize} per team</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span className="font-medium text-foreground">Prize TBA</span>
-            </div>
+            {event.country && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>{event.country}</span>
+              </div>
+            )}
+            {event.deadline && (
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Deadline: {new Date(event.deadline).toLocaleDateString()}</span>
+              </div>
+            )}
+            {event.prize && (
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                <span className="font-medium text-foreground">{event.prize}</span>
+              </div>
+            )}
           </div>
 
           {/* Footer CTA */}

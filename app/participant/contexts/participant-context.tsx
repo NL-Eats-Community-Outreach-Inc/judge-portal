@@ -15,6 +15,14 @@ export interface ParticipantEvent {
   registeredAt: string | null;
   challengeType?: string;
   challengeTags?: string[];
+  // Competition fields - only present when the event has been promoted to a competition
+  title: string | null;
+  shortDescription: string | null;
+  prize: string | null;
+  tags: string[] | null;
+  deadline: string | null;
+  country: string | null;
+  challengeType: string | null;
 }
 
 export interface ParticipantTeam {
