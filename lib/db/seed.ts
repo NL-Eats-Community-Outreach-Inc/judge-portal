@@ -1,5 +1,5 @@
 import { db } from './index';
-import { events, teams, criteria } from './schema';
+import { events, teams, criteria, submissions, submissionAiScores } from './schema';
 import postgres from 'postgres';
 
 const connectionString = process.env.DATABASE_URL!;
@@ -186,6 +186,25 @@ const seedDatabase = async () => {
         },
       ])
       .returning();
+
+// Create sample submission (use first team)
+const sampleSubmission = await db
+  .insert(submissions)
+  .values({
+    eventId,
+    teamId: sampleTeams[0].id,
+    submissionText:
+      'An AI-powered freshwater collection system using atmospheric condensation and solar-powered filtration.',
+  })
+  .returning();
+
+// Create sample AI score for submission
+await db
+  .insert(submissionAiScores)
+  .values({
+    submissionId: sampleSubmission[0].id,
+    score: '87.5',
+  });
 
     console.log('Sample data created:');
     console.log(`- Event: ${sampleEvent[0].name}`);
