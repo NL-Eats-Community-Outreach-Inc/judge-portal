@@ -431,9 +431,9 @@ export const recommendationImpressions = pgTable(
   'recommendation_impressions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    recommendationId: uuid('recommendation_id')
-      .references(() => learnerRecommendations.id, { onDelete: 'cascade' })
-      .notNull(),
+    recommendationId: uuid('recommendation_id').references(() => learnerRecommendations.id, {
+      onDelete: 'set null',
+    }),
     learnworldsUserId: text('learnworlds_user_id').notNull(),
     itemId: text('item_id').notNull(),
     itemType: text('item_type'),
@@ -474,9 +474,10 @@ export const recommendationOutcomes = pgTable(
   'recommendation_outcomes',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    recommendationImpressionId: uuid('recommendation_impression_id')
-      .references(() => recommendationImpressions.id, { onDelete: 'cascade' })
-      .notNull(),
+    recommendationImpressionId: uuid('recommendation_impression_id').references(
+      () => recommendationImpressions.id,
+      { onDelete: 'set null' }
+    ),
     learnworldsUserId: text('learnworlds_user_id').notNull(),
     itemId: text('item_id').notNull(),
     outcomeType: text('outcome_type').notNull(),
@@ -517,7 +518,7 @@ export const recommendationFeedback = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     recommendationId: uuid('recommendation_id').references(() => learnerRecommendations.id, {
-      onDelete: 'cascade',
+      onDelete: 'set null',
     }),
     learnworldsUserId: text('learnworlds_user_id').notNull(),
     recommendedItemId: text('recommended_item_id').notNull(),
