@@ -5,13 +5,13 @@ import {
   timestamp,
   integer,
   numeric,
-  jsonb,
   unique,
   check,
   index,
   pgEnum,
   boolean,
   AnyPgColumn,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -589,6 +589,46 @@ export const learningItems = pgTable(
   })
 );
 
+export const learnworldsSyncRuns = pgTable(
+  'learnworlds_sync_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    triggerMode: text('trigger_mode').default('manual').notNull(),
+    status: text('status').default('running').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
+    totalRecords: integer('total_records').default(0).notNull(),
+    validRecords: integer('valid_records').default(0).notNull(),
+    invalidRecords: integer('invalid_records').default(0).notNull(),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    statusIdx: index('idx_lw_sync_runs_status').on(table.status),
+    startedAtIdx: index('idx_lw_sync_runs_started_at').on(table.startedAt),
+    checkTriggerMode: check(
+      'check_lw_sync_runs_trigger_mode',
+      sql`${table.triggerMode} IN ('manual', 'scheduled', 'webhook')`
+    ),
+    checkStatus: check(
+      'check_lw_sync_runs_status',
+      sql`${table.status} IN ('running', 'succeeded', 'failed', 'partial')`
+    ),
+    checkRecordCounts: check(
+      'check_lw_sync_runs_record_counts',
+      sql`${table.totalRecords} >= 0 AND ${table.validRecords} >= 0 AND ${table.invalidRecords} >= 0`
+    ),
+  })
+);
+
 export const mlTrainingExamples = pgTable(
   'ml_training_examples',
   {
@@ -702,6 +742,115 @@ export const modelRegistry = pgTable(
     ),
   })
 );
+export const learnworldsRawPayloads = pgTable(
+  'learnworlds_raw_payloads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    syncRunId: uuid('sync_run_id').references(() => learnworldsSyncRuns.id, {
+      onDelete: 'set null',
+    }),
+    sourceEndpoint: text('source_endpoint').notNull(),
+    httpStatus: integer('http_status').notNull(),
+    learnerExternalId: text('learner_external_id'),
+    courseExternalId: text('course_external_id'),
+    moduleExternalId: text('module_external_id'),
+    lessonExternalId: text('lesson_external_id'),
+    completionStatus: text('completion_status'),
+    progressPercentage: integer('progress_percentage'),
+    lastActivityTimestamp: timestamp('last_activity_timestamp', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    recordHash: text('record_hash').notNull(),
+    payload: jsonb('payload').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    syncRunIdx: index('idx_lw_raw_payloads_sync_run').on(table.syncRunId),
+    learnerIdx: index('idx_lw_raw_payloads_learner').on(table.learnerExternalId),
+    courseIdx: index('idx_lw_raw_payloads_course').on(table.courseExternalId),
+    receivedAtIdx: index('idx_lw_raw_payloads_received_at').on(table.receivedAt),
+    uniqueSyncRecordHash: unique().on(table.syncRunId, table.recordHash),
+    checkHttpStatus: check(
+      'check_lw_raw_payloads_http_status',
+      sql`${table.httpStatus} >= 100 AND ${table.httpStatus} <= 599`
+    ),
+    checkProgressPercentage: check(
+      'check_lw_raw_payloads_progress_percentage',
+      sql`${table.progressPercentage} IS NULL OR (${table.progressPercentage} >= 0 AND ${table.progressPercentage} <= 100)`
+    ),
+  })
+);
+
+export const learnerProgress = pgTable(
+  'learner_progress',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    learnworldsUserId: text('learnworlds_user_id').notNull(),
+    courseId: text('course_id').notNull(),
+    progressPercentage: integer('progress_percentage').default(0).notNull(),
+    completedModules: integer('completed_modules').default(0).notNull(),
+    completionStatus: text('completion_status').default('in_progress').notNull(),
+    lastActivityTimestamp: timestamp('last_activity_timestamp', {
+      withTimezone: true,
+      mode: 'string',
+    }),
+    sourceSyncedAt: timestamp('source_synced_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    rawPayloadId: uuid('raw_payload_id').references(() => learnworldsRawPayloads.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    uniqueLearnworldsUserCourse: unique().on(table.learnworldsUserId, table.courseId),
+    learnworldsUserIdx: index('idx_learner_progress_learnworlds_user').on(table.learnworldsUserId),
+    courseIdx: index('idx_learner_progress_course').on(table.courseId),
+    lastActivityIdx: index('idx_learner_progress_last_activity').on(table.lastActivityTimestamp),
+    sourceSyncedIdx: index('idx_learner_progress_source_synced').on(table.sourceSyncedAt),
+    checkProgressPercentage: check(
+      'check_learner_progress_percentage',
+      sql`${table.progressPercentage} >= 0 AND ${table.progressPercentage} <= 100`
+    ),
+    checkCompletedModules: check(
+      'check_learner_progress_completed_modules',
+      sql`${table.completedModules} >= 0`
+    ),
+    checkCompletionStatus: check(
+      'check_learner_progress_completion_status',
+      sql`${table.completionStatus} IN ('in_progress', 'completed', 'failed', 'not_started')`
+    ),
+  })
+);
+export const mentorProfiles = pgTable('mentor_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  learnworldsUserId: text('learnworlds_user_id').unique().notNull(),
+  fullName: text('full_name').notNull(),
+  title: text('title'),
+  organization: text('organization'),
+  bio: text('bio'),
+  linkedinUrl: text('linkedin_url'),
+  calendlyUrl: text('calendly_url'),
+  photoUrl: text('photo_url'),
+  tags: text('tags').array(),
+  isVisible: boolean('is_visible').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull()
+    .$onUpdate(() => sql`timezone('utc'::text, now())`),
+});
 
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
@@ -743,3 +892,11 @@ export type MlTrainingExample = typeof mlTrainingExamples.$inferSelect;
 export type NewMlTrainingExample = typeof mlTrainingExamples.$inferInsert;
 export type ModelRegistry = typeof modelRegistry.$inferSelect;
 export type NewModelRegistry = typeof modelRegistry.$inferInsert;
+export type LearnworldsSyncRun = typeof learnworldsSyncRuns.$inferSelect;
+export type NewLearnworldsSyncRun = typeof learnworldsSyncRuns.$inferInsert;
+export type LearnworldsRawPayload = typeof learnworldsRawPayloads.$inferSelect;
+export type NewLearnworldsRawPayload = typeof learnworldsRawPayloads.$inferInsert;
+export type LearnerProgress = typeof learnerProgress.$inferSelect;
+export type NewLearnerProgress = typeof learnerProgress.$inferInsert;
+export type MentorProfile = typeof mentorProfiles.$inferSelect;
+export type NewMentorProfile = typeof mentorProfiles.$inferInsert;
