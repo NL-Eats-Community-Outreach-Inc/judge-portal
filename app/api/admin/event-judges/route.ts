@@ -4,13 +4,14 @@ import { eventJudges, users, organizationMembers } from '@/lib/db/schema';
 import { getUserFromSession } from '@/lib/auth/server';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { eq, and, inArray } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('eventId');
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     await requireEventInOrg(eventId, orgId);
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Failed to fetch event judges:', error);
-    return NextResponse.json({ error: 'Failed to fetch event judges' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to fetch event judges');
   }
 }
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     const { eventId, judgeIds } = body;
 
     if (!eventId || !Array.isArray(judgeIds)) {
-      return NextResponse.json({ error: 'Event ID and judge IDs are required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID and judge IDs are required');
     }
 
     // CRITICAL: Verify event belongs to org BEFORE the delete-all-then-reinsert transaction
@@ -86,10 +87,7 @@ export async function POST(request: NextRequest) {
       const validIds = new Set(allOrgMemberIds);
       const invalidIds = judgeIds.filter((id: string) => !validIds.has(id));
       if (invalidIds.length > 0) {
-        return NextResponse.json(
-          { error: 'Some judges are not members of your organization' },
-          { status: 403 }
-        );
+        return sendApiError(403, 'FORBIDDEN', 'Some judges are not members of your organization');
       }
     }
 
@@ -122,7 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update event judges:', error);
-    return NextResponse.json({ error: 'Failed to update event judges' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to update event judges');
   }
 }
 
@@ -131,7 +129,7 @@ export async function DELETE(request: NextRequest) {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -140,7 +138,7 @@ export async function DELETE(request: NextRequest) {
     const judgeId = searchParams.get('judgeId');
 
     if (!eventId || !judgeId) {
-      return NextResponse.json({ error: 'Event ID and judge ID are required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID and judge ID are required');
     }
 
     await requireEventInOrg(eventId, orgId);
@@ -153,6 +151,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to remove event judge:', error);
-    return NextResponse.json({ error: 'Failed to remove event judge' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to remove event judge');
   }
 }
