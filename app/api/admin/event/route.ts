@@ -4,13 +4,14 @@ import { db } from '@/lib/db';
 import { events, organizations } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -32,7 +33,7 @@ export async function GET() {
     return NextResponse.json({ events: allEvents, organizationName: org?.name ?? null });
   } catch (error) {
     console.error('Error fetching events:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -41,14 +42,14 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
     const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event name is required');
     }
 
     const eventStatus = status || 'setup';
@@ -68,6 +69,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ event });
   } catch (error) {
     console.error('Error creating event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
