@@ -4,13 +4,14 @@ import { db } from '@/lib/db';
 import { criteria, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ criteria: allCriteria });
   } catch (error) {
     console.error('Error fetching criteria:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -59,50 +60,44 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const { eventId, name, description, minScore, maxScore, weight, category } =
       await request.json();
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     const orgId = await getAdminOrgId(user.id);
     await requireEventInOrg(eventId, orgId);
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Criteria name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Criteria name is required');
     }
 
     if (typeof minScore !== 'number' || typeof maxScore !== 'number') {
-      return NextResponse.json({ error: 'Min and max scores must be numbers' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Min and max scores must be numbers');
     }
 
     if (minScore >= maxScore) {
-      return NextResponse.json({ error: 'Min score must be less than max score' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Min score must be less than max score');
     }
 
     if (typeof weight !== 'number' || weight < 0 || weight > 100) {
-      return NextResponse.json(
-        { error: 'Weight must be a number between 0 and 100' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Weight must be a number between 0 and 100');
     }
 
     if (!category || !['technical', 'business'].includes(category)) {
-      return NextResponse.json(
-        { error: 'Category must be either "technical" or "business"' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Category must be either "technical" or "business"');
     }
 
     // Verify event exists
     const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
 
     if (event.length === 0) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event not found');
     }
 
     // Get existing criteria for weight validation and display order
@@ -127,11 +122,10 @@ export async function POST(request: NextRequest) {
 
     // Validate that the category weight total won't exceed 100%
     if (newWeightTotal > 100) {
-      return NextResponse.json(
-        {
-          error: `Cannot add criterion: ${category} category weights would total ${newWeightTotal}% (maximum 100%)`,
-        },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'BAD_REQUEST',
+        `Cannot add criterion: ${category} category weights would total ${newWeightTotal}% (maximum 100%)`
       );
     }
 
@@ -157,19 +151,13 @@ export async function POST(request: NextRequest) {
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('duplicate key')) {
       if (error.message.includes('criteria_event_id_name_key')) {
-        return NextResponse.json(
-          { error: 'A criterion with this name already exists' },
-          { status: 400 }
-        );
+        return sendApiError(400, 'BAD_REQUEST', 'A criterion with this name already exists');
       }
       if (error.message.includes('criteria_event_id_display_order_key')) {
-        return NextResponse.json(
-          { error: 'A criterion with this display order already exists' },
-          { status: 400 }
-        );
+        return sendApiError(400, 'BAD_REQUEST', 'A criterion with this display order already exists');
       }
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
