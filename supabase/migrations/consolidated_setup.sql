@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS teams (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(event_id, presentation_order),
-  UNIQUE(event_id, name)
+  UNIQUE(event_id, name),
+  UNIQUE(event_id, id)
 );
 
 -- Team members table
@@ -111,12 +112,25 @@ CREATE TABLE IF NOT EXISTS event_judges (
 -- Submission Text Table
 CREATE TABLE IF NOT EXISTS submissions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
-  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+
+  event_id UUID NOT NULL,
+  team_id UUID NOT NULL,
+
   submission_text TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
 
-  UNIQUE(event_id, team_id)
+  -- Prevent duplicate submissions per team per event
+  UNIQUE(event_id, team_id),
+
+  -- Normal FK to events
+  FOREIGN KEY (event_id)
+    REFERENCES events(id)
+    ON DELETE CASCADE,
+
+  -- Enforces that team belongs to the same event
+  FOREIGN KEY (event_id, team_id)
+    REFERENCES teams(event_id, id)
+    ON DELETE CASCADE
 );
 
 -- Submission AI Prescreening Table
