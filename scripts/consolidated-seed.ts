@@ -327,8 +327,6 @@ async function seed() {
         }))
       ).returning();
 
-      console.log('DATABASE_URL:', DATABASE_URL);
-      console.log('SUPABASE_URL:', SUPABASE_URL);
       // Create sample submission (use first team for this event)
       const sampleSubmission = await db
         .insert(schema.submissions)
