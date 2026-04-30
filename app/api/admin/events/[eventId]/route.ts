@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function PUT(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function PUT(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -23,7 +24,7 @@ export async function PUT(
     const { name, description, status, maxTeamSize } = await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Event name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event name is required');
     }
 
     // Update the event
@@ -39,13 +40,13 @@ export async function PUT(
       .returning();
 
     if (!updatedEvent) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
     return NextResponse.json({ event: updatedEvent });
   } catch (error) {
     console.error('Error updating event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -57,7 +58,7 @@ export async function DELETE(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -68,7 +69,7 @@ export async function DELETE(
     const existingEvent = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
 
     if (!existingEvent.length) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
     // Delete the event (cascading deletes will handle related data)
@@ -77,6 +78,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
