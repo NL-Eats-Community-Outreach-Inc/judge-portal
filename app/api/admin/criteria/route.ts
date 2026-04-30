@@ -154,7 +154,11 @@ export async function POST(request: NextRequest) {
         return sendApiError(400, 'BAD_REQUEST', 'A criterion with this name already exists');
       }
       if (error.message.includes('criteria_event_id_display_order_key')) {
-        return sendApiError(400, 'BAD_REQUEST', 'A criterion with this display order already exists');
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'A criterion with this display order already exists'
+        );
       }
     }
 

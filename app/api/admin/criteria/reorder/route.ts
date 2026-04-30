@@ -30,7 +30,11 @@ export async function POST(request: NextRequest) {
     // Validate criteria orders structure
     for (const criteriaOrder of criteriaOrders) {
       if (!criteriaOrder.id || typeof criteriaOrder.displayOrder !== 'number') {
-        return sendApiError(400, 'BAD_REQUEST', 'Each criteria order must have id and displayOrder');
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'Each criteria order must have id and displayOrder'
+        );
       }
     }
 
