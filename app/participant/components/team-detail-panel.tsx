@@ -263,7 +263,6 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          eventId: team?.eventId, // important
           teamId: team?.id,
           submissionText: submissionText.trim(),
         }),
