@@ -1,4 +1,4 @@
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { RecommendationResult } from './recommendation-orchestrator';
@@ -44,7 +44,8 @@ export async function generateRuleBasedRecommendation(
     const daysSinceLastEvent =
       (new Date().getTime() - new Date(latestEvent.eventTimestamp).getTime()) / (1000 * 3600 * 24);
 
-    if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS) {
+    const isEventItemInProgress = inProgressCourses.some((c) => c.courseId === latestEvent.itemId);
+    if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS && isEventItemInProgress) {
       const [itemDetails] = await db
         .select({ title: schema.learningItems.title })
         .from(schema.learningItems)
@@ -100,7 +101,7 @@ export async function generateRuleBasedRecommendation(
       .from(schema.learningItems)
       .where(
         and(
-          sql`${schema.learningItems.prerequisiteItemId} IN ${completedCourseIds}`,
+          inArray(schema.learningItems.prerequisiteItemId, completedCourseIds),
           eq(schema.learningItems.isActive, true)
         )
       )
@@ -126,6 +127,11 @@ export async function generateRuleBasedRecommendation(
       .select()
       .from(schema.learningItems)
       .where(eq(schema.learningItems.itemId, RULES_CONFIG.DEFAULT_FALLBACK_ITEM_ID));
+
+    if (!fallbackItem) {
+      throw new Error(`Fallback item '${RULES_CONFIG.DEFAULT_FALLBACK_ITEM_ID}' not found in 
+        learning_items. Check seed data.`);
+    }
 
     recommendation = {
       recommendedItemId: fallbackItem.itemId,
