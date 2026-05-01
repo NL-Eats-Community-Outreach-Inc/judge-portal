@@ -144,21 +144,5 @@ export async function generateRuleBasedRecommendation(
     };
   }
 
-  /*
-    Insert recommendation into table 
-  */
-  await db
-    .insert(schema.learnerRecommendations)
-    .values({
-      learnworldsUserId,
-      recommendedItemId: recommendation.recommendedItemId,
-      recommendedTitle: recommendation.recommendedTitle,
-      rationale: recommendation.rationale,
-      ruleMatched: recommendation.ruleMatched,
-      source: recommendation.source,
-      score: '1.0',
-    })
-    .returning();
-
   return recommendation;
 }
