@@ -1,6 +1,7 @@
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
+import { RecommendationResult } from './recommendation-orchestrator';
 
 /*
     Define important threshold for model decisions
@@ -9,17 +10,6 @@ const RULES_CONFIG = {
   INACTIVITY_THRESHOLD_DAYS: 14,
   HIGH_PROGRESS_THRESHOLD: 80,
   DEFAULT_FALLBACK_ITEM_ID: 'BIO-340',
-};
-
-/*
-    Create type that is returned containing the recommendation
-*/
-export type RecommendationResult = {
-  recommendedItemId: string;
-  recommendedTitle: string;
-  rationale: string;
-  ruleMatched: string;
-  source: 'rule' | 'fallback';
 };
 
 /**
