@@ -82,9 +82,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           deadline: challenge.deadline || null,
           teams_registered_count: challenge.teamsRegisteredCount,
           country: challenge.country || null,
-          participant_signup_url:
-            challenge.participantSignupUrl ||
-            `${participantBaseUrl}/participant/event/${challenge.id}`,
+          participant_signup_url: `${participantBaseUrl}/participant/event/${challenge.id}`,
         },
       },
       { headers: corsHeaders }
