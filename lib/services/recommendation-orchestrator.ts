@@ -102,7 +102,7 @@ async function persistRecommendation(userId: string, rec: OrchestratorResult) {
     recommendedItemId: rec.recommendedItemId,
     recommendedTitle: rec.recommendedTitle,
     rationale: rec.rationale,
-    ruleMatched: latestRec.ruleMatched ?? '',
+    ruleMatched: rec.ruleMatched,
     source: rec.source,
     modelVersion: rec.model_version,
     score: '1.0',
