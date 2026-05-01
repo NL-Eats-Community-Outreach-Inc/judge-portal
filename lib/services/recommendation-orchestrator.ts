@@ -25,7 +25,7 @@ export type RecommendationResult = {
   source: 'rule' | 'fallback';
 };
 
-export type OrchestratorResult = RecommendationResult & {
+export type OrchestratorResult = Omit<RecommendationResult, 'source'> & {
   source: 'rule' | 'fallback' | 'ml';
   model_version?: string;
 };
@@ -87,7 +87,7 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
   // Rule-Based Path (Cold Start / Low Data / ML Fallback) handles new user, low user data, and defaults
   const ruleResult = await generateRuleBasedRecommendation(learnworldsUserId);
   
-  return ruleResult;
+  return { ...ruleResult, model_version: undefined };
 }
 
 /**
@@ -101,7 +101,7 @@ async function persistRecommendation(userId: string, rec: OrchestratorResult) {
       recommendedItemId: rec.recommendedItemId,
       recommendedTitle: rec.recommendedTitle,
       rationale: rec.rationale,
-      ruleMatched: rec.ruleMatched || 'ml_model',
+      ruleMatched: latestRec.ruleMatched ?? '',
       source: rec.source,
       modelVersion: rec.model_version,
       score: '1.0', 
