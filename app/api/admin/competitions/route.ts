@@ -4,6 +4,7 @@ import { authServer } from '@/lib/auth';
 import { competitions, events } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 // GET: List all competitions for the admin's organization
 export async function GET() {
@@ -37,7 +38,7 @@ export async function GET() {
     return NextResponse.json(results);
   } catch (error) {
     console.error('Error fetching competitions:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!eventId) {
-      return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'eventId is required');
     }
 
     //Verify the event belongs to the admin's org
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       .where(and(eq(events.id, eventId), eq(events.organizationId, orgId)));
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found in your organization' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found in your organization');
     }
 
     const [competition] = await db
@@ -95,11 +96,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating competition:', error);
     if ((error as Error).message?.includes('unique')) {
-      return NextResponse.json(
-        { error: 'This event already has a competition record' },
-        { status: 409 }
-      );
+      return sendApiError(409, 'CONFLICT', 'This event already has a competition record');
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
