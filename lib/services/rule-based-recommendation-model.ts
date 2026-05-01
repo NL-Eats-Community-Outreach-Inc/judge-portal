@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { RecommendationResult } from './recommendation-orchestrator';
@@ -50,7 +50,7 @@ export async function generateRuleBasedRecommendation(
         .select({ title: schema.learningItems.title })
         .from(schema.learningItems)
 
-        // learningItems must be seeded with names that are the same as from LearnWorlds
+        // Assumes learningItems.itemId matches the LearnWorlds external course ID used in learnerProgress.courseId
         .where(eq(schema.learningItems.itemId, latestEvent.itemId));
 
       if (itemDetails) {
@@ -137,7 +137,7 @@ export async function generateRuleBasedRecommendation(
 
     recommendation = {
       recommendedItemId: fallbackItem.itemId,
-      recommendedTitle: fallbackItem?.title || 'Foundations Course',
+      recommendedTitle: fallbackItem.title,
       rationale: 'A popular starting point for new learners.',
       ruleMatched: 'default_popular',
       source: 'fallback',
