@@ -230,7 +230,7 @@ async function seed() {
         prize: eventData.competition.prize,
         country: eventData.competition.country,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        participantSignupUrl: `https://competitions.example.com/${createdEvent.id}/signup`,
+        participantSignupUrl: `https://competitions.example.com/participant/event/${createdEvent.id}/signup`,
       });
 
       createdEvents.push(createdEvent);
