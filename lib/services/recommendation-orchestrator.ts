@@ -52,9 +52,9 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
         recommendedItemId: latestRec.recommendedItemId,
         recommendedTitle: latestRec.recommendedTitle,
         rationale: latestRec.rationale,
-        ruleMatched: latestRec.ruleMatched,
+        ruleMatched: latestRec.ruleMatched ?? '',
         source: latestRec.source as 'rule' | 'fallback' | 'ml',
-        model_version: latestRec.modelVersion,
+        model_version: latestRec.modelVersion ?? undefined,
       };
     }
   }
@@ -88,8 +88,9 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
 
   // Rule-Based Path (Cold Start / Low Data / ML Fallback) handles new user, low user data, and defaults
   const ruleResult = await generateRuleBasedRecommendation(learnworldsUserId);
-
-  return { ...ruleResult, model_version: undefined };
+  const orchestratorResult: OrchestratorResult = { ...ruleResult, model_version: undefined };
+  await persistRecommendation(learnworldsUserId, orchestratorResult);
+  return orchestratorResult;
 }
 
 /**
