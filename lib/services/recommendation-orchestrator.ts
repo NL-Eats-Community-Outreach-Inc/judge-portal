@@ -2,7 +2,7 @@ import { eq, desc, count } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { generateRuleBasedRecommendation } from './rule-based-recommendation-model';
-import { generateMLRecommendation } from './ml-based-recommendation-model'; 
+import { generateMLRecommendation } from './ml-based-recommendation-model';
 
 /*
     Define orchestrator thresholds
@@ -10,8 +10,8 @@ import { generateMLRecommendation } from './ml-based-recommendation-model';
         - Minimum number of events required to qualify for ML inference
 */
 const ORCHESTRATOR_CONFIG = {
-  ML_READY_EVENT_THRESHOLD: 5, 
-  FRESHNESS_HOURS_THRESHOLD: 24, 
+  ML_READY_EVENT_THRESHOLD: 5,
+  FRESHNESS_HOURS_THRESHOLD: 24,
 };
 
 /*
@@ -35,7 +35,6 @@ export type OrchestratorResult = Omit<RecommendationResult, 'source'> & {
         Calls the correct recommendation based on current information for learner
  */
 export async function getRecommendation(learnworldsUserId: string): Promise<OrchestratorResult> {
-  
   // Freshness Check (IC-26): if there is a recommendation within the last 24 hours, reuse that rec
   const [latestRec] = await db
     .select()
@@ -45,9 +44,9 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
     .limit(1);
 
   if (latestRec) {
-    const hoursSinceRec = 
+    const hoursSinceRec =
       (new Date().getTime() - new Date(latestRec.createdAt).getTime()) / (1000 * 3600);
-      
+
     if (hoursSinceRec < ORCHESTRATOR_CONFIG.FRESHNESS_HOURS_THRESHOLD) {
       return {
         recommendedItemId: latestRec.recommendedItemId,
@@ -60,7 +59,7 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
     }
   }
 
-  // Determine ML Readiness via learner_item_events count 
+  // Determine ML Readiness via learner_item_events count
   const [eventCountResult] = await db
     .select({ value: count() })
     .from(schema.learnerItemEvents)
@@ -72,38 +71,39 @@ export async function getRecommendation(learnworldsUserId: string): Promise<Orch
   if (hasEnoughData) {
     try {
       const mlResult = await generateMLRecommendation(learnworldsUserId);
-      
+
       if (mlResult) {
-        // Persist the ML recommendation 
+        // Persist the ML recommendation
         await persistRecommendation(learnworldsUserId, mlResult);
         return mlResult;
       }
     } catch (error) {
-        // If ML throws an error, drop down to the rule-based approach
-        console.warn(`ML Inference failed for user ${learnworldsUserId}. Safely falling back to rules.`, error);
+      // If ML throws an error, drop down to the rule-based approach
+      console.warn(
+        `ML Inference failed for user ${learnworldsUserId}. Safely falling back to rules.`,
+        error
+      );
     }
   }
 
   // Rule-Based Path (Cold Start / Low Data / ML Fallback) handles new user, low user data, and defaults
   const ruleResult = await generateRuleBasedRecommendation(learnworldsUserId);
-  
+
   return { ...ruleResult, model_version: undefined };
 }
 
 /**
- * Helper to persist ML recommendations 
+ * Helper to persist ML recommendations
  */
 async function persistRecommendation(userId: string, rec: OrchestratorResult) {
-  await db
-    .insert(schema.learnerRecommendations)
-    .values({
-      learnworldsUserId: userId,
-      recommendedItemId: rec.recommendedItemId,
-      recommendedTitle: rec.recommendedTitle,
-      rationale: rec.rationale,
-      ruleMatched: latestRec.ruleMatched ?? '',
-      source: rec.source,
-      modelVersion: rec.model_version,
-      score: '1.0', 
-    });
+  await db.insert(schema.learnerRecommendations).values({
+    learnworldsUserId: userId,
+    recommendedItemId: rec.recommendedItemId,
+    recommendedTitle: rec.recommendedTitle,
+    rationale: rec.rationale,
+    ruleMatched: latestRec.ruleMatched ?? '',
+    source: rec.source,
+    modelVersion: rec.model_version,
+    score: '1.0',
+  });
 }
