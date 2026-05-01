@@ -1,13 +1,3 @@
-"""
-Title: FR-4 - Submission Pre-screening using BGE-M3 AI
- Author: Jacob Armstrong
- date: 3/18/26
- Description: Class for AI scoring module that generates semantic embeddings for participant submissions
- and compares them against challenge criteria using the BGE-M3 model.
-
- 
-"""
-
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
