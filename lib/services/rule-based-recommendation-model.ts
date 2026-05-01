@@ -49,6 +49,8 @@ export async function generateRuleBasedRecommendation(
       const [itemDetails] = await db
         .select({ title: schema.learningItems.title })
         .from(schema.learningItems)
+
+        // learningItems must be seeded with names that are the same as from LearnWorlds
         .where(eq(schema.learningItems.itemId, latestEvent.itemId));
 
       if (itemDetails) {
