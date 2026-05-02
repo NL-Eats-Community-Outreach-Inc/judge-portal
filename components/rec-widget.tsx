@@ -54,6 +54,7 @@ export function RecommendationWidget() {
         setData(result);
       } catch (error) {
         toast.error('Could not load recommendation');
+        console.error('Loading error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -91,6 +92,7 @@ export function RecommendationWidget() {
       setComment('');
     } catch (error) {
       toast.error('Failed to save feedback.');
+      console.error('API error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -117,7 +119,7 @@ export function RecommendationWidget() {
           </div>
           <h3 className="text-4xl font-extrabold tracking-tight">Your Next Step</h3>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            We've analyzed your progress to find the best path forward for your training.
+            We have analyzed your progress to find the best path forward for your training.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -136,7 +138,7 @@ export function RecommendationWidget() {
 
               <div className="flex-1 space-y-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
-                  {data.recommended_item_id}
+                  ID: {data.recommended_item_id}
                 </span>
                 <h4 className="text-2xl font-bold group-hover:text-primary transition-colors">
                   {data.recommended_title}
