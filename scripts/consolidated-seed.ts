@@ -14,7 +14,7 @@
 
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import postgres from 'postgres';
 import { createClient } from '@supabase/supabase-js';
 import * as schema from '../lib/db/schema';
@@ -212,6 +212,20 @@ async function seed() {
 
     const createdEvents = [];
 
+    // Keep CI runs deterministic by removing prior seeded events for this org.
+    // Cascading deletes remove dependent rows like competitions and teams.
+    await db
+      .delete(schema.events)
+      .where(
+        and(
+          eq(schema.events.organizationId, organization.id),
+          inArray(
+            schema.events.name,
+            eventsData.map((item) => item.event.name)
+          )
+        )
+      );
+
     for (const eventData of eventsData) {
       const [createdEvent] = await db
         .insert(schema.events)
@@ -221,7 +235,7 @@ async function seed() {
         })
         .returning();
 
-      await db.insert(schema.competitions).values({
+      const competitionValues = {
         eventId: createdEvent.id,
         title: eventData.competition.title,
         shortDescription: eventData.competition.shortDescription,
@@ -230,8 +244,17 @@ async function seed() {
         prize: eventData.competition.prize,
         country: eventData.competition.country,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        participantSignupUrl: `/participant/event/${competitionId}`,
-      });
+        // Keep null so API can derive environment-specific URL via fallback.
+        participantSignupUrl: null,
+      };
+
+      await db
+        .insert(schema.competitions)
+        .values(competitionValues)
+        .onConflictDoUpdate({
+          target: schema.competitions.eventId,
+          set: competitionValues,
+        });
 
       createdEvents.push(createdEvent);
       console.log(`  ✅ Created event + competition: ${createdEvent.name}`);
