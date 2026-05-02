@@ -9,7 +9,7 @@ import { RecommendationResult } from './recommendation-orchestrator';
 const RULES_CONFIG = {
   INACTIVITY_THRESHOLD_DAYS: 14,
   HIGH_PROGRESS_THRESHOLD: 80,
-  DEFAULT_FALLBACK_ITEM_ID: 'BIO-340',
+  DEFAULT_FALLBACK_ITEM_ID: process.env.RECOMMENDATION_FALLBACK_ITEM_ID ?? 'BIO-340',
 };
 
 /**
@@ -44,6 +44,8 @@ export async function generateRuleBasedRecommendation(
     const daysSinceLastEvent =
       (new Date().getTime() - new Date(latestEvent.eventTimestamp).getTime()) / (1000 * 3600 * 24);
 
+    // Only recommend resumption if the item from the latest event is still in progress.
+    // Guards against recommending a course the user has since completed.
     const isEventItemInProgress = inProgressCourses.some((c) => c.courseId === latestEvent.itemId);
     if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS && isEventItemInProgress) {
       const [itemDetails] = await db
