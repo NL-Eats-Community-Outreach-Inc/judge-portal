@@ -4,13 +4,14 @@ import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all';
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     await requireEventInOrg(eventId, orgId);
@@ -185,6 +186,6 @@ export async function GET(request: NextRequest) {
     return new NextResponse(csvContent, { headers });
   } catch (error) {
     console.error('Error exporting results:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
