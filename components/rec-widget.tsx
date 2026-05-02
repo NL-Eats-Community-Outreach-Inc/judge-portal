@@ -47,7 +47,7 @@ export function RecommendationWidget() {
           console.log("Successfully inserted mock ID:", learnerId);
         }
 
-        const response = await fetch('/api/recommendations/' + user.id);
+        const response = await fetch('/api/recommendations/' + learnerId);
         if (!response.ok) throw new Error('Failed to load');
 
         const result = await response.json();
@@ -66,6 +66,10 @@ export function RecommendationWidget() {
 
     setIsSubmitting(true);
     try {
+      if(!data.id) {
+        throw new Error('Submission failed');
+      }
+
       const response = await fetch('/api/recommendations/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { learnerRecommendations, users } from '@/lib/db/schema';
+import { learnerRecommendations } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { generateRuleBasedRecommendation } from '@/lib/services/recommendation-model';
-import * as schema from '@/lib/db/schema';
 
 export async function GET(
   request: Request,
-  { params }: { params: { learner_id: string } }
+  { params }: { params: Promise<{ learner_id: string }> }
 ) {
   try {
     const { learner_id } = await params;
@@ -19,18 +18,7 @@ export async function GET(
       );
     }
 
-    const [learnerExists] = await db
-      .select()
-      .from(schema.learnerProgress)
-      .where(eq(schema.learnerProgress.learnworldsUserId, learner_id))
-      .limit(1);
-
-    if (!learnerExists) {
-      return NextResponse.json(
-        { error: 'Learner not found' }, 
-        { status: 404 }
-      );
-    }
+    // Insert a way to find if a learner_id is in the database
 
     const [recommendation] = await db
       .select({
