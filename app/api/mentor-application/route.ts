@@ -40,10 +40,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[MENTOR_APPLICATION_POST]', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' }, 
-      { status: 500 }
-    );
+    console.error('Error during submission: ', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
