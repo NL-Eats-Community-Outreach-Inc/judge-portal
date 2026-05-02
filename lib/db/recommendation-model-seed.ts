@@ -220,7 +220,9 @@ const seedDatabase = async () => {
     console.log(`Dropout     (resume_inactivity)    : ${userDropout}`);
     console.log(`Casual      (next_step_progression): ${userCasual}`);
     console.log(`Power User  (high_progress → ML)   : ${userPower}`);
-    console.log('\nCall GET /api/recommendation?learner_id=<id> for each user to verify rule paths.');
+    console.log(
+      '\nCall GET /api/recommendation?learner_id=<id> for each user to verify rule paths.'
+    );
   } catch (error) {
     console.error('Error seeding database:', error);
     process.exit(1);
