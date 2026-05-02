@@ -1,5 +1,5 @@
 import { db } from './index';
-import { events, teams, criteria, submissions, submissionAiScores } from './schema';
+import { submissions, submissionAiScores } from './schema';
 import { config } from 'dotenv';
 import postgres from 'postgres';
 
