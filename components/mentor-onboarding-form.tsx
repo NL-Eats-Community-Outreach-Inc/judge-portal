@@ -68,8 +68,8 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
       }
 
       setShowSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during submission');
+    } catch (error) {
+      console.error('An error occurred during submission: ', error);
     } finally {
       setIsLoading(false);
     }
