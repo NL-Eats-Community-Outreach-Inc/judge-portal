@@ -1,15 +1,49 @@
-// Placeholder for testing
 import { NextResponse } from 'next/server';
+import { authServer } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { mentorProfiles } from '@/lib/db/schema';
 
 export async function POST(req: Request) {
-  let body: any = null;
   try {
-    body = await req.json();
-  } catch {
-    body = await req.text();
+    const user = await authServer.requireParticipant();
+    const body = await req.json();
+
+    const values = {
+      learnworldsUserId: user.id,
+      fullName: body.cf_mentor_name,
+      title: body.cf_mentor_title,
+      organization: body.cf_mentor_org,
+      bio: body.cf_mentor_bio,
+      linkedinUrl: body.cf_mentor_linkedin,
+      calendlyUrl: body.cf_mentor_calendly,
+      photoUrl: body.cf_mentor_photo,
+      tags: body.cf_mentor_expertise ?? [],
+      isVisible: false,
+    };
+
+    await db
+      .insert(mentorProfiles)
+      .values(values)
+      .onConflictDoUpdate({
+        target: mentorProfiles.learnworldsUserId,
+        set: {
+          fullName: values.fullName,
+          title: values.title,
+          organization: values.organization,
+          bio: values.bio,
+          linkedinUrl: values.linkedinUrl,
+          calendlyUrl: values.calendlyUrl,
+          photoUrl: values.photoUrl,
+          tags: values.tags,
+        },
+      });
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error('[MENTOR_APPLICATION_POST]', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: error.status || 500 }
+    );
   }
-
-  console.log(body);
-
-  return NextResponse.json({ ok: true });
 }

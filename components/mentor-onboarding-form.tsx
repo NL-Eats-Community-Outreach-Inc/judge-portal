@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,7 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    cf_mentor_name: '',
     cf_mentor_title: '',
     cf_mentor_org: '',
     cf_mentor_bio: '',
@@ -108,6 +108,17 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="cf_mentor_name">Full Name</Label>
+              <Input
+                id="cf_mentor_name"
+                value={formData.cf_mentor_name}
+                onChange={handleInputChange}
+                placeholder="Applicant's Name"
+                required
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="cf_mentor_title">Professional Title</Label>
