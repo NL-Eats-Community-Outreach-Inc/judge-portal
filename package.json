@@ -13,6 +13,7 @@
     "db:setup": "tsx scripts/consolidated-setup.ts",
     "db:setup:seed": "tsx scripts/consolidated-setup.ts --seed",
     "db:update": "tsx scripts/apply-feature-migration.ts",
+    "db:seed:recommendations": "tsx lib/db/recommendation-model-seed.ts",
     "setup:email-template": "tsx scripts/setup-email-template.ts"
   },
   "dependencies": {
