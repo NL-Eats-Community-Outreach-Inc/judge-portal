@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { invitations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 /**
  * PATCH /api/admin/invitations/[id]
@@ -18,21 +19,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
 
     if (!id) {
-      return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invitation ID is required');
     }
 
     // Verify invitation belongs to org
     const [invitation] = await db.select().from(invitations).where(eq(invitations.id, id)).limit(1);
 
     if (!invitation) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     if (invitation.organizationId !== orgId) {
-      return NextResponse.json(
-        { error: 'Invitation does not belong to your organization' },
-        { status: 403 }
-      );
+      return sendApiError(403, 'FORBIDDEN', 'Invitation does not belong to your organization');
     }
 
     // Revoke invitation
@@ -46,10 +44,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     console.error('Revoke invitation error:', error);
 
     if (error instanceof Error && error.message?.includes('role required')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -69,21 +67,18 @@ export async function DELETE(
     const { id } = await params;
 
     if (!id) {
-      return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invitation ID is required');
     }
 
     // Verify invitation belongs to org
     const [invitation] = await db.select().from(invitations).where(eq(invitations.id, id)).limit(1);
 
     if (!invitation) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     if (invitation.organizationId !== orgId) {
-      return NextResponse.json(
-        { error: 'Invitation does not belong to your organization' },
-        { status: 403 }
-      );
+      return sendApiError(403, 'FORBIDDEN', 'Invitation does not belong to your organization');
     }
 
     // Delete invitation
@@ -97,9 +92,9 @@ export async function DELETE(
     console.error('Delete invitation error:', error);
 
     if (error instanceof Error && error.message?.includes('role required')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

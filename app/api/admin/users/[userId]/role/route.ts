@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { users, organizationMembers } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function PUT(
   request: NextRequest,
@@ -14,36 +15,31 @@ export async function PUT(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const adminOrgId = await getAdminOrgId(user.id);
     const { role } = await request.json();
 
     if (!role || !['admin', 'judge', 'participant'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
     }
 
     // Block promotion to super_admin
     if (role === 'super_admin') {
-      return NextResponse.json({ error: 'Cannot promote to super_admin' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Cannot promote to super_admin');
     }
 
     // Prevent admin from demoting themselves
     if (userId === user.id && role !== 'admin') {
-      return NextResponse.json(
-        {
-          error: 'Cannot change your own admin role',
-        },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Cannot change your own admin role');
     }
 
     // Fetch current user to check current role
     const [currentTargetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (!currentTargetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'User not found');
     }
 
     // Build update data with org assignment logic
@@ -87,12 +83,12 @@ export async function PUT(
       .returning();
 
     if (!updatedUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'User not found');
     }
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
     console.error('Error updating user role:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
