@@ -9,6 +9,7 @@
  * - Teams with different award types
  * - Test judge accounts
  * - Sample scores and comments
+ * - sample submissions and AI scoring
  */
 
 import { config } from 'dotenv';
@@ -229,7 +230,7 @@ async function seed() {
         prize: eventData.competition.prize,
         country: eventData.competition.country,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        participantSignupUrl: `https://competitions.example.com/${createdEvent.id}/signup`,
+        participantSignupUrl: `/participant/event/${competitionId}`,
       });
 
       createdEvents.push(createdEvent);
@@ -325,6 +326,23 @@ async function seed() {
           repoUrl: `https://github.com/agri-hack/${t.name.toLowerCase().replace(/\s+/g, '-')}`,
         }))
       ).returning();
+
+      // Create sample submission (use first team for this event)
+      const sampleSubmission = await db
+        .insert(schema.submissions)
+        .values({
+          eventId: event.id,
+          teamId: teams[0].id,
+          submissionText:
+            'An AI-powered freshwater collection system using atmospheric condensation and solar-powered filtration.',
+        })
+        .returning();
+
+      // Create sample AI score for submission
+      await db.insert(schema.submissionAiScores).values({
+        submissionId: sampleSubmission[0].id,
+        score: '87.5',
+      });
 
       if (judgeUsers.length > 0) {
         await db.insert(schema.eventJudges).values(
