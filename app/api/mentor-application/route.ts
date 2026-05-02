@@ -39,11 +39,11 @@ export async function POST(req: Request) {
       });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[MENTOR_APPLICATION_POST]', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: error.status || 500 }
+      { error: 'Internal Server Error' }, 
+      { status: 500 }
     );
   }
 }
