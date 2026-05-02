@@ -37,7 +37,7 @@ function mockDbSequence(...results: unknown[][]) {
 }
 
 const INACTIVE_TIMESTAMP = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString(); // 60 days ago
-const RECENT_TIMESTAMP = new Date(Date.now() - 1 * 3600 * 1000).toISOString();          // 1 hour ago
+const RECENT_TIMESTAMP = new Date(Date.now() - 1 * 3600 * 1000).toISOString(); // 1 hour ago
 
 describe('generateRuleBasedRecommendation', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -45,14 +45,31 @@ describe('generateRuleBasedRecommendation', () => {
   it('resume_inactivity: recommends last in-progress course after 14+ days of inactivity', async () => {
     mockDbSequence(
       // latestEvent: on courseEpi, 60 days ago
-      [{ itemId: 'BIO-340-test', eventTimestamp: INACTIVE_TIMESTAMP, eventType: 'started',
-         learnworldsUserId: 'u1', itemType: 'course', source: 'learnworlds',
-         id: '1', metadata: null, createdAt: INACTIVE_TIMESTAMP, eventValue: null }],
+      [
+        {
+          itemId: 'BIO-340-test',
+          eventTimestamp: INACTIVE_TIMESTAMP,
+          eventType: 'started',
+          learnworldsUserId: 'u1',
+          itemType: 'course',
+          source: 'learnworlds',
+          id: '1',
+          metadata: null,
+          createdAt: INACTIVE_TIMESTAMP,
+          eventValue: null,
+        },
+      ],
       // activeProgress: courseEpi still in-progress
-      [{ courseId: 'BIO-340-test', completionStatus: 'in_progress', progressPercentage: '65',
-         learnworldsUserId: 'u1' }],
+      [
+        {
+          courseId: 'BIO-340-test',
+          completionStatus: 'in_progress',
+          progressPercentage: '65',
+          learnworldsUserId: 'u1',
+        },
+      ],
       // itemDetails for courseEpi
-      [{ title: 'BIO 340: Epigenetics and DNA Methylation' }],
+      [{ title: 'BIO 340: Epigenetics and DNA Methylation' }]
     );
 
     const result = await generateRuleBasedRecommendation('u1');
@@ -66,16 +83,37 @@ describe('generateRuleBasedRecommendation', () => {
   it('resume_inactivity guard: skips rule when latest event is on a now-completed course', async () => {
     mockDbSequence(
       // latestEvent: on courseEpi, 60 days ago — but courseEpi is now completed
-      [{ itemId: 'BIO-340-test', eventTimestamp: INACTIVE_TIMESTAMP, eventType: 'completed',
-         learnworldsUserId: 'u2', itemType: 'course', source: 'learnworlds',
-         id: '2', metadata: null, createdAt: INACTIVE_TIMESTAMP, eventValue: null }],
+      [
+        {
+          itemId: 'BIO-340-test',
+          eventTimestamp: INACTIVE_TIMESTAMP,
+          eventType: 'completed',
+          learnworldsUserId: 'u2',
+          itemType: 'course',
+          source: 'learnworlds',
+          id: '2',
+          metadata: null,
+          createdAt: INACTIVE_TIMESTAMP,
+          eventValue: null,
+        },
+      ],
       // activeProgress: courseEpi completed, course3D in-progress at 85%
       [
-        { courseId: 'BIO-450-test', completionStatus: 'in_progress', progressPercentage: '85', learnworldsUserId: 'u2' },
-        { courseId: 'BIO-340-test', completionStatus: 'completed',   progressPercentage: '100', learnworldsUserId: 'u2' },
+        {
+          courseId: 'BIO-450-test',
+          completionStatus: 'in_progress',
+          progressPercentage: '85',
+          learnworldsUserId: 'u2',
+        },
+        {
+          courseId: 'BIO-340-test',
+          completionStatus: 'completed',
+          progressPercentage: '100',
+          learnworldsUserId: 'u2',
+        },
       ],
       // itemDetails for course3D (Rule 2 fires instead)
-      [{ title: 'BIO 450: 3D Genome Architecture' }],
+      [{ title: 'BIO 450: 3D Genome Architecture' }]
     );
 
     const result = await generateRuleBasedRecommendation('u2');
@@ -88,14 +126,31 @@ describe('generateRuleBasedRecommendation', () => {
   it('high_progress: recommends course when user is 80%+ complete', async () => {
     mockDbSequence(
       // latestEvent: recent (< 14 days) — inactivity threshold not crossed
-      [{ itemId: 'BIO-450-test', eventTimestamp: RECENT_TIMESTAMP, eventType: 'progressed',
-         learnworldsUserId: 'u3', itemType: 'course', source: 'learnworlds',
-         id: '3', metadata: null, createdAt: RECENT_TIMESTAMP, eventValue: null }],
+      [
+        {
+          itemId: 'BIO-450-test',
+          eventTimestamp: RECENT_TIMESTAMP,
+          eventType: 'progressed',
+          learnworldsUserId: 'u3',
+          itemType: 'course',
+          source: 'learnworlds',
+          id: '3',
+          metadata: null,
+          createdAt: RECENT_TIMESTAMP,
+          eventValue: null,
+        },
+      ],
       // activeProgress: course3D in-progress at 85%
-      [{ courseId: 'BIO-450-test', completionStatus: 'in_progress', progressPercentage: '85',
-         learnworldsUserId: 'u3' }],
+      [
+        {
+          courseId: 'BIO-450-test',
+          completionStatus: 'in_progress',
+          progressPercentage: '85',
+          learnworldsUserId: 'u3',
+        },
+      ],
       // itemDetails for course3D
-      [{ title: 'BIO 450: 3D Genome Architecture' }],
+      [{ title: 'BIO 450: 3D Genome Architecture' }]
     );
 
     const result = await generateRuleBasedRecommendation('u3');
@@ -111,11 +166,23 @@ describe('generateRuleBasedRecommendation', () => {
       // no events — Rules 1 and 2 cannot fire
       [],
       // activeProgress: courseEpi completed, nothing in-progress
-      [{ courseId: 'BIO-340-test', completionStatus: 'completed', progressPercentage: '100',
-         learnworldsUserId: 'u4' }],
+      [
+        {
+          courseId: 'BIO-340-test',
+          completionStatus: 'completed',
+          progressPercentage: '100',
+          learnworldsUserId: 'u4',
+        },
+      ],
       // nextItem whose prerequisiteItemId = courseEpi
-      [{ itemId: 'BIO-450-test', title: 'BIO 450: 3D Genome Architecture',
-         prerequisiteItemId: 'BIO-340-test', isActive: true }],
+      [
+        {
+          itemId: 'BIO-450-test',
+          title: 'BIO 450: 3D Genome Architecture',
+          prerequisiteItemId: 'BIO-340-test',
+          isActive: true,
+        },
+      ]
     );
 
     const result = await generateRuleBasedRecommendation('u4');
@@ -127,9 +194,9 @@ describe('generateRuleBasedRecommendation', () => {
 
   it('default_popular: returns fallback for a cold start user with no history', async () => {
     mockDbSequence(
-      [],  // no events
-      [],  // no learner progress
-      [{ itemId: 'BIO-340', title: 'Foundations Course', isActive: true }],  // fallback item
+      [], // no events
+      [], // no learner progress
+      [{ itemId: 'BIO-340', title: 'Foundations Course', isActive: true }] // fallback item
     );
 
     const result = await generateRuleBasedRecommendation('u5-new');
@@ -142,9 +209,9 @@ describe('generateRuleBasedRecommendation', () => {
 
   it('throws when DEFAULT_FALLBACK_ITEM_ID is not seeded in learning_items', async () => {
     mockDbSequence(
-      [],  // no events
-      [],  // no learner progress
-      [],  // fallback item missing from catalog
+      [], // no events
+      [], // no learner progress
+      [] // fallback item missing from catalog
     );
 
     await expect(generateRuleBasedRecommendation('u6-new')).rejects.toThrow(
