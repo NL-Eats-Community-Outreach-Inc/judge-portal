@@ -98,23 +98,51 @@ class AISubmissionScreening:
         return float(np.max(similarities))
     # ai-gen end
 
-    #Fetch criteria from supabase Criteria table
-    def fetchChallengeCriteria(self, event_id: str):
-
+    #Fetch criteria from supabase Criteria table with organization validation
+    def fetchChallengeCriteria(self, event_id: str, org_id: str):
+        """
+        Fetch criteria for an event, scoped to the specified organization.
+        Uses Supabase relationship query for defense-in-depth org scoping.
+        
+        Args:
+            event_id: The event ID to fetch criteria for
+            org_id: The organization ID that must own the event
+            
+        Returns:
+            List of criteria dictionaries
+            
+        Raises:
+            ValueError: If no criteria found or event does not belong to the organization
+        """
         response = self.supabase.table("criteria") \
-            .select("id, name, description, min_score, max_score, weight, category") \
+            .select("id, name, description, min_score, max_score, weight, category, events!inner(organization_id)") \
             .eq("event_id", event_id) \
+            .eq("events.organization_id", org_id) \
             .order("display_order") \
             .execute()
         
         if not response.data:
-            print("Warning: No criteria found")
+            raise ValueError(f"No criteria found for event {event_id} in organization {org_id}")
         
         return response.data
 
     # score a submission, calc final score, and normalize
-    def scoreSubmission(self, event_id, submission_text):
-        criteria = self.fetchChallengeCriteria(event_id)
+    def scoreSubmission(self, event_id: str, org_id: str, submission_text: str):
+        """
+        Score a submission against the event's criteria, with organization validation.
+        
+        Args:
+            event_id: The event ID
+            org_id: The organization ID that owns the event
+            submission_text: The submission text to score
+            
+        Returns:
+            Final weighted score (0-100)
+            
+        Raises:
+            ValueError: If event does not belong to the organization or no criteria found
+        """
+        criteria = self.fetchChallengeCriteria(event_id, org_id)
         
         results = []
 
