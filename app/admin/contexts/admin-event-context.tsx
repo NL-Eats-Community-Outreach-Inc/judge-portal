@@ -10,6 +10,9 @@ interface Event {
   status: 'setup' | 'open' | 'active' | 'completed';
   organizationId: string | null;
   maxTeamSize: number | null;
+  prize: string | null;
+  tags: string[] | null;
+  submissionDeadline: string | null;
   createdAt: string;
   updatedAt: string;
 }
