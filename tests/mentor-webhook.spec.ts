@@ -18,6 +18,7 @@ const validPayload = {
   cf_mentor_bio: '10 years of experience in residential real estate.',
   cf_mentor_linkedin: 'https://linkedin.com/in/janedoe',
   cf_mentor_calendly: 'https://calendly.com/janedoe',
+  tags: ['role_mentor'],
 };
 
 test.describe('Mentor webhook endpoint', () => {
@@ -52,6 +53,18 @@ test.describe('Mentor webhook endpoint with configured secret', () => {
     });
 
     expect(response.status()).toBe(401);
+  });
+
+  test('ignores webhook missing the role_mentor tag', async ({ request }) => {
+    const payloadWithoutTag = { ...validPayload, tags: ['student_tag'] };
+    const response = await request.post(WEBHOOK_URL, {
+      headers: { 'x-lw-signature': signPayload(payloadWithoutTag) },
+      data: payloadWithoutTag,
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body.message).toBe('Ignored: No mentor tag');
   });
 
   test('rejects payload missing user_id', async ({ request }) => {
