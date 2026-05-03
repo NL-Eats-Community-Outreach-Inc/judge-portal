@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createHmac } from 'crypto';
 
-// Requires LEARNWORLDS_WEBHOOK_SECRET in env — skip in CI where it's not configured
 const WEBHOOK_SECRET = process.env.LEARNWORLDS_WEBHOOK_SECRET;
-test.skip(!WEBHOOK_SECRET, 'LEARNWORLDS_WEBHOOK_SECRET not set');
 
 const WEBHOOK_URL = '/api/webhooks/learnworlds/mentor';
 
@@ -23,6 +21,20 @@ const validPayload = {
 };
 
 test.describe('Mentor webhook endpoint', () => {
+  test('reaches webhook handler without a Supabase session', async ({ request }) => {
+    const response = await request.post(WEBHOOK_URL, {
+      data: validPayload,
+      maxRedirects: 0,
+    });
+
+    expect(response.status()).not.toBe(302);
+    expect([401, 500]).toContain(response.status());
+  });
+});
+
+test.describe('Mentor webhook endpoint with configured secret', () => {
+  test.skip(!WEBHOOK_SECRET, 'LEARNWORLDS_WEBHOOK_SECRET not set');
+
   test('rejects requests without signature', async ({ request }) => {
     const response = await request.post(WEBHOOK_URL, {
       data: validPayload,
