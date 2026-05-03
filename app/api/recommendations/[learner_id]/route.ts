@@ -12,10 +12,7 @@ export async function GET(
     const { learner_id } = await params;
 
     if (!learner_id || learner_id === 'undefined') {
-      return NextResponse.json(
-        { error: 'Missing or invalid learner_id' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing or invalid learner_id' }, { status: 400 });
     }
 
     // Insert a way to find if a learner_id is in the database
@@ -41,7 +38,7 @@ export async function GET(
       const recDate = new Date(recommendation.createdAt).getTime();
       const now = new Date().getTime();
       const twentyFourHours = 24 * 60 * 60 * 1000;
-      
+
       if (now - recDate > twentyFourHours) {
         isOld = true;
       }
@@ -68,14 +65,10 @@ export async function GET(
       recommended_title: ruleBasedRec.recommendedTitle,
       rationale: ruleBasedRec.rationale,
       source: ruleBasedRec.source,
-      rule_matched: ruleBasedRec.ruleMatched
+      rule_matched: ruleBasedRec.ruleMatched,
     });
-
   } catch (error) {
     console.error('Database Fetch Error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

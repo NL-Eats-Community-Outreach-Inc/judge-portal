@@ -18,51 +18,49 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { recommendationId, learnworldsUserId, recommendedItemId, feedbackType, rating, comment } = body;
+    const {
+      recommendationId,
+      learnworldsUserId,
+      recommendedItemId,
+      feedbackType,
+      rating,
+      comment,
+    } = body;
 
     if (!recommendationId || !recommendedItemId || !learnworldsUserId || !feedbackType || !rating) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if(!['helpful', 'not_helpful'].includes(feedbackType)) {
-      return NextResponse.json(
-        { error: 'Incorrect values for feedbackType' },
-        { status: 400 }
-      );
+    if (!['helpful', 'not_helpful'].includes(feedbackType)) {
+      return NextResponse.json({ error: 'Incorrect values for feedbackType' }, { status: 400 });
     }
 
-    if(rating <= 0 || rating > 5) {
-      return NextResponse.json(
-        { error: 'Out of range for rating' },
-        { status: 400 }
-      );
+    if (rating <= 0 || rating > 5) {
+      return NextResponse.json({ error: 'Out of range for rating' }, { status: 400 });
     }
 
     const [recommendation] = await db
-          .select({
-            id: learnerRecommendations.id,
-            learnworldsUserId: learnerRecommendations.learnworldsUserId,
-            recommendedItemId: learnerRecommendations.recommendedItemId,
-            recommendedTitle: learnerRecommendations.recommendedTitle,
-            rationale: learnerRecommendations.rationale,
-            source: learnerRecommendations.source,
-            ruleMatched: learnerRecommendations.ruleMatched,
-            createdAt: learnerRecommendations.createdAt,
-          })
-          .from(learnerRecommendations)
-          .where(
-            and(
-              eq(learnerRecommendations.learnworldsUserId, learnworldsUserId),
-              eq(learnerRecommendations.id, recommendationId)
-            )
-          )
-          .orderBy(desc(learnerRecommendations.createdAt))
-          .limit(1);
+      .select({
+        id: learnerRecommendations.id,
+        learnworldsUserId: learnerRecommendations.learnworldsUserId,
+        recommendedItemId: learnerRecommendations.recommendedItemId,
+        recommendedTitle: learnerRecommendations.recommendedTitle,
+        rationale: learnerRecommendations.rationale,
+        source: learnerRecommendations.source,
+        ruleMatched: learnerRecommendations.ruleMatched,
+        createdAt: learnerRecommendations.createdAt,
+      })
+      .from(learnerRecommendations)
+      .where(
+        and(
+          eq(learnerRecommendations.learnworldsUserId, learnworldsUserId),
+          eq(learnerRecommendations.id, recommendationId)
+        )
+      )
+      .orderBy(desc(learnerRecommendations.createdAt))
+      .limit(1);
 
-    if(!recommendation) {
+    if (!recommendation) {
       return NextResponse.json(
         { error: 'Could not match user with recommendation' },
         { status: 400 }

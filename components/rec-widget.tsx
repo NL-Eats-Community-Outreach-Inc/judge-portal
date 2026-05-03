@@ -37,15 +37,15 @@ export function RecommendationWidget() {
         // Mock data -- Until there is a way to access user's learnworlds_id
         if (!learnerId) {
           const supabase = createClient();
-          console.log("Mocking learnworlds_id insertion...");
+          console.log('Mocking learnworlds_id insertion...');
           const { data, error } = await supabase.auth.updateUser({
-            data: { learnworlds_id: 'ce5cce86-f945-4355-83a6-67171f66d4e6' }
+            data: { learnworlds_id: 'ce5cce86-f945-4355-83a6-67171f66d4e6' },
           });
-          
+
           if (error) throw error;
-          
+
           learnerId = data.user?.user_metadata?.learnworlds_id;
-          console.log("Successfully inserted mock ID:", learnerId);
+          console.log('Successfully inserted mock ID:', learnerId);
         }
 
         const response = await fetch('/api/recommendations/' + learnerId);
@@ -68,7 +68,7 @@ export function RecommendationWidget() {
 
     setIsSubmitting(true);
     try {
-      if(!data.id) {
+      if (!data.id) {
         throw new Error('Submission failed');
       }
 
