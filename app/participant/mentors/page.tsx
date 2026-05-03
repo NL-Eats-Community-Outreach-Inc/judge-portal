@@ -6,6 +6,7 @@ import { Linkedin, Calendar, User, Loader2, Search, X, Users } from 'lucide-reac
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image'; // Added for optimization
 
 type Mentor = {
   id: string;
@@ -30,21 +31,20 @@ export default function MentorsPage() {
       .then((res) => res.json())
       .then((data) => {
         const mentorList = Array.isArray(data)
-  ? data
-  : Array.isArray(data?.mentors)
-    ? data.mentors
-    : [];
+          ? data
+          : Array.isArray(data?.mentors)
+            ? data.mentors
+            : [];
 
-setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
-          (m: Mentor) => m.is_visible === true
-        setMentors(mentorList || []);
+        // Fixed: Removed the unused expression that was causing the lint error
+        setMentors(mentorList.filter((m: Mentor) => m.is_visible === true) || []);
       })
       .catch(() => toast.error('Failed to load mentors'))
       .finally(() => setIsLoading(false));
   }, []);
 
   const expertiseTags = useMemo(() => {
-   return Array.from(new Set(mentors.flatMap((mentor) => mentor.tags ?? []))).sort();
+    return Array.from(new Set(mentors.flatMap((mentor) => mentor.tags ?? []))).sort();
   }, [mentors]);
 
   const filteredMentors = useMemo(() => {
@@ -54,8 +54,7 @@ setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
       const matchesSearch =
         normalizedSearch === '' ||
         mentor.full_name.toLowerCase().includes(normalizedSearch) ||
-       (mentor.full_name ?? '').toLowerCase().includes(normalizedSearch) ||
-(mentor.organization ?? '').toLowerCase().includes(normalizedSearch);
+        (mentor.organization ?? '').toLowerCase().includes(normalizedSearch);
 
       const matchesExpertise = selectedExpertise === '' || mentor.tags.includes(selectedExpertise);
 
@@ -146,12 +145,13 @@ setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
               className="flex flex-col overflow-hidden transition-all hover:shadow-lg border-muted/60"
             >
               <CardHeader className="flex flex-row items-center gap-4 p-6 pb-4">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border bg-muted">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border bg-muted relative">
                   {mentor.photo_url ? (
-                    <img
+                    <Image
                       src={mentor.photo_url}
                       alt={mentor.full_name}
-                      className="h-full w-full object-cover"
+                      fill
+                      className="object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-teal-500/5">
