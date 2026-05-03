@@ -22,6 +22,7 @@ export function RecommendationWidget() {
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -112,6 +113,7 @@ export function RecommendationWidget() {
   return (
     <div className="w-full max-w-7xl mx-auto py-12 px-6">
       <div className="flex flex-col lg:flex-row gap-12 items-center">
+        {/* Left Side: Header & Context */}
         <div className="w-full lg:w-1/3 space-y-4">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
             <Sparkles className="h-4 w-4" />
@@ -123,12 +125,14 @@ export function RecommendationWidget() {
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 shadow-sm"
+            disabled={hasSubmitted}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 shadow-sm disabled:opacity-50"
           >
-            Give Feedback
+            {hasSubmitted ? 'Feedback Received' : 'Give Feedback'}
           </button>
         </div>
 
+        {/* Right Side: Recommendation Card */}
         <div className="w-full lg:w-2/3">
           <div className="group relative overflow-hidden rounded-2xl border bg-card p-8 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
             <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -136,6 +140,7 @@ export function RecommendationWidget() {
                 <BookOpen className="h-8 w-8" />
               </div>
 
+              {/* Content */}
               <div className="flex-1 space-y-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   ID: {data.recommended_item_id}
@@ -146,6 +151,7 @@ export function RecommendationWidget() {
                 <p className="text-muted-foreground">{data.rationale}</p>
               </div>
 
+              {/* Content Link: When content source is provided, will link to content source */}
               <div className="pt-4 md:pt-0">
                 <button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90">
                   Start Now
@@ -153,11 +159,14 @@ export function RecommendationWidget() {
                 </button>
               </div>
             </div>
+
+            {/* Background decoration */}
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
           </div>
         </div>
       </div>
 
+      {/* Feedback Overlay */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
