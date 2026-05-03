@@ -49,7 +49,8 @@ export default function MentorsPage() {
       const matchesSearch =
         normalizedSearch === '' ||
         mentor.full_name.toLowerCase().includes(normalizedSearch) ||
-        mentor.organization.toLowerCase().includes(normalizedSearch);
+       (mentor.full_name ?? '').toLowerCase().includes(normalizedSearch) ||
+(mentor.organization ?? '').toLowerCase().includes(normalizedSearch);
 
       const matchesExpertise = selectedExpertise === '' || mentor.tags.includes(selectedExpertise);
 
