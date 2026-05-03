@@ -364,6 +364,7 @@ async function seed() {
       // Create sample AI score for submission
       await db.insert(schema.submissionAiScores).values({
         submissionId: sampleSubmission[0].id,
+        eventId: event.id,
         score: '87.5',
       });
 
