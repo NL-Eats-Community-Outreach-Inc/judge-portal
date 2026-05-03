@@ -165,11 +165,7 @@ export async function updateSession(request: NextRequest) {
 
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'admin'
-            ? adminHome
-            : role === 'participant'
-              ? participantHome
-              : judgeHome;
+          role === 'admin' ? adminHome : role === 'participant' ? participantHome : judgeHome;
 
         return NextResponse.redirect(url);
       }
@@ -227,11 +223,7 @@ export async function updateSession(request: NextRequest) {
 
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'super_admin'
-            ? superAdminHome
-            : role === 'admin'
-              ? adminHome
-              : judgeHome;
+          role === 'super_admin' ? superAdminHome : role === 'admin' ? adminHome : judgeHome;
 
         return NextResponse.redirect(url);
       }
