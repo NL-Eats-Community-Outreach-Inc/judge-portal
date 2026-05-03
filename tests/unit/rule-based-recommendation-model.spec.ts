@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateRuleBasedRecommendation } from '../lib/services/rule-based-recommendation-model';
-import { db } from '../lib/db';
+import { generateRuleBasedRecommendation } from '../../lib/services/rule-based-recommendation-model';
+import { db } from '../../lib/db';
 
-vi.mock('../lib/db', () => ({
+vi.mock('../../lib/db', () => ({
   db: { select: vi.fn() },
 }));
 
