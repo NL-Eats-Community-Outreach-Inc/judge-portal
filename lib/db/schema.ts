@@ -880,22 +880,37 @@ export const submissions = pgTable(
   })
 );
 
-export const submissionAiScores = pgTable('submission_ai_scores', {
-  id: uuid('id').defaultRandom().primaryKey(),
+export const submissionAiScores = pgTable(
+  'submission_ai_scores',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
 
-  submissionId: uuid('submission_id')
-    .notNull()
-    .references(() => submissions.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => submissions.id, { onDelete: 'cascade' }),
 
-  score: numeric('score').notNull(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
 
-  createdAt: timestamp('created_at', {
-    withTimezone: true,
-    mode: 'string',
+    score: numeric('score').notNull(),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    uniqueSubmission: uniqueIndex('submission_ai_scores_submission_unique').on(table.submissionId),
+    eventIdx: index('idx_submission_ai_scores_event').on(table.eventId),
+    checkScoreRange: check(
+      'check_submission_ai_scores_score_range',
+      sql`${table.score} >= 0 AND ${table.score} <= 100`
+    ),
   })
-    .default(sql`timezone('utc'::text, now())`)
-    .notNull(),
-});
+);
 
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;

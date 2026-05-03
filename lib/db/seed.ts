@@ -245,6 +245,7 @@ const seedDatabase = async () => {
     // Create sample AI score for submission
     await db.insert(submissionAiScores).values({
       submissionId: sampleSubmission[0].id,
+      eventId,
       score: '87.5',
     });
 
