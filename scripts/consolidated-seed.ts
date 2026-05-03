@@ -9,11 +9,12 @@
  * - Teams with different award types
  * - Test judge accounts
  * - Sample scores and comments
+ * - sample submissions and AI scoring
  */
 
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import postgres from 'postgres';
 import { createClient } from '@supabase/supabase-js';
 import * as schema from '../lib/db/schema';
@@ -211,6 +212,20 @@ async function seed() {
 
     const createdEvents = [];
 
+    // Keep CI runs deterministic by removing prior seeded events for this org.
+    // Cascading deletes remove dependent rows like competitions and teams.
+    await db
+      .delete(schema.events)
+      .where(
+        and(
+          eq(schema.events.organizationId, organization.id),
+          inArray(
+            schema.events.name,
+            eventsData.map((item) => item.event.name)
+          )
+        )
+      );
+
     for (const eventData of eventsData) {
       const [createdEvent] = await db
         .insert(schema.events)
@@ -220,7 +235,7 @@ async function seed() {
         })
         .returning();
 
-      await db.insert(schema.competitions).values({
+      const competitionValues = {
         eventId: createdEvent.id,
         title: eventData.competition.title,
         shortDescription: eventData.competition.shortDescription,
@@ -229,8 +244,17 @@ async function seed() {
         prize: eventData.competition.prize,
         country: eventData.competition.country,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        participantSignupUrl: `https://competitions.example.com/${createdEvent.id}/signup`,
-      });
+        // Keep null so API can derive environment-specific URL via fallback.
+        participantSignupUrl: null,
+      };
+
+      await db
+        .insert(schema.competitions)
+        .values(competitionValues)
+        .onConflictDoUpdate({
+          target: schema.competitions.eventId,
+          set: competitionValues,
+        });
 
       createdEvents.push(createdEvent);
       console.log(`  ✅ Created event + competition: ${createdEvent.name}`);
@@ -325,6 +349,23 @@ async function seed() {
           repoUrl: `https://github.com/agri-hack/${t.name.toLowerCase().replace(/\s+/g, '-')}`,
         }))
       ).returning();
+
+      // Create sample submission (use first team for this event)
+      const sampleSubmission = await db
+        .insert(schema.submissions)
+        .values({
+          eventId: event.id,
+          teamId: teams[0].id,
+          submissionText:
+            'An AI-powered freshwater collection system using atmospheric condensation and solar-powered filtration.',
+        })
+        .returning();
+
+      // Create sample AI score for submission
+      await db.insert(schema.submissionAiScores).values({
+        submissionId: sampleSubmission[0].id,
+        score: '87.5',
+      });
 
       if (judgeUsers.length > 0) {
         await db.insert(schema.eventJudges).values(
