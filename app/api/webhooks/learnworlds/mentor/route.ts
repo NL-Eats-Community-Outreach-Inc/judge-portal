@@ -43,6 +43,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 });
     }
 
+    const tags = payload.tags || [];
+
+    if (!Array.isArray(tags) || !tags.includes('role_mentor')) {
+      console.log('Webhook ignored: User does not have the role_mentor tag.');
+      return NextResponse.json({ message: 'Ignored: No mentor tag' }, { status: 200 });
+    }
+
     const userId = payload.user_id || payload.id;
     const fullName = payload.name || payload.full_name || 'Unknown';
 
