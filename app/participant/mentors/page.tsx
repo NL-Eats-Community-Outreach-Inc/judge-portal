@@ -29,7 +29,13 @@ export default function MentorsPage() {
     fetch('/api/mentors')
       .then((res) => res.json())
       .then((data) => {
-        const mentorList = (Array.isArray(data) ? data : data.mentors).filter(
+        const mentorList = Array.isArray(data)
+  ? data
+  : Array.isArray(data?.mentors)
+    ? data.mentors
+    : [];
+
+setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
           (m: Mentor) => m.is_visible === true
         );
         setMentors(mentorList || []);
