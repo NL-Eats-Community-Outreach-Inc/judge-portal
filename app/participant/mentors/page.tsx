@@ -37,7 +37,6 @@ export default function MentorsPage() {
 
 setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
           (m: Mentor) => m.is_visible === true
-        );
         setMentors(mentorList || []);
       })
       .catch(() => toast.error('Failed to load mentors'))
