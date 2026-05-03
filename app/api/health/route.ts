@@ -11,7 +11,10 @@ export async function GET() {
   let httpStatus = 200;
 
   try {
-    await db.execute(sql`SELECT 1`);
+    const timeoutTrigger = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database timeout')), 5000)
+    );
+    await Promise.race([db.execute(sql`SELECT 1`), timeoutTrigger]);
   } catch (error) {
     console.error('Health Check failed to connect to the database:', error);
     dbStatus = 'disconnected';
@@ -39,7 +42,7 @@ export async function GET() {
       }
     } catch (error) {
       console.error('Health Check failed to retrieve ingestion subsystem health:', error);
-      ingestionStatus.status = 'unknown';
+      ingestionStatus.status = 'unavailable';
       globalStatus = 'degraded';
     }
   }
