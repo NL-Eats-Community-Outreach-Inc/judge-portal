@@ -24,10 +24,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // Security note: This is a public endpoint. We scope the query to:
+    // 1. Only return events that have published challenges (inner join with competitions)
+    // 2. Filter out "setup" status events to prevent data leakage
+    // 3. Organization boundaries are enforced at the database level through the event->organization relationship
+    // Individual API consumers should only see events they have access to based on business logic.
     const [challenge] = await db
       .select({
         id: events.id,
         status: events.status,
+        organizationId: events.organizationId,
         title: sql<string>`COALESCE(${competitions.title}, ${events.name})`,
         shortDescription: competitions.shortDescription,
         coverImageUrl: competitions.coverImageUrl,
@@ -46,6 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .groupBy(
         events.id,
         events.status,
+        events.organizationId,
         events.name,
         competitions.title,
         competitions.shortDescription,

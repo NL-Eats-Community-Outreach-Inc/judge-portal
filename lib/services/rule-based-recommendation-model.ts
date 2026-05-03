@@ -1,6 +1,7 @@
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import * as schema from '../db/schema';
+import { RecommendationResult } from './recommendation-orchestrator';
 
 /*
     Define important threshold for model decisions
@@ -8,19 +9,8 @@ import * as schema from '../db/schema';
 const RULES_CONFIG = {
   INACTIVITY_THRESHOLD_DAYS: 14,
   HIGH_PROGRESS_THRESHOLD: 80,
-  DEFAULT_FALLBACK_ITEM_ID: 'BIO-340',
+  DEFAULT_FALLBACK_ITEM_ID: process.env.RECOMMENDATION_FALLBACK_ITEM_ID ?? 'BIO-340',
   HOURS_FRESHNESS: 24,
-};
-
-/*
-    Create type that is returned containing the recommendation
-*/
-export type RecommendationResult = {
-  recommendedItemId: string;
-  recommendedTitle: string;
-  rationale: string;
-  ruleMatched: string;
-  source: 'rule' | 'fallback';
 };
 
 /*
@@ -84,10 +74,15 @@ export async function generateRuleBasedRecommendation(
     const daysSinceLastEvent =
       (new Date().getTime() - new Date(latestEvent.eventTimestamp).getTime()) / (1000 * 3600 * 24);
 
-    if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS) {
+    // Only recommend resumption if the item from the latest event is still in progress.
+    // Guards against recommending a course the user has since completed.
+    const isEventItemInProgress = inProgressCourses.some((c) => c.courseId === latestEvent.itemId);
+    if (daysSinceLastEvent >= RULES_CONFIG.INACTIVITY_THRESHOLD_DAYS && isEventItemInProgress) {
       const [itemDetails] = await db
         .select({ title: schema.learningItems.title })
         .from(schema.learningItems)
+
+        // Assumes learningItems.itemId matches the LearnWorlds external course ID used in learnerProgress.courseId
         .where(eq(schema.learningItems.itemId, latestEvent.itemId));
 
       if (itemDetails) {
@@ -140,7 +135,7 @@ export async function generateRuleBasedRecommendation(
       .from(schema.learningItems)
       .where(
         and(
-          sql`${schema.learningItems.prerequisiteItemId} IN ${completedCourseIds}`,
+          inArray(schema.learningItems.prerequisiteItemId, completedCourseIds),
           eq(schema.learningItems.isActive, true)
         )
       )
@@ -167,30 +162,19 @@ export async function generateRuleBasedRecommendation(
       .from(schema.learningItems)
       .where(eq(schema.learningItems.itemId, RULES_CONFIG.DEFAULT_FALLBACK_ITEM_ID));
 
+    if (!fallbackItem) {
+      throw new Error(`Fallback item '${RULES_CONFIG.DEFAULT_FALLBACK_ITEM_ID}' not found in 
+        learning_items. Check seed data.`);
+    }
+
     recommendation = {
       recommendedItemId: fallbackItem.itemId,
-      recommendedTitle: fallbackItem?.title || 'Foundations Course',
+      recommendedTitle: fallbackItem.title,
       rationale: 'A popular starting point for new learners.',
       ruleMatched: 'default_popular',
       source: 'fallback',
     };
   }
-
-  /*
-    Insert recommendation into table 
-  */
-  await db
-    .insert(schema.learnerRecommendations)
-    .values({
-      learnworldsUserId,
-      recommendedItemId: recommendation.recommendedItemId,
-      recommendedTitle: recommendation.recommendedTitle,
-      rationale: recommendation.rationale,
-      ruleMatched: recommendation.ruleMatched,
-      source: recommendation.source,
-      score: '1.0',
-    })
-    .returning();
 
   return recommendation;
 }
