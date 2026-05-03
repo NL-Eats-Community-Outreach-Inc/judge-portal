@@ -45,7 +45,7 @@ setMentors(mentorList.filter((m: Mentor) => m.is_visible === true));
   }, []);
 
   const expertiseTags = useMemo(() => {
-    return Array.from(new Set(mentors.flatMap((mentor) => mentor.tags))).sort();
+   return Array.from(new Set(mentors.flatMap((mentor) => mentor.tags ?? []))).sort();
   }, [mentors]);
 
   const filteredMentors = useMemo(() => {
