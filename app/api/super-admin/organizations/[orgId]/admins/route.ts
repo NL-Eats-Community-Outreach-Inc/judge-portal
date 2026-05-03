@@ -8,6 +8,7 @@ import {
   calculateExpirationDate,
   getExistingInvitation,
 } from '@/lib/auth/invitation';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
       .limit(1);
 
     if (!org) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     const admins = await db
@@ -39,10 +40,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     return NextResponse.json({ admins });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error fetching org admins:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 

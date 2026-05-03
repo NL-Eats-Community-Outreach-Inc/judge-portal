@@ -3,6 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, invitations } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
       .limit(1);
 
     if (!org) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     const orgInvitations = await db
@@ -40,10 +41,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     return NextResponse.json({ invitations: invitesWithLinks });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error fetching org invitations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -54,7 +55,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
     const { invitationId } = await request.json();
 
     if (!invitationId) {
-      return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invitation ID is required');
     }
 
     // Verify invitation belongs to this org
@@ -65,7 +66,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
       .limit(1);
 
     if (!invite) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     await db
@@ -76,10 +77,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
     return NextResponse.json({ success: true, message: 'Invitation revoked' });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error revoking invitation:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -90,7 +91,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     const { invitationId } = await request.json();
 
     if (!invitationId) {
-      return NextResponse.json({ error: 'Invitation ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invitation ID is required');
     }
 
     // Verify invitation belongs to this org
@@ -101,7 +102,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
       .limit(1);
 
     if (!invite) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     await db.delete(invitations).where(eq(invitations.id, invitationId));

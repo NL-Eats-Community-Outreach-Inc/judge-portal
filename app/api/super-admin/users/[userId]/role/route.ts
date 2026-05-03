@@ -11,6 +11,7 @@ import {
   scores,
 } from '@/lib/db/schema';
 import { eq, and, sql, asc } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 const VALID_ROLES = ['admin', 'judge', 'participant'] as const;
 
@@ -21,15 +22,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ user
     const { role, organizationId } = await request.json();
 
     if (!role || !VALID_ROLES.includes(role)) {
-      return NextResponse.json(
-        { error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'BAD_REQUEST',
+        `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`
       );
     }
 
     // Cannot change own role
     if (userId === currentUser.id) {
-      return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Cannot change your own role');
     }
 
     // Verify user exists
@@ -40,20 +42,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ user
       .limit(1);
 
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'User not found');
     }
 
     // Cannot change another super_admin's role
     if (targetUser.role === 'super_admin') {
-      return NextResponse.json({ error: 'Cannot change super admin role' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Cannot change super admin role');
     }
 
     // When promoting to admin, organizationId is required
     if (role === 'admin' && !organizationId) {
-      return NextResponse.json(
-        { error: 'Organization is required when assigning admin role' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Organization is required when assigning admin role');
     }
 
     // Set organizationId: use provided value for admin, null for others
@@ -173,9 +172,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ user
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error updating user role:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
