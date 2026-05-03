@@ -59,6 +59,9 @@ export async function updateSession(request: NextRequest) {
     ) {
       return supabaseResponse;
     }
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
