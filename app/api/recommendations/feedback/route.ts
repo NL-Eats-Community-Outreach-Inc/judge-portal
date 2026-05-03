@@ -62,6 +62,13 @@ export async function POST(request: Request) {
           .orderBy(desc(learnerRecommendations.createdAt))
           .limit(1);
 
+    if(!recommendation) {
+      return NextResponse.json(
+        { error: 'Could not match user with recommendation' },
+        { status: 400 }
+      );
+    }
+
     const [newFeedback] = await db
       .insert(recommendationFeedback)
       .values({

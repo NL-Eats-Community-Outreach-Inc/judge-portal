@@ -91,6 +91,7 @@ export function RecommendationWidget() {
       setIsModalOpen(false);
       setRating(0);
       setComment('');
+      setHasSubmitted(true);
     } catch (error) {
       toast.error('Failed to save feedback.');
       console.error('API error:', error);
