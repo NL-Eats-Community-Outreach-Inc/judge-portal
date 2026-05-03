@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS learner_item_events (
 
 CREATE TABLE IF NOT EXISTS recommendation_impressions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  recommendation_id UUID NOT NULL REFERENCES learner_recommendations(id) ON DELETE CASCADE,
+  recommendation_id UUID REFERENCES learner_recommendations(id) ON DELETE SET NULL,
   learnworlds_user_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
   item_type TEXT,
@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS recommendation_impressions (
 
 CREATE TABLE IF NOT EXISTS recommendation_outcomes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  recommendation_impression_id UUID NOT NULL
-    REFERENCES recommendation_impressions(id) ON DELETE CASCADE,
+  recommendation_impression_id UUID
+    REFERENCES recommendation_impressions(id) ON DELETE SET NULL,
   learnworlds_user_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
   outcome_type TEXT NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS recommendation_outcomes (
 
 CREATE TABLE IF NOT EXISTS recommendation_feedback (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  recommendation_id UUID REFERENCES learner_recommendations(id) ON DELETE CASCADE,
+  recommendation_id UUID REFERENCES learner_recommendations(id) ON DELETE SET NULL,
   learnworlds_user_id TEXT NOT NULL,
   recommended_item_id TEXT NOT NULL,
   feedback_type TEXT,

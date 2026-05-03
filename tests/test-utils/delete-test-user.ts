@@ -1,6 +1,11 @@
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+interface AdminUserSummary {
+  id: string;
+  email?: string;
+}
+
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   throw new Error('Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env');
 }
@@ -35,9 +40,9 @@ export async function getUserIdByEmail(email: string): Promise<string> {
   }
 
   const data = await res.json();
-  const users = data.users || [];
+  const users: AdminUserSummary[] = Array.isArray(data.users) ? data.users : [];
 
-  const matchedUser = users.find((u: any) => u.email === email);
+  const matchedUser = users.find((u) => u.email === email);
   if (!matchedUser) {
     throw new Error(`[getUserIdByEmail] No user found for ${email}`);
   }

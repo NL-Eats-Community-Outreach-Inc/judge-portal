@@ -2,7 +2,6 @@ name: Playwright Tests
 
 on:
   pull_request:
-  push:
 
 jobs:
   playwright-tests:
@@ -41,6 +40,10 @@ jobs:
           echo "✓ Created .env file ($(wc -l < .env) lines, $(wc -c < .env) bytes)"
           echo "First line check (should have no leading spaces):"
           head -n 1 .env | od -c | head -n 2
+      - name: Setup database with migrations and test data
+        run: npm run db:setup:seed
+      - name: Apply feature migrations
+        run: npm run db:update
       - name: Start Next.js server
         run: |
           npm run dev > server.log 2>&1 &
@@ -59,15 +62,15 @@ jobs:
             kill $(cat .server.pid) || true
           fi
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: failure()
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 30
+          retention-days: 3
       - name: Upload server logs
-        if: ${{ !cancelled() }}
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: server-logs
           path: server.log
-          retention-days: 7
+          retention-days: 3
