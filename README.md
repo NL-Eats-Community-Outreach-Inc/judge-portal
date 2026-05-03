@@ -322,6 +322,7 @@ judgeportal/
 
 ## 📊 Database Schema
 
+<<<<<<< HEAD
 The system uses PostgreSQL with Drizzle ORM and is built around a multi-tenant architecture.
 
 ### Core Tables
@@ -411,6 +412,23 @@ The system uses PostgreSQL with Drizzle ORM and is built around a multi-tenant a
   - Used for onboarding users into organizations/events
 
 > Note: The schema is managed using Drizzle ORM and updated via scripts in the `/scripts` directory.
+=======
+The system uses thirteen main tables:
+
+- **organizations** - Multi-tenant organizations with name, slug, and branding
+- **events** - Event management with 4-stage lifecycle (setup/open/active/completed) and org scoping
+- **users** - User accounts with role assignments (super_admin/admin/judge/participant) and org association
+- **teams** - Team information with award types, join codes, and org-scoped events
+- **criteria** - Weighted scoring criteria with categories per event
+- **event_judges** - Judge assignment system for event access control
+- **scores** - Individual judge scores and comments with event context
+- **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
+- **submissions** - Stores participant/team challenge submission text and links for an event.
+- **submission_ai_scores** - Stores AI-generated relevance scores for submissions
+- **event_participants** - Participant-event registration tracking
+- **team_members** - Team membership with creator flag and join timestamps
+- **organization_members** - Judge-organization many-to-many membership
+>>>>>>> origin/main
 
 ## 🛠️ Development Commands
 
