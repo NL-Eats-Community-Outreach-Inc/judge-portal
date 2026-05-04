@@ -478,7 +478,7 @@ LEARNWORLDS_TOKEN_URL=https://api.learnworlds.com/oauth2/token
 LEARNWORLDS_API_BASE_URL=https://api.learnworlds.com
 LEARNWORLDS_CLIENT_ID=your_client_id
 LEARNWORLDS_CLIENT_SECRET=your_client_secret
-LEARNWORLDS_CLIENT_HEADER_VALUE=your_base64_encoded_credentials
+LEARNWORLDS_CLIENT_HEADER_VALUE=your_lw_client_header_value(your_base64_encoded_credentials)
 ```
 
 **Optional Environment Variables:**
