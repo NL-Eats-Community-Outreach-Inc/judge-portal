@@ -101,7 +101,16 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 
 3. **Configure Environment Variables**
 
+   Create a `.env.local` file in the root directory:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
+   DATABASE_URL=your-database-url
+   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token  # Optional: for email template setup
+   ```
 
+   > **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
 
 4. **Set up the Database**
 
@@ -132,55 +141,8 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 
    Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Environment Variables
-The application relies on the following environment variables for configuration.
+### Create Your First Admin
 
-### Required Variables
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-  - Supabase project URL
-
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - Public anonymous key for client-side access
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-  - Service role key for secure server-side operations
-
-- `DATABASE_URL`
-  - PostgreSQL connection string used by Drizzle ORM
-
----
-
-### Optional Variables
-
-- `SUPABASE_ACCESS_TOKEN`
-  - Required for email template setup scripts
-
-- `VERCEL_URL`
-  - Automatically set in Vercel deployments
-
-- `VERCEL_ENV`
-  - Indicates deployment environment (`development`, `preview`, `production`)
-
-- `BASE_URL`
-  - Used in testing configurations (Playwright)
-
----
-
-### Example `.env.local`
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-key
-DATABASE_URL=your-db-url
-
-# LearnWorlds Integration
-LEARNWORLDS_API_URL=your-learnworlds-url
-LEARNWORLDS_API_KEY=your-api-key
-```
-
-### Creating Your First Admin
 1. **Sign up** at `/auth/sign-up`
 2. **Promote to super admin** (for platform management):
    - Go to Supabase Dashboard
@@ -201,7 +163,7 @@ LEARNWORLDS_API_KEY=your-api-key
 
 **"Missing environment variables"**
 - Check `.env.local` exists (not `.env`)
-- Ensure all 4 variables are set correctly
+- Ensure all required variables are set correctly
 
 **"Tables don't exist"**
 - Run `npm run db:setup` again
@@ -322,98 +284,7 @@ judgeportal/
 
 ## 📊 Database Schema
 
-<<<<<<< HEAD
-The system uses PostgreSQL with Drizzle ORM and is built around a multi-tenant architecture.
-
-### Core Tables
-
-**organizations**
-  - Stores organization data (name, slug, branding)
-  - Used for multi-tenant isolation
-
-**users**
-  - Stores all platform users
-  - Includes role (`super_admin`, `admin`, `judge`, `participant`)
-  - Linked to organizations
-
-**organization_members**
-  - Many-to-many relationship between users and organizations
-  - Used for judge membership across multiple orgs
-
-### LearnWorlds Integration & Personalization
-
-**learnworlds_sync_runs**
-   - Tracks ingestion/sync operations from LearnWorlds
-   - Stores metadata such as status, trigger type, and record counts
-   - Used for monitoring and debugging data sync processes
-
-**learnworlds_raw_payloads**
-   - Stores raw data received from LearnWorlds API endpoints
-   - Includes course, module, and lesson-level activity data
-   - Acts as a staging layer before normalization
-
-**learner_progress**
-   - Stores normalized learner progress data
-   - Tracks course progress, completion status, and activity timestamps
-   - Linked to LearnWorlds users via `learnworlds_user_id`
-   - Used for analytics and future personalized recommendations
-
-### Mentorship & Profiles
-
-**mentor_profiles**
-   - Stores mentor information separate from the core `users` table
-   - Includes fields like name, title, bio, tags, and external links
-   - Linked to LearnWorlds users via `learnworlds_user_id`
-   - Supports mentor search and filtering functionality
-   - Visibility controlled via `is_visible` flag
-
-### Events & Competitions
-
-**events**
-  - Main event entity
-  - Includes lifecycle: `setup → open → active → completed`
-  - Scoped to an organization
-
-**competitions**
-  - Linked 1:1 with events
-  - Stores competition-specific metadata (title, description, etc.)
-
-### Teams & Participation
-
-**teams**
-  - Stores team data per event
-  - Includes join codes and award type (Technical / Business / Both)
-
-**team_members**
-  - Tracks users in teams
-  - Includes creator flag and join timestamps
-
-**event_participants**
-  - Tracks which users are registered for which events
-
-### Judging System
-
-**criteria**
-  - Scoring criteria per event
-  - Includes weights and categories
-
-**event_judges**
-  - Assigns judges to events
-  - Controls access to scoring
-
-**scores**
-  - Stores judge scores and comments per team
-
-### Invitations System
-
-**invitations**
-  - Stores invite tokens
-  - Supports roles (admin, judge, participant)
-  - Used for onboarding users into organizations/events
-
-> Note: The schema is managed using Drizzle ORM and updated via scripts in the `/scripts` directory.
-=======
-The system uses thirteen main tables:
+The system uses the following main tables:
 
 - **organizations** - Multi-tenant organizations with name, slug, and branding
 - **events** - Event management with 4-stage lifecycle (setup/open/active/completed) and org scoping
@@ -423,12 +294,22 @@ The system uses thirteen main tables:
 - **event_judges** - Judge assignment system for event access control
 - **scores** - Individual judge scores and comments with event context
 - **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
-- **submissions** - Stores participant/team challenge submission text and links for an event.
+- **submissions** - Stores participant/team challenge submission text and links for an event
 - **submission_ai_scores** - Stores AI-generated relevance scores for submissions
 - **event_participants** - Participant-event registration tracking
 - **team_members** - Team membership with creator flag and join timestamps
 - **organization_members** - Judge-organization many-to-many membership
->>>>>>> origin/main
+
+### 🤖 AI & Recommendation System
+
+- **learner_recommendations** - Stores generated recommendations for learners (courses, lessons, challenges)
+- **learner_item_events** - Tracks learner activity and interactions with recommended content
+- **recommendation_impressions** - Records when recommendations are shown to users
+- **recommendation_outcomes** - Tracks outcomes such as clicks, starts, completions, dismissals, or no action
+- **recommendation_feedback** - Stores user feedback and ratings on recommendations
+- **learning_items** - Stores learning content used by the recommendation system
+- **ml_training_examples** - Stores examples used to train and evaluate recommendation models
+- **model_registry** - Tracks ML model versions, artifacts, metrics, and active model status
 
 ## 🛠️ Development Commands
 
