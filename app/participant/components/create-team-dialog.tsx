@@ -173,10 +173,10 @@ export function CreateTeamDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="team-description">Description (optional)</Label>
+                <Label htmlFor="team-description">About (optional)</Label>
                 <Textarea
                   id="team-description"
-                  placeholder="Describe your project idea..."
+                  placeholder="Tell us about your team..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}

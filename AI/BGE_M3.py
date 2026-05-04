@@ -106,13 +106,13 @@ class AISubmissionScreening:
             org_id: The organization ID that must own the event
             
         Returns:
-            List of criteria dictionaries
+            Event metadata and list of criteria dictionaries
             
         Raises:
             ValueError: If no criteria found or event does not belong to the organization
         """
         event_response = self.supabase.table("events") \
-            .select("id") \
+            .select("id, name, description") \
             .eq("id", event_id) \
             .eq("organization_id", org_id) \
             .limit(1) \
@@ -120,6 +120,8 @@ class AISubmissionScreening:
 
         if not event_response.data:
             raise ValueError(f"No event found for event {event_id} in organization {org_id}")
+
+        event = event_response.data[0]
 
         response = self.supabase.table("criteria") \
             .select("id, name, description, min_score, max_score, weight, category") \
@@ -130,7 +132,10 @@ class AISubmissionScreening:
         if not response.data:
             print(f"Warning: No criteria found for event {event_id} in organization {org_id}")
         
-        return response.data
+        return {
+            "event": event,
+            "criteria": response.data
+        }
 
     # score a submission, calc final score, and normalize
     def scoreSubmission(self, event_id: str, org_id: str, submission_text: str):
@@ -148,13 +153,32 @@ class AISubmissionScreening:
         Raises:
             ValueError: If event does not belong to the organization or no criteria found
         """
-        criteria = self.fetchChallengeCriteria(event_id, org_id)
+        challenge = self.fetchChallengeCriteria(event_id, org_id)
+        event = challenge["event"]
+        criteria = challenge["criteria"]
+
+        event_context_parts = []
+        event_name = (event.get("name") or "").strip()
+        event_description = (event.get("description") or "").strip()
+
+        if event_name:
+            event_context_parts.append(f"Event name: {event_name}")
+        if event_description:
+            event_context_parts.append(f"Event description: {event_description}")
+
+        event_context = "\n".join(event_context_parts)
         
         results = []
 
         for c in criteria:
             # criterion embedding
-            criterionText = f"{c['name']}: {c['description']}"
+            criterion_parts = []
+            if event_context:
+                criterion_parts.append(event_context)
+            criterion_parts.append(f"Criterion: {c['name']}")
+            if c.get("description"):
+                criterion_parts.append(f"Criterion description: {c['description']}")
+            criterionText = "\n".join(criterion_parts)
             criterionEmbedding = self.getEmbedding(criterionText)
             
             # compute similarity b/w criteria and submission
