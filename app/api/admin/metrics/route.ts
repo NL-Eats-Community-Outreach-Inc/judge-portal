@@ -27,7 +27,7 @@ export async function GET() {
       .from(users)
       .where(eq(users.role, 'participant'));
 
-    const recommendationCountResult = await db
+    const scoreCountResult = await db
       .select({
         count: sql<number>`count(*)`,
       })
@@ -37,7 +37,7 @@ export async function GET() {
       .select({
         teamId: scores.teamId,
         teamName: teams.name,
-        recommendationCount: sql<number>`count(*)`,
+        scoreCount: sql<number>`count(*)`,
       })
       .from(scores)
       .leftJoin(teams, eq(scores.teamId, teams.id))
@@ -46,11 +46,11 @@ export async function GET() {
       .limit(5);
 
     const metrics = {
-      totalRecommendationRequests: Number(recommendationCountResult[0]?.count ?? 0),
-      mostFrequentlyRecommendedItems: topTeams.map((team) => ({
+      totalScoredSubmissions: Number(scoreCountResult[0]?.count ?? 0),
+      topScoredTeams: topTeams.map((team) => ({
         teamId: team.teamId,
         teamName: team.teamName ?? 'Unknown Team',
-        count: Number(team.recommendationCount ?? 0),
+        count: Number(team.scoreCount ?? 0),
       })),
       totalLearnersServed: Number(learnerCountResult[0]?.count ?? 0),
       averageResponseTime: null,
