@@ -7,7 +7,7 @@
 -- ================================================================
 
 -- Event status enum
-CREATE TYPE event_status AS ENUM ('setup', 'active', 'completed');
+CREATE TYPE event_status AS ENUM ('setup', 'open', 'active', 'completed');
 
 -- User role enum
 CREATE TYPE user_role AS ENUM ('admin', 'judge');
@@ -54,7 +54,18 @@ CREATE TABLE IF NOT EXISTS teams (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(event_id, presentation_order),
-  UNIQUE(event_id, name)
+  UNIQUE(event_id, name),
+  UNIQUE(event_id, id)
+);
+
+-- Team members table
+CREATE TABLE IF NOT EXISTS team_members (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  participant_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  is_creator BOOLEAN DEFAULT FALSE,
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(team_id, participant_id)
 );
 
 -- Criteria table
@@ -96,6 +107,40 @@ CREATE TABLE IF NOT EXISTS event_judges (
   judge_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   assigned_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   PRIMARY KEY (event_id, judge_id)
+);
+
+-- Submission Text Table
+CREATE TABLE IF NOT EXISTS submissions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  event_id UUID NOT NULL,
+  team_id UUID NOT NULL,
+
+  submission_text TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+  -- Prevent duplicate submissions per team per event
+  UNIQUE(event_id, team_id),
+
+  -- Normal FK to events
+  FOREIGN KEY (event_id)
+    REFERENCES events(id)
+    ON DELETE CASCADE,
+
+  -- Enforces that team belongs to the same event
+  FOREIGN KEY (event_id, team_id)
+    REFERENCES teams(event_id, id)
+    ON DELETE CASCADE
+);
+
+-- Submission AI Prescreening Table
+CREATE TABLE IF NOT EXISTS submission_ai_scores (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE NOT NULL,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  score NUMERIC NOT NULL CHECK (score >= 0 AND score <= 100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(submission_id)
 );
 
 -- ================================================================
@@ -160,6 +205,11 @@ CREATE INDEX IF NOT EXISTS idx_scores_judge_event ON scores(judge_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_event_judges_event ON event_judges(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_judges_judge ON event_judges(judge_id);
 
+-- AI Pre-screen Score indexes
+CREATE INDEX IF NOT EXISTS idx_submissions_event_team ON submissions(event_id, team_id);
+CREATE INDEX IF NOT EXISTS idx_submission_ai_scores_submission ON submission_ai_scores(submission_id);
+CREATE INDEX IF NOT EXISTS idx_submission_ai_scores_event ON submission_ai_scores(event_id);
+
 -- ================================================================
 -- STEP 6: ENABLE ROW LEVEL SECURITY ON ALL TABLES
 -- ================================================================
@@ -171,6 +221,8 @@ ALTER TABLE criteria ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_judges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE submission_ai_scores ENABLE ROW LEVEL SECURITY;
 
 -- ================================================================
 -- STEP 7: CREATE RLS POLICIES
@@ -327,6 +379,59 @@ CREATE POLICY "Admins can manage teams"
       AND users.role = 'admin'::user_role
     )
   );
+
+-- submissions table policy
+CREATE POLICY "team members can insert submissions"
+  ON submissions
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM team_members tm
+      JOIN teams t ON t.id = tm.team_id
+      JOIN events e ON e.id = t.event_id
+      WHERE tm.team_id = submissions.team_id
+        AND tm.participant_id = auth.uid()
+        AND e.status = 'open'
+    )
+  );
+
+CREATE POLICY "team members can view submissions"
+  ON submissions
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM team_members tm
+      WHERE tm.team_id = submissions.team_id
+        AND tm.participant_id = auth.uid()
+    )
+  );
+
+-- submission ai scoring table policy
+CREATE POLICY "no client access to ai scores"
+  ON submission_ai_scores
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- Allow backend/service role to manage submissions during seed and server-side workflows
+CREATE POLICY "service role can manage submissions"
+  ON submissions
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Allow backend/service role to manage AI scores during seed and server-side workflows
+CREATE POLICY "service role can manage submission ai scores"
+  ON submission_ai_scores
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- ================================================================
 -- STEP 8: SYNC EXISTING AUTH USERS

@@ -1,0 +1,6 @@
+fastapi==0.115.6
+uvicorn==0.32.1
+sentence-transformers==3.0.1
+supabase==2.7.4
+numpy==1.26.4
+python-dotenv==1.0.1
