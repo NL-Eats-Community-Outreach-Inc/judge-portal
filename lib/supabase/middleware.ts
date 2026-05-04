@@ -59,7 +59,7 @@ export async function updateSession(request: NextRequest) {
     ) {
       return supabaseResponse;
     }
-    if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/admin/mentors')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     // Redirect to login for protected routes
