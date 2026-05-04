@@ -1,29 +1,63 @@
 import { test, expect } from '@playwright/test';
+import { uniqueTestEmail } from './test-utils/create-unique-email';
+import { cleanupTestUserById, getUserIdByEmail } from './test-utils/delete-test-user';
 
 test.describe('Mentor Search and Filtering', () => {
-  test.skip(
-    true,
-    'Skipping mentor search Playwright tests due to auth middleware redirect loop in the test environment'
-  );
+  let createdUserId: string | undefined;
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000/participant/mentors');
+    const user = {
+      email: uniqueTestEmail('participant'),
+      password: 'UniqueTestPassphrase28940!',
+    };
 
-    const emailInput = page.getByPlaceholder('m@example.com');
-    const passwordInput = page.locator('input[type="password"]');
-    const loginButton = page.getByRole('button', { name: 'Login' });
+    await page.goto('/', { waitUntil: 'networkidle' });
 
-    await expect(emailInput).toBeVisible();
-    await emailInput.fill('user1@example.com');
+    await page.getByRole('link', { name: 'Sign up' }).click();
+    await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
-    await expect(passwordInput).toBeVisible();
-    await passwordInput.fill('abc123');
+    const emailInput = page.getByLabel('Email');
+    await expect(emailInput).toBeVisible({ timeout: 10000 });
+    await page.getByLabel('Participant').check();
+    await emailInput.fill(user.email);
 
-    await expect(loginButton).toBeVisible();
-    await loginButton.click();
+    await page
+      .getByRole('button', { name: 'Next', exact: true })
+      .filter({ hasNot: page.locator('#next-logo') })
+      .click();
 
-    await page.goto('http://localhost:3000/participant/mentors');
+    await page.getByRole('tab', { name: 'Password', exact: true }).click();
+    await page.locator('input[id="password"]').fill(user.password);
+    await page.locator('input[id="repeat-password"]').fill(user.password);
+
+    await Promise.all([
+      page.getByRole('button', { name: 'Create account' }).click(),
+      page.waitForURL(/\/participant/, { timeout: 60000 }),
+    ]);
+
+    try {
+      createdUserId = await getUserIdByEmail(user.email);
+    } catch {
+      createdUserId = undefined;
+    }
+
+    await page.goto('/participant/mentors', { waitUntil: 'networkidle' });
+    await page.waitForURL(/\/participant\/mentors(?:\?.*)?$/, { timeout: 30000 });
     await expect(page.getByText('Find Mentors')).toBeVisible();
+  });
+
+  test.afterEach(async () => {
+    if (!createdUserId) {
+      return;
+    }
+
+    try {
+      await cleanupTestUserById(createdUserId);
+    } catch {
+      // Cleanup best-effort to avoid masking product regressions.
+    } finally {
+      createdUserId = undefined;
+    }
   });
 
   test('page loads and shows mentors', async ({ page }) => {
