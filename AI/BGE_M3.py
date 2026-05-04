@@ -29,13 +29,10 @@ class AISubmissionScreening:
 
         self.supabase = create_client(url, key)
 
-        # Load embedding model
-        self.model = get_model()
-
     # generates embedding given a chunk of text
     # Warning: Max size for text = 8192 tokens or ~6000 words.
     def getEmbedding(self, text):
-        return self.model.encode(text,normalize_embeddings=True)
+        return get_model().encode(text,normalize_embeddings=True)
 
     #calculates and returns cosine simularity
     def cosineSim(self, v1, v2):
@@ -92,7 +89,7 @@ class AISubmissionScreening:
         criterion. Averaging would dilute focused content with unrelated paragraphs.
         """
         chunks = self.chunkText(submission_text)
-        chunk_embeddings = self.model.encode(chunks, normalize_embeddings=True)
+        chunk_embeddings = get_model().encode(chunks, normalize_embeddings=True)
         # shape: (n_chunks,) — one similarity score per chunk
         similarities = chunk_embeddings @ criterion_embedding
         return float(np.max(similarities))
@@ -114,15 +111,24 @@ class AISubmissionScreening:
         Raises:
             ValueError: If no criteria found or event does not belong to the organization
         """
+        event_response = self.supabase.table("events") \
+            .select("id") \
+            .eq("id", event_id) \
+            .eq("organization_id", org_id) \
+            .limit(1) \
+            .execute()
+
+        if not event_response.data:
+            raise ValueError(f"No event found for event {event_id} in organization {org_id}")
+
         response = self.supabase.table("criteria") \
-            .select("id, name, description, min_score, max_score, weight, category, events!inner(organization_id)") \
+            .select("id, name, description, min_score, max_score, weight, category") \
             .eq("event_id", event_id) \
-            .eq("events.organization_id", org_id) \
             .order("display_order") \
             .execute()
         
         if not response.data:
-            raise ValueError(f"No criteria found for event {event_id} in organization {org_id}")
+            print(f"Warning: No criteria found for event {event_id} in organization {org_id}")
         
         return response.data
 
@@ -174,3 +180,14 @@ class AISubmissionScreening:
         #print(f"Final Score: {finalScore}" )
 
         return finalScore
+
+
+_ai = AISubmissionScreening()
+
+
+def score_submission(event_id: str, org_id: str, content: str) -> float:
+    return _ai.scoreSubmission(event_id, org_id, content)
+
+
+def get_supabase():
+    return _ai.supabase

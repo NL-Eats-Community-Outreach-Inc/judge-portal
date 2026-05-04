@@ -137,8 +137,10 @@ CREATE TABLE IF NOT EXISTS submissions (
 CREATE TABLE IF NOT EXISTS submission_ai_scores (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE NOT NULL,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
   score NUMERIC NOT NULL CHECK (score >= 0 AND score <= 100),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(submission_id)
 );
 
 -- ================================================================
@@ -206,6 +208,7 @@ CREATE INDEX IF NOT EXISTS idx_event_judges_judge ON event_judges(judge_id);
 -- AI Pre-screen Score indexes
 CREATE INDEX IF NOT EXISTS idx_submissions_event_team ON submissions(event_id, team_id);
 CREATE INDEX IF NOT EXISTS idx_submission_ai_scores_submission ON submission_ai_scores(submission_id);
+CREATE INDEX IF NOT EXISTS idx_submission_ai_scores_event ON submission_ai_scores(event_id);
 
 -- ================================================================
 -- STEP 6: ENABLE ROW LEVEL SECURITY ON ALL TABLES

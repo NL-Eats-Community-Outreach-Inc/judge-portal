@@ -12,6 +12,7 @@ test.describe('Mentor Search and Filtering', () => {
     };
 
     await page.goto('/', { waitUntil: 'networkidle' });
+
     await page.getByRole('link', { name: 'Sign up' }).click();
     await page.waitForURL(/\/auth\/sign-up/, { timeout: 10000 });
 
@@ -46,11 +47,14 @@ test.describe('Mentor Search and Filtering', () => {
   });
 
   test.afterEach(async () => {
-    if (!createdUserId) return;
+    if (!createdUserId) {
+      return;
+    }
+
     try {
       await cleanupTestUserById(createdUserId);
     } catch {
-      // best-effort
+      // Cleanup best-effort to avoid masking product regressions.
     } finally {
       createdUserId = undefined;
     }
