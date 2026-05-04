@@ -20,7 +20,8 @@ BEGIN
 
   -- Error handling for missing base_url secret
   IF base_url IS NULL OR base_url = '' THEN
-    RAISE EXCEPTION 'Vault Error: Secret "participant_signup_base_url" is missing.';
+    RAISE WARNING 'Vault Error: Secret "participant_signup_base_url" is missing. Skipping URL generation.';
+    RETURN NEW;
   END IF;
 
   -- URL generation
