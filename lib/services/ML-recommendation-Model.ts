@@ -45,7 +45,7 @@ export async function CrossEncoderRecommender(
       truncation: true,
     });
     const output = await model(inputs);
-    const score = output.logits.data[0];
+    const score: number = Number(output.logits.data[0]);
     scoredCourses.push({
       course: candidateCourseDescription,
       score: score,
