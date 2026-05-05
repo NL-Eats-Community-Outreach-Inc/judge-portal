@@ -102,12 +102,21 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 3. **Configure Environment Variables**
 
    Create a `.env.local` file in the root directory:
+
+### Required Variables
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
    DATABASE_URL=your-database-url
-   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token  # Optional: for email template setup
+   PUBLIC_PARTICIPANT_SIGNUP_BASE_URL=http://localhost:3000
+   LEARNWORLDS_ALLOWED_ORIGIN=https://your-school.learnworlds.com
+   ```
+
+### Optional Variables 
+   ```env
+   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token
+   LEARNWORLDS_PROGRESS_ENDPOINT=/api/v2/users/progress
    ```
 
    > **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
