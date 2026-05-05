@@ -21,13 +21,7 @@ export async function GET(request: NextRequest) {
     // Build query with org-scoped conditions
     let allCriteria;
     if (eventId) {
-      try {
-        await requireEventInOrg(eventId, orgId);
-      } catch (error: any) {
-        const status = error.status || error.statusCode || 403;
-        const code = status === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
-        return sendApiError(status, code, error.message || 'Access to event denied');
-      }
+      await requireEventInOrg(eventId, orgId);
       allCriteria = await db
         .select()
         .from(criteria)
@@ -77,13 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orgId = await getAdminOrgId(user.id);
-    try {
-      await requireEventInOrg(eventId, orgId);
-    } catch (error: any) {
-      const status = error.status || error.statusCode || 403;
-      const code = status === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
-      return sendApiError(status, code, error.message || 'Access to event denied');
-    }
+    await requireEventInOrg(eventId, orgId);
 
     if (!name || !name.trim()) {
       return sendApiError(400, 'BAD_REQUEST', 'Criteria name is required');

@@ -21,13 +21,7 @@ export async function POST(request: NextRequest) {
       return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
-    try {
-      await requireEventInOrg(eventId, orgId);
-    } catch (error: any) {
-      const status = error.status || error.statusCode || 403;
-      const code = status === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
-      return sendApiError(status, code, error.message || 'Access to event denied');
-    }
+    await requireEventInOrg(eventId, orgId);
 
     if (!Array.isArray(criteriaOrders) || criteriaOrders.length === 0) {
       return sendApiError(400, 'BAD_REQUEST', 'Criteria orders array is required');
