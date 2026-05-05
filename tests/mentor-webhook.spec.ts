@@ -68,7 +68,7 @@ test.describe('Mentor webhook endpoint with configured secret', () => {
   });
 
   test('rejects payload missing user_id', async ({ request }) => {
-    const payload = { name: 'No ID Mentor', cf_mentor_title: 'Consultant' };
+    const payload = { name: 'No ID Mentor', cf_mentor_title: 'Consultant',tags: ['role_mentor'] };
     const response = await request.post(WEBHOOK_URL, {
       headers: { 'x-lw-signature': signPayload(payload) },
       data: payload,
