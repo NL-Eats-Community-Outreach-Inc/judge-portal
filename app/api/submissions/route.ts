@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { events, submissions, teamMembers, teams } from '@/lib/db/schema';
+import { events, submissionAiScores, submissions, teamMembers, teams } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { sendApiError } from '@/lib/utils/api-errors';
 
@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       .select({
         eventId: teams.eventId,
         organizationId: events.organizationId,
+        eventStatus: events.status,
       })
       .from(teams)
       .innerJoin(events, eq(teams.eventId, events.id))
@@ -47,29 +48,40 @@ export async function POST(req: Request) {
 
     const eventId = teamRecord[0].eventId;
     const organizationId = teamRecord[0].organizationId;
+    const eventStatus = teamRecord[0].eventStatus;
+
+    if (eventStatus !== 'open') {
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Submissions are only accepted while the event is open'
+      );
+    }
 
     const existing = await db
-      .select()
+      .select({ id: submissions.id })
       .from(submissions)
       .where(and(eq(submissions.teamId, teamId), eq(submissions.eventId, eventId)))
       .limit(1);
 
-    if (existing.length > 0) {
-      return sendApiError(
-        400,
-        'SUBMISSION_ALREADY_EXISTS',
-        'Submission already exists for this team'
-      );
-    }
+    const [inserted] = await db.transaction(async (tx) => {
+      if (existing.length > 0) {
+        await tx
+          .delete(submissionAiScores)
+          .where(eq(submissionAiScores.submissionId, existing[0].id));
 
-    const [inserted] = await db
-      .insert(submissions)
-      .values({
-        eventId,
-        teamId,
-        submissionText: normalizedSubmissionText,
-      })
-      .returning({ id: submissions.id });
+        await tx.delete(submissions).where(eq(submissions.id, existing[0].id));
+      }
+
+      return tx
+        .insert(submissions)
+        .values({
+          eventId,
+          teamId,
+          submissionText: normalizedSubmissionText,
+        })
+        .returning({ id: submissions.id });
+    });
 
     try {
       const scoringUrl = process.env.AI_SCORING_URL ?? 'http://127.0.0.1:8000/score';

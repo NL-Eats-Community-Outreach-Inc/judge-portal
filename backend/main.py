@@ -35,7 +35,7 @@ def score(req: SubmissionRequest):
         if not req.content.strip():
             score = 0.0
         else:
-            score = score_submission(submission_event_id, req.org_id, req.content)
+            score = round(score_submission(submission_event_id, req.org_id, req.content), 2)
 
         supabase.table("submission_ai_scores") \
             .upsert({
