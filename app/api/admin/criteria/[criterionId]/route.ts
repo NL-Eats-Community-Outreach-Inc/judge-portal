@@ -61,7 +61,13 @@ export async function PUT(
     }
 
     // Verify criterion's event belongs to org
-    await requireEventInOrg(currentCriterion.eventId, orgId);
+    try {
+      await requireEventInOrg(currentCriterion.eventId, orgId);
+    } catch (error: any) {
+      const status = error.status || error.statusCode || 403;
+      const code = status === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
+      return sendApiError(status, code, error.message || 'Access to event denied');
+    }
 
     // Get all criteria in the same event to validate weight totals
     const allCriteria = await db
@@ -160,7 +166,13 @@ export async function DELETE(
       return sendApiError(404, 'NOT_FOUND', 'Criterion not found');
     }
 
-    await requireEventInOrg(existingCriterion.eventId, orgId);
+    try {
+      await requireEventInOrg(existingCriterion.eventId, orgId);
+    } catch (error: any) {
+      const status = error.status || error.statusCode || 403;
+      const code = status === 404 ? 'NOT_FOUND' : 'FORBIDDEN';
+      return sendApiError(status, code, error.message || 'Access to event denied');
+    }
 
     // Delete criterion (cascade will handle related scores)
     const [deletedCriterion] = await db
