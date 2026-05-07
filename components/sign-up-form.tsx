@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { getLearnWorldsParams, getPostAuthRedirect } from '@/lib/utils/learnworlds-params';
 
 type UserRole = 'judge' | 'participant';
 type AuthMethod = 'password' | 'passwordless';
@@ -103,6 +104,16 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const currentStepType = stepSequence[currentStep];
   const stepMeta = getStepMeta(currentStepType);
 
+  // Pre-fill from LearnWorlds URL params (ref, email, name)
+  useEffect(() => {
+    const params = getLearnWorldsParams();
+    if (params.isLearnWorlds) {
+      if (params.email) setEmail(params.email);
+      // Auto-select participant role for LearnWorlds users
+      setRole('participant');
+    }
+  }, []);
+
   // Prefetch orgs on mount
   useEffect(() => {
     setOrgsLoading(true);
@@ -183,7 +194,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     }
 
     try {
-      const redirectPath = role === 'judge' ? '/judge' : '/participant';
+      const redirectPath = getPostAuthRedirect(role);
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -302,8 +313,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
           }
         }
 
-        const redirectPath = roleFromMetadata === 'judge' ? '/judge' : '/participant';
-        router.push(redirectPath);
+        router.push(getPostAuthRedirect(roleFromMetadata));
       }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
