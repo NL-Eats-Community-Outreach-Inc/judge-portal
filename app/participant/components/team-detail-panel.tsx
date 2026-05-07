@@ -20,6 +20,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   Users,
   Crown,
   Copy,
@@ -53,6 +60,7 @@ interface TeamDetails {
   maxTeamSize: number | null;
   isCreator: boolean;
   memberCount: number;
+  hasSubmitted: boolean;
 }
 
 interface TeamMember {
@@ -89,6 +97,9 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSubmit, setShowSubmit] = useState(false);
+  const [submissionText, setSubmissionText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchTeam = useCallback(async () => {
     setIsLoadingTeam(true);
@@ -141,6 +152,8 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   }, [editName, editDescription, editDemoUrl, editRepoUrl, team]);
 
   const isLocked = team?.eventStatus === 'active';
+  const isResubmission = team?.eventStatus === 'open' && team?.hasSubmitted;
+  const canSubmit = team?.eventStatus === 'open';
 
   const handleSave = async () => {
     if (!team || !hasChanges) return;
@@ -236,6 +249,46 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
     }
   };
 
+  const handleSubmit = async () => {
+    if (!submissionText.trim()) {
+      toast.error('Proposal cannot be empty');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamId: team?.id,
+          submissionText: submissionText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error_message || 'Submission failed');
+      }
+
+      toast.success(
+        isResubmission ? 'Proposal resubmitted successfully!' : 'Proposal submitted successfully!'
+      );
+      setShowSubmit(false);
+      setSubmissionText('');
+      await fetchTeam();
+      await refreshAll();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Submission failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (isLoadingTeam) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -301,7 +354,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center justify-end flex-1 gap-4 sm:gap-6">
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Members</p>
               <p className="text-lg font-bold text-foreground">
@@ -352,6 +405,42 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                 />
               </Button>
             )}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Submit Proposal</h3>
+              <p className="text-sm text-muted-foreground">
+                Each team must submit one proposal before the event due date. Keep it concise and
+                explain the problem, your solution, working features, business value, scalability,
+                and technical implementation. Demo and repository URLs are also required in Team
+                Details before the event due date.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowSubmit(true)}
+              disabled={!canSubmit}
+              className={`w-full sm:w-auto sm:flex-shrink-0 ${
+                isResubmission
+                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md'
+                  : canSubmit
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+              }`}
+            >
+              {isResubmission ? (
+                'Resubmit'
+              ) : team?.hasSubmitted ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Proposal Submitted
+                </>
+              ) : (
+                'Submit'
+              )}
+            </Button>
           </div>
         </div>
       </Card>
@@ -427,14 +516,14 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-description">Description</Label>
+            <Label htmlFor="edit-description">About</Label>
             <Textarea
               id="edit-description"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               disabled={isLocked}
               rows={3}
-              placeholder="Describe your project..."
+              placeholder="Tell us about your team..."
               maxLength={500}
             />
           </div>
@@ -487,6 +576,42 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           )}
         </div>
       </Card>
+
+      {/* SUBMISSION PANEL */}
+      <Dialog open={showSubmit} onOpenChange={setShowSubmit}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Submit Proposal</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Describe your proposal..."
+              value={submissionText}
+              onChange={(e) => setSubmissionText(e.target.value)}
+              rows={8}
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setShowSubmit(false)}>
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={
+                isResubmission
+                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                  : 'bg-teal-600 hover:bg-teal-700 text-white'
+              }
+            >
+              {isSubmitting ? 'Submitting...' : isResubmission ? 'Resubmit' : 'Submit'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Actions Card - only when not locked */}
       {!isLocked && (

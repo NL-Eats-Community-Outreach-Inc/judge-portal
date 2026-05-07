@@ -20,6 +20,7 @@ import TeamManagement from './components/team-management';
 import CriteriaManagement from './components/criteria-management';
 import ResultsDashboard from './components/results-dashboard';
 import MentorManagement from './components/mentor-management';
+import CompetitionOverview from './components/competition-overview';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('event');
@@ -45,6 +46,13 @@ export default function AdminDashboard() {
               >
                 <Settings className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
                 <span className="text-sm">Events</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="competitions"
+                className="flex items-center justify-center gap-2 relative group h-full min-h-[2.5rem] data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-50 data-[state=active]:via-teal-50 data-[state=active]:to-emerald-100 dark:data-[state=active]:from-emerald-950/40 dark:data-[state=active]:via-teal-950/40 dark:data-[state=active]:to-emerald-900/40 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-300 data-[state=active]:shadow-md data-[state=active]:border-emerald-200/50 dark:data-[state=active]:border-emerald-700/30 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-gray-100/80 dark:hover:from-gray-800/40 dark:hover:to-gray-700/40 transition-all duration-300 ease-out rounded-lg py-2.5 px-4 font-medium"
+              >
+                <Trophy className="h-4 w-4 transition-transform duration-200 group-hover:scale-105" />
+                <span className="text-sm">Competitions</span>
               </TabsTrigger>
               <TabsTrigger
                 value="teams"
@@ -85,6 +93,10 @@ export default function AdminDashboard() {
 
             <TabsContent value="event" className="space-y-6">
               <EventManagement />
+            </TabsContent>
+
+            <TabsContent value="competitions" className="space-y-6">
+              <CompetitionOverview />
             </TabsContent>
 
             <TabsContent value="teams" className="space-y-6">

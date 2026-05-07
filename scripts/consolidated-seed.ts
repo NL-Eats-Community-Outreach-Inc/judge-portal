@@ -9,11 +9,12 @@
  * - Teams with different award types
  * - Test judge accounts
  * - Sample scores and comments
+ * - sample submissions and AI scoring
  */
 
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import postgres from 'postgres';
 import { createClient } from '@supabase/supabase-js';
 import * as schema from '../lib/db/schema';
@@ -211,6 +212,20 @@ async function seed() {
 
     const createdEvents = [];
 
+    // Keep CI runs deterministic by removing prior seeded events for this org.
+    // Cascading deletes remove dependent rows like competitions and teams.
+    await db
+      .delete(schema.events)
+      .where(
+        and(
+          eq(schema.events.organizationId, organization.id),
+          inArray(
+            schema.events.name,
+            eventsData.map((item) => item.event.name)
+          )
+        )
+      );
+
     for (const eventData of eventsData) {
       const [createdEvent] = await db
         .insert(schema.events)
@@ -220,7 +235,7 @@ async function seed() {
         })
         .returning();
 
-      await db.insert(schema.competitions).values({
+      const competitionValues = {
         eventId: createdEvent.id,
         title: eventData.competition.title,
         shortDescription: eventData.competition.shortDescription,
@@ -229,8 +244,17 @@ async function seed() {
         prize: eventData.competition.prize,
         country: eventData.competition.country,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        participantSignupUrl: `https://competitions.example.com/${createdEvent.id}/signup`,
-      });
+        // Keep null so API can derive environment-specific URL via fallback.
+        participantSignupUrl: null,
+      };
+
+      await db
+        .insert(schema.competitions)
+        .values(competitionValues)
+        .onConflictDoUpdate({
+          target: schema.competitions.eventId,
+          set: competitionValues,
+        });
 
       createdEvents.push(createdEvent);
       console.log(`  ✅ Created event + competition: ${createdEvent.name}`);
@@ -326,6 +350,24 @@ async function seed() {
         }))
       ).returning();
 
+      // Create sample submission (use first team for this event)
+      const sampleSubmission = await db
+        .insert(schema.submissions)
+        .values({
+          eventId: event.id,
+          teamId: teams[0].id,
+          submissionText:
+            'An AI-powered freshwater collection system using atmospheric condensation and solar-powered filtration.',
+        })
+        .returning();
+
+      // Create sample AI score for submission
+      await db.insert(schema.submissionAiScores).values({
+        submissionId: sampleSubmission[0].id,
+        eventId: event.id,
+        score: '87.5',
+      });
+
       if (judgeUsers.length > 0) {
         await db.insert(schema.eventJudges).values(
           judgeUsers.map(judge => ({ eventId: event.id, judgeId: judge.id }))
@@ -362,6 +404,125 @@ async function seed() {
     }
 
     console.log(`\n  ✅ Created ${totalScoreCount} total sample scores across all events`);
+
+    console.log('Seeding mentor profiles...');
+    const sampleMentors = [
+      {
+        learnworldsUserId: 'lw_882',
+        fullName: 'Sarah Jenkins',
+        title: 'Senior Product Manager',
+        organization: 'SEED TechFlow Systems',
+        bio: 'Helping early-stage startups scale their product teams and internal processes.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl: null,
+        tags: ['Product Strategy', 'Agile', 'Leadership'],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_901',
+        fullName: 'Bo Li',
+        title: 'Designer',
+        organization: 'SEED Studio',
+        bio: 'Minimalist designer focusing on mobile-first interactions.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl: null,
+        tags: ['UI/UX'],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_442',
+        fullName: 'Dr. Elizabeth Montgomery-Westchester III',
+        title: 'Principal Software Architect and Global Head of Infrastructure Operations',
+        organization: 'SEED The International Consolidated Bureau of Technological Advancements',
+        bio: 'Expert in distributed systems, high-availability cloud infrastructure, and cross-continental team management.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl:
+          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
+        tags: [
+          'Architecture',
+          'K8s',
+          'Cloud',
+          'Scaling',
+          'DevOps',
+          'System Design',
+          'Security',
+          'Enterprise',
+          'Networking',
+          'Linux',
+        ],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_007',
+        fullName: 'Jordan Stealth',
+        title: 'Hidden Consultant',
+        organization: 'SEED Incognito LLC',
+        bio: 'This profile is currently set to invisible for privacy testing.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl: null,
+        tags: ['Internal'],
+        isVisible: false,
+      },
+      {
+        learnworldsUserId: 'lw_112',
+        fullName: 'Alex Rivera',
+        title: 'Junior Developer',
+        organization: 'SEED Open Source Corp',
+        bio: 'Passionate about React and contributing to the JavaScript ecosystem.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl:
+          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400',
+        tags: [],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_223',
+        fullName: 'Max Power',
+        title: 'CEO',
+        organization: 'SEED Global',
+        bio: 'I build things.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl:
+          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400',
+        tags: ['Business', 'Sales'],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_551',
+        fullName: 'Sam Taggart',
+        title: 'QA Engineer',
+        organization: 'SEED BugSlayer Inc',
+        bio: 'Specializing in end-to-end testing and automated regression suites.',
+        linkedinUrl: 'https://linkedin.com',
+        calendlyUrl: 'https://calendly.com',
+        photoUrl:
+          'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400',
+        tags: ['ExtremelyLongTagNameThatMightBreakLayouts', 'Testing'],
+        isVisible: true,
+      },
+      {
+        learnworldsUserId: 'lw_334',
+        fullName: 'Elena Rodriguez',
+        title: 'Marketing Director',
+        organization: 'SEED Growth Metrics',
+        bio: 'Focusing on organic growth strategy, SEO, and brand positioning for SaaS.',
+        linkedinUrl: null,
+        calendlyUrl: null,
+        photoUrl:
+          'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&q=80&w=400',
+        tags: ['Marketing', 'SEO', 'SaaS', 'Branding'],
+        isVisible: true,
+      },
+    ];
+
+    await db.insert(schema.mentorProfiles).values(sampleMentors).onConflictDoNothing();
+    console.log(`Seeded ${sampleMentors.length} mentor profiles`);
     
     // Done!
     console.log('\n✨ Database seeded successfully!\n');

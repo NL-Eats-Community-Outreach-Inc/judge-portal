@@ -55,9 +55,13 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith('/auth') ||
       pathname.startsWith('/invite') ||
       pathname.startsWith('/api/invite') ||
-      pathname.startsWith('/api/organizations/public')
+      pathname.startsWith('/api/organizations/public') ||
+      pathname.startsWith('/api/webhooks')
     ) {
       return supabaseResponse;
+    }
+    if (pathname.startsWith('/api/admin/mentors')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
