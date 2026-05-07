@@ -46,10 +46,12 @@ export function getLearnworldsMentorExpertiseTag(
 export function getLearnworldsMentorExpertiseTags(
   expertiseAnswers: readonly string[]
 ): LearnworldsMentorExpertiseTag[] {
-  return expertiseAnswers.flatMap((answer) => {
+  const tags = expertiseAnswers.flatMap((answer) => {
     const tag = getLearnworldsMentorExpertiseTag(answer);
     return tag ? [tag] : [];
   });
+
+  return [...new Set(tags)];
 }
 
 function normalizeMentorExpertiseLabel(value: string): string {
