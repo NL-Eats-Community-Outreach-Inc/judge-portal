@@ -102,12 +102,21 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 3. **Configure Environment Variables**
 
    Create a `.env.local` file in the root directory:
+
+### Required Variables
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
    SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
    DATABASE_URL=your-database-url
-   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token  # Optional: for email template setup
+   PUBLIC_PARTICIPANT_SIGNUP_BASE_URL=http://localhost:3000
+   LEARNWORLDS_ALLOWED_ORIGIN=https://your-school.learnworlds.com
+   ```
+
+### Optional Variables 
+   ```env
+   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token
+   LEARNWORLDS_PROGRESS_ENDPOINT=/api/v2/users/progress
    ```
 
    > **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
@@ -163,7 +172,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 
 **"Missing environment variables"**
 - Check `.env.local` exists (not `.env`)
-- Ensure all 4 variables are set correctly
+- Ensure all required variables are set correctly
 
 **"Tables don't exist"**
 - Run `npm run db:setup` again
@@ -284,7 +293,7 @@ judgeportal/
 
 ## 📊 Database Schema
 
-The system uses thirteen main tables:
+The system uses the following main tables:
 
 - **organizations** - Multi-tenant organizations with name, slug, and branding
 - **events** - Event management with 4-stage lifecycle (setup/open/active/completed) and org scoping
@@ -294,11 +303,22 @@ The system uses thirteen main tables:
 - **event_judges** - Judge assignment system for event access control
 - **scores** - Individual judge scores and comments with event context
 - **invitations** - Invitation tokens with role support (admin/judge/participant) and org scoping
-- **submissions** - Stores participant/team challenge submission text and links for an event.
+- **submissions** - Stores participant/team challenge submission text and links for an event
 - **submission_ai_scores** - Stores AI-generated relevance scores for submissions
 - **event_participants** - Participant-event registration tracking
 - **team_members** - Team membership with creator flag and join timestamps
 - **organization_members** - Judge-organization many-to-many membership
+
+### 🤖 AI & Recommendation System
+
+- **learner_recommendations** - Stores generated recommendations for learners (courses, lessons, challenges)
+- **learner_item_events** - Tracks learner activity and interactions with recommended content
+- **recommendation_impressions** - Records when recommendations are shown to users
+- **recommendation_outcomes** - Tracks outcomes such as clicks, starts, completions, dismissals, or no action
+- **recommendation_feedback** - Stores user feedback and ratings on recommendations
+- **learning_items** - Stores learning content used by the recommendation system
+- **ml_training_examples** - Stores examples used to train and evaluate recommendation models
+- **model_registry** - Tracks ML model versions, artifacts, metrics, and active model status
 
 ## 🛠️ Development Commands
 
