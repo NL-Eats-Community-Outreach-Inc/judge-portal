@@ -141,12 +141,18 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
    npm run setup:email-template  # Requires SUPABASE_ACCESS_TOKEN
    ```
 
-6. **Start Development Server**
+6. **Configure LearnWorlds Mentor Auto-Tagging (MD-03)**
+   - Tag mentor form submissions with `role_mentor`
+   - Map Expertise answers to tags: `AgriTech` -> `mentor_agritech`, `Sustainability` -> `mentor_sustainability`, `AI` -> `mentor_ai`
+   - Mentor webhook payloads should include these values in `payload.tags`
+   - Canonical tag constants live in `lib/learnworlds/mentor-tags.ts`
+
+7. **Start Development Server**
    ```bash
    npm run dev
    ```
 
-7. **Open the Application**
+8. **Open the Application**
 
    Open [http://localhost:3000](http://localhost:3000) in your browser
 
