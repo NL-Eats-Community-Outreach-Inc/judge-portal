@@ -4,27 +4,19 @@ import { useEffect, useState } from 'react';
 import { Sparkles, Loader2, ArrowRight, BookOpen, Star, X } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client'; // For mock learnworlds_id
 
 interface RecommendationResponse {
+  id: string;
   learner_id: string;
   recommended_item_id: string;
   recommended_title: string;
   rationale: string;
 }
 
-// Mock Data -- To be replaced with API response
-const MOCK_DATA: RecommendationResponse = {
-  learner_id: '123',
-  recommended_item_id: 'COURSE_456',
-  recommended_title: 'Advanced Food Safety',
-  rationale:
-    'Since you completed Food Safety Basics, this course will help you master professional kitchen protocols.',
-};
-
 export function RecommendationWidget() {
   const [data, setData] = useState<RecommendationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -37,16 +29,33 @@ export function RecommendationWidget() {
       setIsLoading(true);
       try {
         const user = await authClient.getUser();
-        if (user) {
-          setUserId(user.id);
-        } else {
-          throw new Error('Failed to get user id.');
+        if (!user) return;
+
+        // For testing purposes -- Until there is a way to access user's learnworlds_id
+        let learnerId = user.user_metadata?.learnworlds_id;
+
+        // Mock data -- Until there is a way to access user's learnworlds_id
+        if (!learnerId) {
+          const supabase = createClient();
+          console.log('Mocking learnworlds_id insertion...');
+          const { data, error } = await supabase.auth.updateUser({
+            data: { learnworlds_id: 'ce5cce86-f945-4355-83a6-67171f66d4e6' },
+          });
+
+          if (error) throw error;
+
+          learnerId = data.user?.user_metadata?.learnworlds_id;
+          console.log('Successfully inserted mock ID:', learnerId);
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setData(MOCK_DATA);
+        const response = await fetch('/api/recommendations/' + learnerId);
+        if (!response.ok) throw new Error('Failed to load');
+
+        const result = await response.json();
+        setData(result);
       } catch (error) {
-        console.error('Initialization error:', error);
+        toast.error('Could not load recommendation');
+        console.error('Loading error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -55,37 +64,37 @@ export function RecommendationWidget() {
   }, []);
 
   const handleSubmitFeedback = async () => {
-    if (rating === 0 || isSubmitting || hasSubmitted) {
-      if (rating === 0) toast.error('Please select a rating before submitting.');
-      return;
-    }
+    if (!data || rating === 0) return;
 
     setIsSubmitting(true);
-
     try {
+      if (!data.id) {
+        throw new Error('Submission failed');
+      }
+
       const response = await fetch('/api/recommendations/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          learner_id: userId || data?.learner_id || 'ERROR FETCHING ID',
-          recommendation_id: data?.recommended_item_id,
-          rating_value: rating,
-          timestamp: new Date().toISOString(),
+          recommendationId: data.id,
+          learnworldsUserId: data.learner_id,
+          recommendedItemId: data.recommended_item_id,
+          rating: rating,
+          feedbackType: rating >= 4 ? 'helpful' : 'not_helpful',
           comment: comment,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to submit feedback');
-      }
+      if (!response.ok) throw new Error('Submission failed');
 
-      toast.success('Thank you for your feedback!');
-      setHasSubmitted(true);
+      toast.success('Thanks for your feedback!');
       setIsModalOpen(false);
       setRating(0);
+      setComment('');
+      setHasSubmitted(true);
     } catch (error) {
-      toast.error('Something went wrong:');
-      console.error('Feedback Submission error:', error);
+      toast.error('Failed to save feedback.');
+      console.error('API error:', error);
     } finally {
       setIsSubmitting(false);
     }
