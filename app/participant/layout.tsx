@@ -9,7 +9,9 @@ export default async function ParticipantLayout({ children }: { children: React.
     redirect('/auth/login');
   }
 
-  if (user.role !== 'participant') {
+  const normalizedRole = user.role?.trim().toLowerCase();
+
+  if (normalizedRole !== 'participant') {
     redirect('/');
   }
 
