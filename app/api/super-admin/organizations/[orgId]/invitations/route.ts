@@ -110,9 +110,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ success: true, message: 'Invitation deleted' });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
     console.error('Error deleting invitation:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

@@ -60,14 +60,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       .limit(1);
 
     if (!org) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     const body = await request.json();
     const { emails, customMessage, expiresInDays = 7 } = body;
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
-      return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'At least one email is required');
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -151,9 +151,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
     console.error('Error inviting admin:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
