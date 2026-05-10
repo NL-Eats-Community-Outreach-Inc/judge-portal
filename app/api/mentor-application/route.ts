@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { mentorProfiles } from '@/lib/db/schema';
 
 export async function POST(req: Request) {
   try {
-    const user = await authServer.requireParticipant();
     const body = await req.json();
 
     const values = {
-      learnworldsUserId: user.id,
+      learnworldsUserId: null, // Needs updating when learnworlds user id is fetchable
       fullName: body.cf_mentor_name,
       title: body.cf_mentor_title,
       organization: body.cf_mentor_org,
