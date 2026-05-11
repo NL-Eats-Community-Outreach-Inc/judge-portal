@@ -9,27 +9,51 @@
 import { NextResponse } from 'next/server';
 import { getUserFromSession } from '@/lib/auth/server';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, scores, teams } from '@/lib/db/schema';
+import { eq, sql, desc } from 'drizzle-orm';
 
 export async function GET() {
   try {
     const user = await getUserFromSession();
 
-    // Only admins can access this endpoint
     if (!user || user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Query total learners (participants)
-    const learners = await db.select().from(users).where(eq(users.role, 'participant'));
+    const learnerCountResult = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(users)
+      .where(eq(users.role, 'participant'));
 
-    // TODO: Replace placeholder metrics with real analytics queries from the database
+    const scoreCountResult = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(scores);
+
+    const topTeams = await db
+      .select({
+        teamId: scores.teamId,
+        teamName: teams.name,
+        scoreCount: sql<number>`count(*)`,
+      })
+      .from(scores)
+      .leftJoin(teams, eq(scores.teamId, teams.id))
+      .groupBy(scores.teamId, teams.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(5);
+
     const metrics = {
-      totalRecommendationRequests: 0,
-      mostFrequentlyRecommendedItems: [],
-      totalLearnersServed: learners.length,
-      averageResponseTime: 0,
+      totalScoredSubmissions: Number(scoreCountResult[0]?.count ?? 0),
+      topScoredTeams: topTeams.map((team) => ({
+        teamId: team.teamId,
+        teamName: team.teamName ?? 'Unknown Team',
+        count: Number(team.scoreCount ?? 0),
+      })),
+      totalLearnersServed: Number(learnerCountResult[0]?.count ?? 0),
+      averageResponseTime: null,
     };
 
     return NextResponse.json(metrics);
