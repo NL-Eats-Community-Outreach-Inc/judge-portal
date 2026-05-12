@@ -22,7 +22,7 @@ export function JudgeHero() {
         />
 
         <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 max-w-2xl mt-6">
-          Freddie Testaroo
+          Freddie Testaroo Again
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
