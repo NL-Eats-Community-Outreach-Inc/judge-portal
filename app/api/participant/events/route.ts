@@ -23,6 +23,8 @@ export async function GET() {
         createdAt: events.createdAt,
         registrationId: eventParticipants.id,
         registeredAt: eventParticipants.registeredAt,
+        challengeType: competitions.challengeType,
+        tags: competitions.tags,
         // Competition fields - will be null if this event has no competition attached
         title: competitions.title ?? null,
         shortDescription: competitions.shortDescription ?? null,
@@ -34,6 +36,7 @@ export async function GET() {
       })
       .from(events)
       .leftJoin(organizations, eq(events.organizationId, organizations.id))
+      .leftJoin(competitions, eq(events.id, competitions.eventId))
       .leftJoin(
         eventParticipants,
         sql`${eventParticipants.eventId} = ${events.id} AND ${eventParticipants.participantId} = ${user.id}`
@@ -52,6 +55,8 @@ export async function GET() {
       createdAt: e.createdAt,
       isRegistered: e.registrationId !== null,
       registeredAt: e.registeredAt,
+      challengeType: e.challengeType || 'global',
+      challengeTags: e.tags || [],
       //Competition fields - null if no competition is attached to this event
       title: e.title ?? null,
       shortDescription: e.shortDescription ?? null,

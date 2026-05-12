@@ -24,6 +24,34 @@ interface EventCardProps {
   onRegister: (eventId: string) => Promise<boolean>;
 }
 
+export function getEventTags(event: ParticipantEvent): string[] {
+  const customTags: string[] = [];
+
+  if (event.challengeType) {
+    customTags.push(event.challengeType.charAt(0).toUpperCase() + event.challengeType.slice(1));
+  }
+
+  if (event.challengeTags && event.challengeTags.length > 0) {
+    customTags.push(...event.challengeTags);
+  } else {
+    const lower = event.name.toLowerCase();
+    if (lower.includes('hack')) customTags.push('Hackathon');
+    if (lower.includes('innov')) customTags.push('Innovation');
+    if (lower.includes('ai') || lower.includes('ml')) customTags.push('AI/ML');
+    if (lower.includes('web')) customTags.push('Web Dev');
+    if (lower.includes('mobile')) customTags.push('Mobile');
+    if (lower.includes('data')) customTags.push('Data');
+    if (lower.includes('design')) customTags.push('Design');
+    if (lower.includes('iot')) customTags.push('IoT');
+    if (lower.includes('game')) customTags.push('Gaming');
+    if (lower.includes('sustain') || lower.includes('green')) customTags.push('Sustainability');
+    if (customTags.length === 1) customTags.push('Challenge');
+    if (customTags.length < 2) customTags.push('Open');
+  }
+
+  return Array.from(new Set(customTags)).slice(0, 3);
+}
+
 const tagColors = [
   'bg-teal-500/10 text-teal-700 dark:text-teal-400',
   'bg-violet-500/10 text-violet-700 dark:text-violet-400',
@@ -34,6 +62,7 @@ const tagColors = [
 export function EventCard({ event, team, onRegister }: EventCardProps) {
   const [isRegistering, setIsRegistering] = useState(false);
 
+  const tags = getEventTags(event);
   const tags = event.tags ?? [];
   const allTags =
     event.country?.toLowerCase() !== 'canada' && event.challengeType === 'global'
