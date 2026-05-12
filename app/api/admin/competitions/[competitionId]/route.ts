@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { competitions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireCompetitionInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function PUT(
   request: NextRequest,
@@ -48,7 +49,7 @@ export async function PUT(
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Error updating competition:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -68,6 +69,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting competition', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
