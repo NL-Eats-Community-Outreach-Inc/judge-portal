@@ -22,8 +22,7 @@ export function JudgeHero() {
         />
 
         <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 max-w-2xl mt-6">
-          Streamline your judging process with our comprehensive platform for competitions,
-          evaluations, and assessments.
+          Freddie Testaroo
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
