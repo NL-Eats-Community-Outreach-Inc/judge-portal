@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "next typecheck",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown --no-error-on-unmatched-pattern",
     "db:push": "drizzle-kit push",
