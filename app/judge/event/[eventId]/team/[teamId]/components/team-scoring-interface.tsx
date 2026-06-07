@@ -45,12 +45,7 @@ interface TeamScoringInterfaceProps {
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'validation-warning';
 
-export function TeamScoringInterface({
-  team,
-  criteria,
-  judgeId: _, // eslint-disable-line @typescript-eslint/no-unused-vars -- auth handled server-side
-  eventId,
-}: TeamScoringInterfaceProps) {
+export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInterfaceProps) {
   const [scores, setScores] = useState<Score[]>([]);
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const [loading, setLoading] = useState(true);

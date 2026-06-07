@@ -162,7 +162,7 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     };
     init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchEvents, fetchTeams]);
 
   return (
     <ParticipantContext.Provider
