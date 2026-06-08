@@ -40,24 +40,20 @@ function getAllFeatures(): string[] {
   }
 
   return readdirSync(FEATURES_DIR)
-    .filter(f => f.endsWith('.sql'))
+    .filter((f) => f.endsWith('.sql'))
     .sort() // Sorts by 001_, 002_, etc.
-    .map(f => f.replace('.sql', '').replace(/^\d+_/, '')); // Remove "001_" prefix
+    .map((f) => f.replace('.sql', '').replace(/^\d+_/, '')); // Remove "001_" prefix
 }
 
 /**
  * Apply a single feature migration
  */
-async function applyFeature(
-  sql: ReturnType<typeof postgres>,
-  feature: string
-): Promise<boolean> {
+async function applyFeature(sql: ReturnType<typeof postgres>, feature: string): Promise<boolean> {
   try {
     // Find the migration file (with or without number prefix)
     const files = readdirSync(FEATURES_DIR);
-    const migrationFile = files.find(f =>
-      f.endsWith(`${feature}.sql`) ||
-      f.endsWith(`_${feature}.sql`)
+    const migrationFile = files.find(
+      (f) => f.endsWith(`${feature}.sql`) || f.endsWith(`_${feature}.sql`)
     );
 
     if (!migrationFile) {
@@ -73,7 +69,6 @@ async function applyFeature(
 
     console.log(`  ✅ ${feature} applied successfully`);
     return true;
-
   } catch (error: any) {
     // Check for safe errors (things already exist)
     const safeErrors = [
@@ -82,10 +77,10 @@ async function applyFeature(
       'type .* already exists',
       'function .* already exists',
       'constraint .* already exists',
-      'index .* already exists'
+      'index .* already exists',
     ];
 
-    const isSafe = safeErrors.some(errorPattern => {
+    const isSafe = safeErrors.some((errorPattern) => {
       const regex = new RegExp(errorPattern, 'i');
       return regex.test(error.message || '');
     });
@@ -127,16 +122,15 @@ async function main() {
 
       console.log('🚀 Applying all features...\n');
       console.log(`📋 Features to apply (${featuresToApply.length}):`);
-      featuresToApply.forEach(f => console.log(`  - ${f}`));
+      featuresToApply.forEach((f) => console.log(`  - ${f}`));
       console.log('');
-
     } else {
       // Args provided = apply SPECIFIC features
       featuresToApply = requestedFeatures;
 
       console.log(`🚀 Applying selected features...\n`);
       console.log(`📋 Features requested (${featuresToApply.length}):`);
-      featuresToApply.forEach(f => console.log(`  - ${f}`));
+      featuresToApply.forEach((f) => console.log(`  - ${f}`));
       console.log('');
     }
 
@@ -165,7 +159,6 @@ async function main() {
     if (failCount > 0) {
       process.exit(1);
     }
-
   } catch (error: any) {
     console.error('\n❌ Update failed:', error.message);
     console.error('\n💡 Troubleshooting:');

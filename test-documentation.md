@@ -27,31 +27,32 @@ This document outlines the automated end-to-end testing strategy, test cases, an
 
 #### TC-001: Judge Registration Flow
 
-| **Field** | **Details** |
-|-----------|-------------|
-| **Test ID** | TC-001 |
-| **Test Name** | Judge Sign-Up and Dashboard Access |
-| **Priority** | Critical |
-| **Category** | Authentication |
-| **Preconditions** | - Application is running<br>- Test database is accessible<br>- Email does not exist in system |
-| **Test Data** | - Unique email: `test-judge-{uuid}@example.com`<br>- Password: Strong password (12+ chars, mixed case, numbers, symbols) |
+| **Field**         | **Details**                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Test ID**       | TC-001                                                                                                                   |
+| **Test Name**     | Judge Sign-Up and Dashboard Access                                                                                       |
+| **Priority**      | Critical                                                                                                                 |
+| **Category**      | Authentication                                                                                                           |
+| **Preconditions** | - Application is running<br>- Test database is accessible<br>- Email does not exist in system                            |
+| **Test Data**     | - Unique email: `test-judge-{uuid}@example.com`<br>- Password: Strong password (12+ chars, mixed case, numbers, symbols) |
 
 **Test Steps**:
 
-| **Step** | **Action** | **Expected Result** |
-|----------|------------|---------------------|
-| 1 | Navigate to application home page | Home page loads successfully |
-| 2 | Click "Sign up" link | Redirected to `/auth/sign-up` page |
-| 3 | Enter unique email address | Email field accepts input |
-| 4 | Enter password in password field | Password field shows masked input |
-| 5 | Enter same password in repeat password field | Repeat password field accepts input |
-| 6 | Click "Sign up" button | Form submits without validation errors |
-| 7 | Wait for authentication to complete | User account created in database |
-| 8 | Verify redirection | User redirected to `/judge` dashboard |
-| 9 | Verify URL matches judge dashboard | URL contains `/judge` path |
-| 10 | Cleanup: Delete test user from database and auth | Test data removed successfully |
+| **Step** | **Action**                                       | **Expected Result**                    |
+| -------- | ------------------------------------------------ | -------------------------------------- |
+| 1        | Navigate to application home page                | Home page loads successfully           |
+| 2        | Click "Sign up" link                             | Redirected to `/auth/sign-up` page     |
+| 3        | Enter unique email address                       | Email field accepts input              |
+| 4        | Enter password in password field                 | Password field shows masked input      |
+| 5        | Enter same password in repeat password field     | Repeat password field accepts input    |
+| 6        | Click "Sign up" button                           | Form submits without validation errors |
+| 7        | Wait for authentication to complete              | User account created in database       |
+| 8        | Verify redirection                               | User redirected to `/judge` dashboard  |
+| 9        | Verify URL matches judge dashboard               | URL contains `/judge` path             |
+| 10       | Cleanup: Delete test user from database and auth | Test data removed successfully         |
 
 **Expected Results**:
+
 - User successfully registered with default "judge" role
 - User automatically logged in after registration
 - User redirected to judge dashboard
@@ -61,11 +62,11 @@ This document outlines the automated end-to-end testing strategy, test cases, an
 
 **Browser Compatibility**:
 
-| **Browser** | **Status** | **Notes** |
-|-------------|------------|-----------|
-| Chromium | ✅ PASS | Tested on Chromium 130.0.6723.58 |
-| Firefox | ✅ PASS | Tested on Firefox 131.0.3 |
-| WebKit | ✅ PASS | Tested on WebKit 18.2 |
+| **Browser** | **Status** | **Notes**                        |
+| ----------- | ---------- | -------------------------------- |
+| Chromium    | ✅ PASS    | Tested on Chromium 130.0.6723.58 |
+| Firefox     | ✅ PASS    | Tested on Firefox 131.0.3        |
+| WebKit      | ✅ PASS    | Tested on WebKit 18.2            |
 
 ---
 

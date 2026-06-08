@@ -5,6 +5,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 ## 🎯 Features
 
 ### For Super Admins
+
 - **Organization Management** - Create, edit, and delete organizations with slugs, descriptions, and branding
 - **Platform-Wide User Management** - View all users across the platform, change roles, and delete accounts
 - **Admin Invitation** - Invite admins directly to specific organizations
@@ -13,6 +14,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 - **Score Preservation** - Intelligent cleanup preserves scoring data when changing user roles
 
 ### For Admins
+
 - **Organization-Scoped Operations** - All data (events, teams, users) isolated to admin's organization
 - **Invite Link System** - Send batch invitations via email with OTP verification for judges, participants, and admins
 - **Smart Judge Invitation** - Existing judges are auto-added to the organization without re-sending emails
@@ -30,6 +32,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 - **Markdown Support** - Rich formatting for criteria descriptions with markdown syntax
 
 ### For Judges
+
 - **Multi-Event Dashboard** - View all assigned active events across organizations
 - **URL-Based Event Routing** - Persistent event selection via URL (survives page refresh)
 - **Judge Assignment System** - Must be assigned to active events by admins to participate
@@ -43,6 +46,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 - **Progress Tracking** - Visual indicators show scoring completion status per team
 
 ### For Participants
+
 - **Event Browsing** - View all open and active events across all organizations
 - **Event Registration** - Register for events during open or active stages
 - **Team Creation** - Create teams with auto-generated 6-character join codes
@@ -79,6 +83,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 ### Setup Instructions
 
 1. **Clone and Install**
+
    ```bash
    git clone https://github.com/yourusername/judgeportal.git
    cd judgeportal
@@ -104,22 +109,24 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
    Create a `.env.local` file in the root directory:
 
 ### Required Variables
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
-   DATABASE_URL=your-database-url
-   PUBLIC_PARTICIPANT_SIGNUP_BASE_URL=http://localhost:3000
-   LEARNWORLDS_ALLOWED_ORIGIN=https://your-school.learnworlds.com
-   ```
 
-### Optional Variables 
-   ```env
-   SUPABASE_ACCESS_TOKEN=sbp_...your-access-token
-   LEARNWORLDS_PROGRESS_ENDPOINT=/api/v2/users/progress
-   ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=eyJh...your-service-key
+DATABASE_URL=your-database-url
+PUBLIC_PARTICIPANT_SIGNUP_BASE_URL=http://localhost:3000
+LEARNWORLDS_ALLOWED_ORIGIN=https://your-school.learnworlds.com
+```
 
-   > **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
+### Optional Variables
+
+```env
+SUPABASE_ACCESS_TOKEN=sbp_...your-access-token
+LEARNWORLDS_PROGRESS_ENDPOINT=/api/v2/users/progress
+```
+
+> **Note**: Get `SUPABASE_ACCESS_TOKEN` from https://supabase.com/dashboard/account/tokens (required for `npm run setup:email-template`)
 
 4. **Set up the Database**
 
@@ -137,6 +144,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
    - ✅ Set up organizations and multi-tenant data model
 
 5. **Configure Email Templates (Optional)**
+
    ```bash
    npm run setup:email-template  # Requires SUPABASE_ACCESS_TOKEN
    ```
@@ -148,6 +156,7 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
    - Canonical tag constants live in `lib/learnworlds/mentor-tags.ts`
 
 7. **Start Development Server**
+
    ```bash
    npm run dev
    ```
@@ -177,14 +186,17 @@ A comprehensive multi-tenant real-time judging platform for hackathons and compe
 ### Troubleshooting
 
 **"Missing environment variables"**
+
 - Check `.env.local` exists (not `.env`)
 - Ensure all required variables are set correctly
 
 **"Tables don't exist"**
+
 - Run `npm run db:setup` again
 - If automated setup fails, copy `supabase/migrations/consolidated_setup.sql` to Supabase Dashboard > SQL Editor and run manually
 
 **"Permission denied"**
+
 - Make sure you promoted your user to the correct role in the `users` table
 - Admins must have a valid `organization_id` set
 
@@ -417,6 +429,7 @@ To enforce code quality standards, set up branch protection rules:
 ### Workflow Details
 
 The Lint & Format workflow:
+
 - Triggers on **all pushes** to **any branch**
 - Triggers on **all pull requests**
 - Uses Node.js 20 with npm ci for consistent installs
@@ -463,11 +476,12 @@ This setup ensures both code quality and consistent formatting while maintaining
 
 **Request Body (JSON):**
 
-| Field | Type | Required | Values | Default |
-|---|---|---|---|---|
-| `triggerMode` | string | No | `manual`, `scheduled`, `webhook` | `manual` |
+| Field         | Type   | Required | Values                           | Default  |
+| ------------- | ------ | -------- | -------------------------------- | -------- |
+| `triggerMode` | string | No       | `manual`, `scheduled`, `webhook` | `manual` |
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3000/api/admin/learnworlds/ingest \
   -H "Content-Type: application/json" \
@@ -476,6 +490,7 @@ curl -X POST http://localhost:3000/api/admin/learnworlds/ingest \
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "status": "ok",
@@ -488,14 +503,14 @@ curl -X POST http://localhost:3000/api/admin/learnworlds/ingest \
 
 **Error Responses:**
 
-| Status | Error | Cause |
-|---|---|---|
-| 302/307 | Redirect to `/auth/login` | Not authenticated |
-| 400 | `Invalid triggerMode value` | Unsupported `triggerMode` string |
-| 401 | `Unauthorized` | Authenticated but not `admin` role |
-| 500 | `LearnWorlds integration is not configured correctly` | Missing required env vars |
-| 502 | `Failed to authenticate with LearnWorlds` | Bad client credentials |
-| 502 | `Failed to fetch LearnWorlds data` | API fetch failure |
+| Status  | Error                                                 | Cause                              |
+| ------- | ----------------------------------------------------- | ---------------------------------- |
+| 302/307 | Redirect to `/auth/login`                             | Not authenticated                  |
+| 400     | `Invalid triggerMode value`                           | Unsupported `triggerMode` string   |
+| 401     | `Unauthorized`                                        | Authenticated but not `admin` role |
+| 500     | `LearnWorlds integration is not configured correctly` | Missing required env vars          |
+| 502     | `Failed to authenticate with LearnWorlds`             | Bad client credentials             |
+| 502     | `Failed to fetch LearnWorlds data`                    | API fetch failure                  |
 
 **Required Environment Variables:**
 
@@ -536,15 +551,16 @@ LEARNWORLDS_FAILURE_NOTIFY_TIMEOUT_MS=5000   # default: 5000
 
 **Database tables written:**
 
-| Table | Purpose |
-|---|---|
-| `learnworlds_sync_runs` | Audit trail of every ingestion run |
+| Table                      | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `learnworlds_sync_runs`    | Audit trail of every ingestion run       |
 | `learnworlds_raw_payloads` | Staged raw records with field extraction |
+
 ---
 
 ### API 2 - LearnWorlds Transform and Persist
 
-This  introduces an explicit transform/persist endpoint.
+This introduces an explicit transform/persist endpoint.
 
 **Endpoint:** POST /api/admin/learnworlds/transform
 
@@ -552,29 +568,29 @@ This  introduces an explicit transform/persist endpoint.
 
 **Request body:**
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| syncRunId | string (UUID) | Yes | Existing ID from learnworlds_sync_runs |
+| Field     | Type          | Required | Description                            |
+| --------- | ------------- | -------- | -------------------------------------- |
+| syncRunId | string (UUID) | Yes      | Existing ID from learnworlds_sync_runs |
 
 **Validation and error behavior:**
 
-| Status | Error | Meaning |
-|---|---|---|
-| 400 | syncRunId is required in the request body | Missing syncRunId |
-| 401 | Unauthorized | User is not admin |
-| 404 | Sync run '<id>' not found | syncRunId does not exist |
-| 503 | LearnWorlds sync schema is unavailable in this environment | LearnWorlds tables are not present |
-| 500 | Internal server error during transform | Unhandled transform failure |
+| Status | Error                                                      | Meaning                            |
+| ------ | ---------------------------------------------------------- | ---------------------------------- |
+| 400    | syncRunId is required in the request body                  | Missing syncRunId                  |
+| 401    | Unauthorized                                               | User is not admin                  |
+| 404    | Sync run '<id>' not found                                  | syncRunId does not exist           |
+| 503    | LearnWorlds sync schema is unavailable in this environment | LearnWorlds tables are not present |
+| 500    | Internal server error during transform                     | Unhandled transform failure        |
 
 **Success response (200):**
 
 ```json
 {
-   "status": "ok",
-   "syncRunId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-   "processedRecords": 10,
-   "persistedRecords": 8,
-   "skippedRecords": 2
+  "status": "ok",
+  "syncRunId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "processedRecords": 10,
+  "persistedRecords": 8,
+  "skippedRecords": 2
 }
 ```
 
@@ -596,9 +612,10 @@ Idempotency:
 
 **Database tables written:**
 
-| Table | Purpose |
-|---|---|
+| Table              | Purpose                                                   |
+| ------------------ | --------------------------------------------------------- |
 | `learner_progress` | Normalized per-learner per-course progress (schema ready) |
+
 ---
 
 ### API 3 — Public Challenges
@@ -615,13 +632,14 @@ Returns a paginated list of challenges (events with a linked competition record)
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Values | Default |
-|---|---|---|---|---|
-| `status` | string | No | `open`, `active`, `completed` | `open` |
-| `limit` | integer | No | `1–100` (clamped) | `50` |
-| `offset` | integer | No | `≥ 0` (negative values set to 0) | `0` |
+| Parameter | Type    | Required | Values                           | Default |
+| --------- | ------- | -------- | -------------------------------- | ------- |
+| `status`  | string  | No       | `open`, `active`, `completed`    | `open`  |
+| `limit`   | integer | No       | `1–100` (clamped)                | `50`    |
+| `offset`  | integer | No       | `≥ 0` (negative values set to 0) | `0`     |
 
 **Example Requests:**
+
 ```bash
 # Default — open challenges
 GET http://localhost:3000/api/challenges
@@ -634,6 +652,7 @@ GET http://localhost:3000/api/challenges?status=completed
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "challenges": [
@@ -661,10 +680,10 @@ GET http://localhost:3000/api/challenges?status=completed
 
 **Error Responses:**
 
-| Status | Error | Cause |
-|---|---|---|
-| 400 | `Invalid status parameter. Valid values: open, active, completed` | Invalid `status` value (e.g. `setup`, `draft`) |
-| 500 | `Internal server error` | Unexpected database error |
+| Status | Error                                                             | Cause                                          |
+| ------ | ----------------------------------------------------------------- | ---------------------------------------------- |
+| 400    | `Invalid status parameter. Valid values: open, active, completed` | Invalid `status` value (e.g. `setup`, `draft`) |
+| 500    | `Internal server error`                                           | Unexpected database error                      |
 
 ---
 
@@ -674,16 +693,18 @@ Returns a single challenge by UUID.
 
 **Path Parameter:**
 
-| Parameter | Type | Required | Constraint |
-|---|---|---|---|
-| `id` | string (UUID) | Yes | Must be a valid UUID v4 format |
+| Parameter | Type          | Required | Constraint                     |
+| --------- | ------------- | -------- | ------------------------------ |
+| `id`      | string (UUID) | Yes      | Must be a valid UUID v4 format |
 
 **Example Request:**
+
 ```bash
 GET http://localhost:3000/api/challenges/a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "challenge": {
@@ -704,11 +725,11 @@ GET http://localhost:3000/api/challenges/a1b2c3d4-e5f6-7890-abcd-ef1234567890
 
 **Error Responses:**
 
-| Status | Error | Cause |
-|---|---|---|
-| 400 | `Invalid challenge ID format` | `:id` is not a valid UUID |
-| 404 | `Challenge not found` | No matching challenge, or challenge is in `setup` stage |
-| 500 | `Internal server error` | Unexpected database error |
+| Status | Error                         | Cause                                                   |
+| ------ | ----------------------------- | ------------------------------------------------------- |
+| 400    | `Invalid challenge ID format` | `:id` is not a valid UUID                               |
+| 404    | `Challenge not found`         | No matching challenge, or challenge is in `setup` stage |
+| 500    | `Internal server error`       | Unexpected database error                               |
 
 ---
 
@@ -717,11 +738,13 @@ GET http://localhost:3000/api/challenges/a1b2c3d4-e5f6-7890-abcd-ef1234567890
 Both challenges endpoints support CORS preflight (`OPTIONS`) and include `Access-Control-Allow-Origin` on `GET` responses.
 
 **Required Environment Variable:**
+
 ```env
 LEARNWORLDS_ALLOWED_ORIGIN=https://nleats.learnworlds.com
 ```
 
 When the incoming `Origin` header matches `LEARNWORLDS_ALLOWED_ORIGIN`, the response includes:
+
 ```
 Access-Control-Allow-Origin: https://nleats.learnworlds.com
 Access-Control-Allow-Methods: GET, OPTIONS
@@ -734,19 +757,19 @@ Vary: Origin
 
 ### Challenge Response Field Reference
 
-| Field | Type | Nullable | Description |
-|---|---|---|---|
-| `id` | string (UUID) | No | Event UUID |
-| `title` | string | No | Competition title, falls back to event name |
-| `short_description` | string | Yes | Brief summary of the challenge |
-| `cover_image_url` | string | Yes | URL to cover image |
-| `challenge_type` | string | No | Default: `global` |
-| `tags` | string[] | No | Empty array if none set |
-| `prize_amount` | string | Yes | Free-text prize description |
-| `deadline` | string (ISO 8601) | Yes | Submission deadline |
-| `teams_registered_count` | number | No | Count of registered teams |
-| `country` | string | Yes | Country scope of the challenge |
-| `participant_signup_url` | string | No | Direct link to register; falls back to `PUBLIC_PARTICIPANT_SIGNUP_BASE_URL/participant/event/:id` |
+| Field                    | Type              | Nullable | Description                                                                                       |
+| ------------------------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `id`                     | string (UUID)     | No       | Event UUID                                                                                        |
+| `title`                  | string            | No       | Competition title, falls back to event name                                                       |
+| `short_description`      | string            | Yes      | Brief summary of the challenge                                                                    |
+| `cover_image_url`        | string            | Yes      | URL to cover image                                                                                |
+| `challenge_type`         | string            | No       | Default: `global`                                                                                 |
+| `tags`                   | string[]          | No       | Empty array if none set                                                                           |
+| `prize_amount`           | string            | Yes      | Free-text prize description                                                                       |
+| `deadline`               | string (ISO 8601) | Yes      | Submission deadline                                                                               |
+| `teams_registered_count` | number            | No       | Count of registered teams                                                                         |
+| `country`                | string            | Yes      | Country scope of the challenge                                                                    |
+| `participant_signup_url` | string            | No       | Direct link to register; falls back to `PUBLIC_PARTICIPANT_SIGNUP_BASE_URL/participant/event/:id` |
 
 ---
 

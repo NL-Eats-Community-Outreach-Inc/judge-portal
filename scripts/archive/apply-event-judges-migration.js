@@ -23,40 +23,48 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
-  }
+  },
 });
 
 async function applyMigration() {
   try {
     // Read the migration file
-    const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations', '0008_add_event_judges_table.sql');
+    const migrationPath = path.join(
+      __dirname,
+      '..',
+      'supabase',
+      'migrations',
+      '0008_add_event_judges_table.sql'
+    );
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-    
+
     // Split the SQL into individual statements (basic split by semicolon)
     const statements = migrationSQL
       .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
-    
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !s.startsWith('--'));
+
     console.log(`Applying migration with ${statements.length} statements...`);
-    
+
     // Execute each statement
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i] + ';';
       console.log(`\nExecuting statement ${i + 1}/${statements.length}:`);
       console.log(statement.substring(0, 100) + '...');
-      
-      const { error } = await supabase.rpc('exec_sql', { 
-        sql_query: statement 
-      }).single();
-      
+
+      const { error } = await supabase
+        .rpc('exec_sql', {
+          sql_query: statement,
+        })
+        .single();
+
       if (error) {
         // Try direct execution if RPC doesn't work
         const { data, error: directError } = await supabase
           .from('_sql')
           .insert({ query: statement })
           .select();
-          
+
         if (directError) {
           console.error(`Error executing statement ${i + 1}:`, directError);
           // Continue with other statements
@@ -67,20 +75,17 @@ async function applyMigration() {
         console.log(`Statement ${i + 1} executed successfully`);
       }
     }
-    
+
     console.log('\nMigration completed!');
-    
+
     // Verify the table was created
-    const { data, error } = await supabase
-      .from('event_judges')
-      .select('count');
-    
+    const { data, error } = await supabase.from('event_judges').select('count');
+
     if (error) {
       console.error('Error verifying table creation:', error);
     } else {
       console.log('Table event_judges created successfully');
     }
-    
   } catch (error) {
     console.error('Migration failed:', error);
     process.exit(1);
