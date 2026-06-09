@@ -12,7 +12,9 @@
     "db:generate": "drizzle-kit generate",
     "db:setup": "tsx scripts/consolidated-setup.ts",
     "db:setup:seed": "tsx scripts/consolidated-setup.ts --seed",
+    "db:seed": "tsx scripts/consolidated-seed.ts",
     "db:update": "tsx scripts/apply-feature-migration.ts",
+    "db:seed:recommendations": "tsx lib/db/recommendation-model-seed.ts",
     "setup:email-template": "tsx scripts/setup-email-template.ts"
   },
   "dependencies": {
@@ -69,6 +71,7 @@
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.20.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }

@@ -146,6 +146,17 @@ async function setupDatabase() {
     
     // Step 3: Seed data (optional)
     if (shouldSeed) {
+      console.log('Applying seed prerequisite feature migrations...');
+      try {
+        execSync('npm run db:update submission_ai_scores_event_id', {
+          stdio: 'inherit'
+        });
+        console.log('  Seed prerequisite migrations applied successfully\n');
+      } catch (error) {
+        console.error('  Seed prerequisite migrations failed:', error);
+        throw error;
+      }
+
       console.log('🌱 Step 3: Seeding test data...');
       try {
         execSync('npm run db:seed', { 
