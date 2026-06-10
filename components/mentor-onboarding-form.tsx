@@ -16,6 +16,8 @@ export function MentorOnboardingForm({ className }: { className?: string }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+// cf_prefix refers to LearnWorld custom field, described in MD-01.
+
   const [formData, setFormData] = useState({
     cf_mentor_name: '',
     cf_mentor_title: '',
