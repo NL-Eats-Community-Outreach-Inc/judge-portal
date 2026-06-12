@@ -96,12 +96,8 @@
           "name": "criteria_event_id_events_id_fk",
           "tableFrom": "criteria",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -111,18 +107,12 @@
         "criteria_event_id_display_order_unique": {
           "name": "criteria_event_id_display_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id",
-            "display_order"
-          ]
+          "columns": ["event_id", "display_order"]
         },
         "criteria_event_id_name_unique": {
           "name": "criteria_event_id_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id",
-            "name"
-          ]
+          "columns": ["event_id", "name"]
         }
       },
       "policies": {},
@@ -293,12 +283,8 @@
           "name": "scores_judge_id_users_id_fk",
           "tableFrom": "scores",
           "tableTo": "users",
-          "columnsFrom": [
-            "judge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["judge_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -306,12 +292,8 @@
           "name": "scores_team_id_teams_id_fk",
           "tableFrom": "scores",
           "tableTo": "teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -319,12 +301,8 @@
           "name": "scores_criterion_id_criteria_id_fk",
           "tableFrom": "scores",
           "tableTo": "criteria",
-          "columnsFrom": [
-            "criterion_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["criterion_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -334,11 +312,7 @@
         "scores_judge_id_team_id_criterion_id_unique": {
           "name": "scores_judge_id_team_id_criterion_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "judge_id",
-            "team_id",
-            "criterion_id"
-          ]
+          "columns": ["judge_id", "team_id", "criterion_id"]
         }
       },
       "policies": {},
@@ -435,12 +409,8 @@
           "name": "teams_event_id_events_id_fk",
           "tableFrom": "teams",
           "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["event_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -450,18 +420,12 @@
         "teams_event_id_presentation_order_unique": {
           "name": "teams_event_id_presentation_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id",
-            "presentation_order"
-          ]
+          "columns": ["event_id", "presentation_order"]
         },
         "teams_event_id_name_unique": {
           "name": "teams_event_id_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id",
-            "name"
-          ]
+          "columns": ["event_id", "name"]
         }
       },
       "policies": {},
@@ -520,19 +484,12 @@
     "public.event_status": {
       "name": "event_status",
       "schema": "public",
-      "values": [
-        "setup",
-        "active",
-        "completed"
-      ]
+      "values": ["setup", "active", "completed"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "admin",
-        "judge"
-      ]
+      "values": ["admin", "judge"]
     }
   },
   "schemas": {},

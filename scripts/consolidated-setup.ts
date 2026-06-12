@@ -2,12 +2,12 @@
 
 /**
  * Complete Database Setup Script for JudgePortal
- * 
+ *
  * This script performs a complete database setup in the correct order:
  * 1. Pushes Drizzle schema to create base tables
  * 2. Applies consolidated SQL migration for additional features
  * 3. Optionally seeds with test data
- * 
+ *
  * Usage:
  *   npm run db:complete-setup           # Setup database
  *   npm run db:complete-setup --seed    # Setup with test data
@@ -37,34 +37,32 @@ if (!DATABASE_URL) {
 const args = process.argv.slice(2);
 const shouldSeed = args.includes('--seed');
 
-
 /**
  * Execute a SQL file against the database using direct PostgreSQL connection
  */
 async function executeSQLFile(filepath: string): Promise<boolean> {
   let sql_connection: ReturnType<typeof postgres> | null = null;
-  
+
   try {
     const sqlContent = readFileSync(filepath, 'utf-8');
-    
+
     console.log(`  📝 Applying consolidated migration...`);
     console.log(`  ℹ️  Note: This applies the SQL migration through direct PostgreSQL connection`);
-    
+
     // Create direct PostgreSQL connection
     if (!DATABASE_URL) {
       console.error(`    ❌ DATABASE_URL not found in environment variables`);
       console.error(`    💡 Add DATABASE_URL to your .env.local file`);
       return false;
     }
-    
+
     sql_connection = postgres(DATABASE_URL);
-    
+
     // Execute the SQL file
     await sql_connection.unsafe(sqlContent);
-    
+
     console.log(`    ✅ Migration applied successfully`);
     return true;
-    
   } catch (error: any) {
     // Check if it's a safe error (things already exist)
     const safeErrors = [
@@ -74,14 +72,14 @@ async function executeSQLFile(filepath: string): Promise<boolean> {
       'type .* already exists',
       'function .* already exists',
       'constraint .* already exists',
-      'index .* already exists'
+      'index .* already exists',
     ];
-    
-    const isSafe = safeErrors.some(errorPattern => {
+
+    const isSafe = safeErrors.some((errorPattern) => {
       const regex = new RegExp(errorPattern, 'i');
       return regex.test(error.message || '');
     });
-    
+
     if (!isSafe) {
       console.error(`    ❌ Migration failed:`, error.message);
       console.error(`    💡 Try running the SQL manually in Supabase Dashboard > SQL Editor`);
@@ -107,14 +105,14 @@ async function setupDatabase() {
   console.log(`  - Database URL: ${DATABASE_URL ? 'Connected' : 'Not found'}`);
   console.log(`  - Seed data: ${shouldSeed ? 'Yes' : 'No'}`);
   console.log('');
-  
+
   try {
     // Step 1: Push Drizzle schema
     console.log('📦 Step 1: Pushing Drizzle schema...');
     try {
-      execSync('npm run db:push', { 
+      execSync('npm run db:push', {
         stdio: 'pipe',
-        encoding: 'utf-8'
+        encoding: 'utf-8',
       });
       console.log('  ✅ Drizzle schema pushed successfully\n');
     } catch (error: any) {
@@ -124,32 +122,27 @@ async function setupDatabase() {
         throw error;
       }
     }
-    
+
     // Step 2: Apply consolidated migration
     console.log('🔧 Step 2: Applying consolidated migration...');
-    const migrationPath = join(
-      process.cwd(), 
-      'supabase', 
-      'migrations', 
-      'consolidated_setup.sql'
-    );
-    
+    const migrationPath = join(process.cwd(), 'supabase', 'migrations', 'consolidated_setup.sql');
+
     const migrationSuccess = await executeSQLFile(migrationPath);
-    
+
     if (!migrationSuccess) {
       console.error('\n❌ Automated migration failed!');
       printManualInstructions(migrationPath);
       console.error('You can still continue with seeding after running SQL manually.');
     }
-    
+
     console.log('  ✅ Migration applied successfully\n');
-    
+
     // Step 3: Seed data (optional)
     if (shouldSeed) {
       console.log('Applying seed prerequisite feature migrations...');
       try {
         execSync('npm run db:update submission_ai_scores_event_id', {
-          stdio: 'inherit'
+          stdio: 'inherit',
         });
         console.log('  Seed prerequisite migrations applied successfully\n');
       } catch (error) {
@@ -159,8 +152,8 @@ async function setupDatabase() {
 
       console.log('🌱 Step 3: Seeding test data...');
       try {
-        execSync('npm run db:seed', { 
-          stdio: 'inherit'
+        execSync('npm run db:seed', {
+          stdio: 'inherit',
         });
         console.log('  ✅ Test data seeded successfully\n');
       } catch (error) {
@@ -168,7 +161,7 @@ async function setupDatabase() {
         console.log('  ℹ️  You can run "npm run db:seed" manually later\n');
       }
     }
-    
+
     // Success!
     console.log('✨ Database setup completed successfully!\n');
     console.log('📝 Next Steps:');
@@ -178,7 +171,6 @@ async function setupDatabase() {
     console.log('   - Go to Table Editor → users table');
     console.log('   - Find your user and change role to "admin"');
     console.log('4. Create an event and start judging!\n');
-    
   } catch (error) {
     console.error('\n❌ Setup failed:', error);
     process.exit(1);

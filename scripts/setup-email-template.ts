@@ -77,9 +77,9 @@ async function updateEmailTemplate() {
   try {
     const payload = {
       // Use lowercase field names as required by Supabase API
-      mailer_subjects_magic_link: "Verify Your Email - OTP Code",
+      mailer_subjects_magic_link: 'Verify Your Email - OTP Code',
       mailer_templates_magic_link_content: OTP_EMAIL_TEMPLATE,
-      mailer_subjects_confirmation: "Verify Your Email - OTP Code",
+      mailer_subjects_confirmation: 'Verify Your Email - OTP Code',
       mailer_templates_confirmation_content: OTP_EMAIL_TEMPLATE,
       // Set OTP to 6 digits instead of default 8
       mailer_otp_length: 6,
@@ -92,7 +92,7 @@ async function updateEmailTemplate() {
       {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -119,7 +119,6 @@ async function updateEmailTemplate() {
     console.log('    but OTP codes expire in 1 hour for security.');
     console.log('\n🧪 Test: Request a new OTP code to see the updated design');
     console.log('');
-
   } catch (error) {
     console.error('❌ Failed to update email template:', error);
 
