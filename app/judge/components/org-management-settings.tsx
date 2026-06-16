@@ -53,7 +53,7 @@ export function OrgManagementSettings() {
 
   useEffect(() => {
     fetchData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchData]);
 
   const handleJoinOrg = async (orgId: string) => {
     setJoiningOrgs((prev) => new Set(prev).add(orgId));

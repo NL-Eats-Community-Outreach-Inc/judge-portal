@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAdminEvent } from '../contexts/admin-event-context';
 import { InviteJudgesDialog } from './invite-judges-dialog';
 import { InvitationsList } from './invitations-list';
 // Select imports kept for potential super admin role change feature
@@ -54,13 +53,9 @@ interface User {
 }
 
 export default function UserManagement() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { selectedEvent } = useAdminEvent();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [updatingRoles, setUpdatingRoles] = useState(new Set<string>());
   const [deletingUsers, setDeletingUsers] = useState(new Set<string>());
   const [invitationRefreshTrigger, setInvitationRefreshTrigger] = useState(0);
 
@@ -87,48 +82,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Role change kept for potential super admin use — UI trigger removed
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'judge' | 'participant') => {
-    setUpdatingRoles((prev) => new Set(prev).add(userId));
-
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update user role');
-      }
-
-      const data = await response.json();
-
-      // Update user in state
-      setUsers((prev) => prev.map((user) => (user.id === userId ? data.user : user)));
-
-      toast.success('Success', {
-        description: `User role updated to ${newRole}`,
-      });
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to update user role',
-      });
-    } finally {
-      setUpdatingRoles((prev) => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
-      });
-    }
-  };
+  }, [fetchUsers]);
 
   const handleDelete = async (userId: string) => {
     setDeletingUsers((prev) => new Set(prev).add(userId));

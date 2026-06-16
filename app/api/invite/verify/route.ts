@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           userId: existingUser[0].id,
         });
 
-        await acceptInvitation(invitation.id, data.user.id);
+        await acceptInvitation(invitation.id);
 
         return NextResponse.json({
           success: true,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Accept invitation (mark as accepted)
-    await acceptInvitation(invitation.id, data.user.id);
+    await acceptInvitation(invitation.id);
 
     // Determine redirect URL based on role
     const redirectUrl =
