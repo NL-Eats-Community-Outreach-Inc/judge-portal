@@ -4,36 +4,36 @@ import { db } from '@/lib/db';
 import { criteria } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
     const { eventId, criteriaOrders } = await request.json();
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     await requireEventInOrg(eventId, orgId);
 
     if (!Array.isArray(criteriaOrders) || criteriaOrders.length === 0) {
-      return NextResponse.json({ error: 'Criteria orders array is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Criteria orders array is required');
     }
 
     // Validate criteria orders structure
     for (const criteriaOrder of criteriaOrders) {
       if (!criteriaOrder.id || typeof criteriaOrder.displayOrder !== 'number') {
-        return NextResponse.json(
-          {
-            error: 'Each criteria order must have id and displayOrder',
-          },
-          { status: 400 }
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'Each criteria order must have id and displayOrder'
         );
       }
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Check if all updates were successful
     if (updatedCriteria.length !== criteriaOrders.length) {
-      return NextResponse.json({ error: 'Some criteria could not be updated' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Some criteria could not be updated');
     }
 
     return NextResponse.json({
@@ -78,15 +78,10 @@ export async function POST(request: NextRequest) {
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('duplicate key')) {
       if (error.message.includes('criteria_event_id_display_order')) {
-        return NextResponse.json(
-          {
-            error: 'Duplicate display order detected',
-          },
-          { status: 400 }
-        );
+        return sendApiError(400, 'BAD_REQUEST', 'Duplicate display order detected');
       }
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
