@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createAdminClient } from '@/lib/supabase/server';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function DELETE(
   request: Request,
@@ -15,7 +16,7 @@ export async function DELETE(
 
     // Cannot delete yourself
     if (userId === currentUser.id) {
-      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Cannot delete your own account');
     }
 
     // Verify user exists
@@ -26,12 +27,12 @@ export async function DELETE(
       .limit(1);
 
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'User not found');
     }
 
     // Prevent deletion of other super_admins
     if (targetUser.role === 'super_admin') {
-      return NextResponse.json({ error: 'Cannot delete super admin users' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Cannot delete super admin users');
     }
 
     // Delete from database FIRST (removes FK reference to auth.users)
@@ -39,7 +40,7 @@ export async function DELETE(
       await db.delete(users).where(eq(users.id, userId));
     } catch (dbError) {
       console.error('Failed to delete user from database:', userId, dbError);
-      return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+      return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to delete user');
     }
 
     // Then delete from Supabase Auth
@@ -52,9 +53,9 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: `User "${targetUser.email}" deleted` });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error deleting user:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

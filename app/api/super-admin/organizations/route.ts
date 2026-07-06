@@ -3,6 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
@@ -40,10 +41,10 @@ export async function GET() {
     return NextResponse.json({ organizations: orgsWithStats });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error fetching organizations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -54,11 +55,11 @@ export async function POST(request: Request) {
     const { name, slug, description, logoUrl } = await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Organization name is required');
     }
 
     if (!slug || !slug.trim()) {
-      return NextResponse.json({ error: 'Organization slug is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Organization slug is required');
     }
 
     const slugValue = slug
@@ -74,10 +75,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json(
-        { error: 'An organization with this slug already exists' },
-        { status: 409 }
-      );
+      return sendApiError(409, 'CONFLICT', 'An organization with this slug already exists');
     }
 
     const [org] = await db
@@ -96,9 +94,9 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error creating organization:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

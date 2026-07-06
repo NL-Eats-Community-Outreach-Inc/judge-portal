@@ -3,6 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
 import { eq, and, ne, count } from 'drizzle-orm';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
 
     if (!org) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     // Get counts separately for reliability
@@ -35,10 +36,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error fetching organization:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -56,14 +57,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     // Build update values
     const updateValues: Record<string, unknown> = {};
     if (name !== undefined) {
       if (!name.trim()) {
-        return NextResponse.json({ error: 'Organization name cannot be empty' }, { status: 400 });
+        return sendApiError(400, 'BAD_REQUEST', 'Organization name cannot be empty');
       }
       updateValues.name = name.trim();
     }
@@ -73,7 +74,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, '-');
       if (!slugValue) {
-        return NextResponse.json({ error: 'Organization slug cannot be empty' }, { status: 400 });
+        return sendApiError(400, 'BAD_REQUEST', 'Organization slug cannot be empty');
       }
       // Check slug uniqueness (excluding self)
       const slugConflict = await db
@@ -83,10 +84,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
         .limit(1);
 
       if (slugConflict.length > 0) {
-        return NextResponse.json(
-          { error: 'An organization with this slug already exists' },
-          { status: 409 }
-        );
+        return sendApiError(409, 'CONFLICT', 'An organization with this slug already exists');
       }
       updateValues.slug = slugValue;
     }
@@ -94,7 +92,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
     if (logoUrl !== undefined) updateValues.logoUrl = logoUrl?.trim() || null;
 
     if (Object.keys(updateValues).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'No fields to update');
     }
 
     const [updated] = await db
@@ -106,10 +104,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
     return NextResponse.json({ organization: updated });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error updating organization:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -126,7 +124,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
     // Delete org (cascades to events via FK)
@@ -135,9 +133,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ success: true, message: `Organization "${existing.name}" deleted` });
   } catch (error) {
     if (error instanceof Error && error.message.includes('required')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
     }
     console.error('Error deleting organization:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
