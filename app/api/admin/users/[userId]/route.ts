@@ -12,6 +12,7 @@ import {
 } from '@/lib/db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function DELETE(
   _request: NextRequest,
@@ -21,7 +22,7 @@ export async function DELETE(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -31,20 +32,17 @@ export async function DELETE(
     const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'User not found');
     }
 
     // Prevent deletion of super_admin users
     if (targetUser.role === 'super_admin') {
-      return NextResponse.json({ error: 'Cannot delete super admin users' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Cannot delete super admin users');
     }
 
     // Prevent deletion of admins from other organizations
     if (targetUser.role === 'admin' && targetUser.organizationId !== orgId) {
-      return NextResponse.json(
-        { error: 'Cannot delete admins from other organizations' },
-        { status: 403 }
-      );
+      return sendApiError(403, 'FORBIDDEN', 'Cannot delete admins from other organizations');
     }
 
     // Judge removal: ALWAYS remove from org only, never delete user record
@@ -56,10 +54,7 @@ export async function DELETE(
 
       const isInAdminOrg = memberships.some((m) => m.organizationId === orgId);
       if (!isInAdminOrg) {
-        return NextResponse.json(
-          { error: 'This judge is not a member of your organization' },
-          { status: 403 }
-        );
+        return sendApiError(403, 'FORBIDDEN', 'This judge is not a member of your organization');
       }
 
       // Remove org membership
@@ -111,9 +106,10 @@ export async function DELETE(
         .limit(1);
 
       if (participantInOrg.length === 0) {
-        return NextResponse.json(
-          { error: 'This participant is not associated with your organization' },
-          { status: 403 }
+        return sendApiError(
+          403,
+          'FORBIDDEN',
+          'This participant is not associated with your organization'
         );
       }
     }
@@ -124,7 +120,7 @@ export async function DELETE(
       await db.delete(users).where(eq(users.id, userId));
     } catch (dbError) {
       console.error('Failed to delete user from database:', userId, dbError);
-      return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+      return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to delete user');
     }
 
     // Then delete from Supabase Auth
@@ -137,6 +133,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting user:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

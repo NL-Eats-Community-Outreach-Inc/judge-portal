@@ -11,13 +11,14 @@ import {
 } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -82,6 +83,6 @@ export async function GET() {
     return NextResponse.json({ users: allUsers });
   } catch (error) {
     console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

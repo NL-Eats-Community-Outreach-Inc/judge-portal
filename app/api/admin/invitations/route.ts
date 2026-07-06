@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { users, invitations, organizationMembers } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 /**
  * POST /api/admin/invitations
@@ -22,22 +23,19 @@ export async function POST(request: NextRequest) {
     // Validate role
     const validRoles = ['admin', 'judge', 'participant'];
     if (!validRoles.includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
     }
 
     // Validation
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
-      return NextResponse.json({ error: 'At least one email is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'At least one email is required');
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid email addresses', invalidEmails },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid email addresses');
     }
 
     // Check for existing pending invitations
@@ -164,10 +162,10 @@ export async function POST(request: NextRequest) {
     console.error('Create invitations error:', error);
 
     if (error instanceof Error && error.message?.includes('role required')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -210,9 +208,9 @@ export async function GET(request: NextRequest) {
     console.error('List invitations error:', error);
 
     if (error instanceof Error && error.message?.includes('role required')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
