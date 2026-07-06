@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { teams } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function PUT(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function PUT(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -27,7 +28,7 @@ export async function PUT(
       .limit(1);
 
     if (!existingTeam) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Team not found');
     }
 
     await requireEventInOrg(existingTeam.eventId, orgId);
@@ -36,11 +37,11 @@ export async function PUT(
       await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Team name is required');
     }
 
     if (typeof presentationOrder !== 'number') {
-      return NextResponse.json({ error: 'Presentation order must be a number' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Presentation order must be a number');
     }
 
     // Update team (updatedAt is handled automatically by schema .$onUpdate)
@@ -58,7 +59,7 @@ export async function PUT(
       .returning();
 
     if (!team) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Team not found');
     }
 
     return NextResponse.json({ team });
@@ -68,20 +69,18 @@ export async function PUT(
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('duplicate key')) {
       if (error.message.includes('teams_event_id_name_key')) {
-        return NextResponse.json(
-          { error: 'A team with this name already exists' },
-          { status: 400 }
-        );
+        return sendApiError(400, 'BAD_REQUEST', 'A team with this name already exists');
       }
       if (error.message.includes('teams_event_id_presentation_order_key')) {
-        return NextResponse.json(
-          { error: 'A team with this presentation order already exists' },
-          { status: 400 }
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'A team with this presentation order already exists'
         );
       }
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -93,7 +92,7 @@ export async function DELETE(
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -107,7 +106,7 @@ export async function DELETE(
       .limit(1);
 
     if (!existingTeam) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Team not found');
     }
 
     await requireEventInOrg(existingTeam.eventId, orgId);
@@ -116,12 +115,12 @@ export async function DELETE(
     const [deletedTeam] = await db.delete(teams).where(eq(teams.id, teamId)).returning();
 
     if (!deletedTeam) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Team not found');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting team:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

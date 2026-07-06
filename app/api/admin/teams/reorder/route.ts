@@ -4,36 +4,36 @@ import { db } from '@/lib/db';
 import { teams } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
     const { eventId, teamOrders } = await request.json();
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     await requireEventInOrg(eventId, orgId);
 
     if (!Array.isArray(teamOrders) || teamOrders.length === 0) {
-      return NextResponse.json({ error: 'Team orders array is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Team orders array is required');
     }
 
     // Validate team orders structure
     for (const teamOrder of teamOrders) {
       if (!teamOrder.id || typeof teamOrder.presentationOrder !== 'number') {
-        return NextResponse.json(
-          {
-            error: 'Each team order must have id and presentationOrder',
-          },
-          { status: 400 }
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'Each team order must have id and presentationOrder'
         );
       }
     }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Check if all updates were successful
     if (updatedTeams.length !== teamOrders.length) {
-      return NextResponse.json({ error: 'Some teams could not be updated' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Some teams could not be updated');
     }
 
     return NextResponse.json({
@@ -78,15 +78,10 @@ export async function POST(request: NextRequest) {
     // Handle unique constraint violations
     if (error instanceof Error && error.message.includes('duplicate key')) {
       if (error.message.includes('teams_event_id_presentation_order')) {
-        return NextResponse.json(
-          {
-            error: 'Duplicate presentation order detected',
-          },
-          { status: 400 }
-        );
+        return sendApiError(400, 'BAD_REQUEST', 'Duplicate presentation order detected');
       }
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }

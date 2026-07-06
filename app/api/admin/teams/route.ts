@@ -5,13 +5,14 @@ import { teams, events, teamMembers, users } from '@/lib/db/schema';
 import { eq, max, inArray } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { generateJoinCode } from '@/lib/utils/join-code';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ teams: teamsWithMembers });
   } catch (error) {
     console.error('Error fetching teams:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
 
@@ -90,18 +91,18 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromSession();
 
     if (!user || user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
     const orgId = await getAdminOrgId(user.id);
     const { eventId, name, description, demoUrl, repoUrl, awardType } = await request.json();
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Team name is required');
     }
 
     // Verify event exists and belongs to org
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
 
     if (event.length === 0) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event not found');
     }
 
     // Get the next presentation order by finding the max existing order
@@ -149,19 +150,17 @@ export async function POST(request: NextRequest) {
 
     if (errorMsg.includes('duplicate key')) {
       if (errorMsg.includes('teams_event_id_name_key')) {
-        return NextResponse.json(
-          { error: 'A team with this name already exists in this event' },
-          { status: 400 }
-        );
+        sendApiError(400, 'BAD_REQUEST', 'A team with this name already exists in this event');
       }
       if (errorMsg.includes('teams_event_id_presentation_order_key')) {
-        return NextResponse.json(
-          { error: 'A team with this presentation order already exists' },
-          { status: 400 }
+        return sendApiError(
+          400,
+          'BAD_REQUEST',
+          'A team with this presentation order already exists'
         );
       }
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
   }
 }
