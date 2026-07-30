@@ -15,16 +15,10 @@ export const MENTOR_EXPERTISE_TAGS = {
 } as const;
 
 export type MentorExpertise = keyof typeof MENTOR_EXPERTISE_TAGS;
-export type MentorExpertiseTag =
-  (typeof MENTOR_EXPERTISE_TAGS)[MentorExpertise];
-export type MentorTag =
-  | typeof MENTOR_ROLE_TAG
-  | MentorExpertiseTag;
+export type MentorExpertiseTag = (typeof MENTOR_EXPERTISE_TAGS)[MentorExpertise];
+export type MentorTag = typeof MENTOR_ROLE_TAG | MentorExpertiseTag;
 
-export const MENTOR_TAGS = [
-  MENTOR_ROLE_TAG,
-  ...Object.values(MENTOR_EXPERTISE_TAGS),
-] as const;
+export const MENTOR_TAGS = [MENTOR_ROLE_TAG, ...Object.values(MENTOR_EXPERTISE_TAGS)] as const;
 
 const EXPERTISE_TAG_BY_NORMALIZED_LABEL = new Map<string, MentorExpertiseTag>(
   Object.entries(MENTOR_EXPERTISE_TAGS).map(([label, tag]) => [
@@ -37,15 +31,11 @@ export function hasMentorRoleTag(tags: readonly string[] | null | undefined): bo
   return tags?.includes(MENTOR_ROLE_TAG) ?? false;
 }
 
-export function getMentorExpertiseTag(
-  expertise: string
-): MentorExpertiseTag | null {
+export function getMentorExpertiseTag(expertise: string): MentorExpertiseTag | null {
   return EXPERTISE_TAG_BY_NORMALIZED_LABEL.get(normalizeMentorExpertiseLabel(expertise)) ?? null;
 }
 
-export function getMentorExpertiseTags(
-  expertiseAnswers: readonly string[]
-): MentorExpertiseTag[] {
+export function getMentorExpertiseTags(expertiseAnswers: readonly string[]): MentorExpertiseTag[] {
   const tags = expertiseAnswers.flatMap((answer) => {
     const tag = getMentorExpertiseTag(answer);
     return tag ? [tag] : [];

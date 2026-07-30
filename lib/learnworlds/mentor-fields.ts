@@ -2,18 +2,18 @@
  * Custom User Fields for Mentor Profiles
  *
  *
- * 
+ *
  *
  * Field naming convention: cf_mentor_<purpose>
- * 
+ *
  *
  * Standard fields consumed by the mentor webhook are not listed
  * here because they are part of the default user payload, not custom fields:
  * - user_id maps to mentor_profiles.learnworlds_user_id
  * - full_name maps to mentor_profiles.full_name
  *
- * 
- * 
+ *
+ *
  */
 
 /** Custom field definitions **/
