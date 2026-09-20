@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Copy, CheckCircle2, Rocket, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 interface CreateTeamDialogProps {
   eventId: string;
@@ -43,25 +44,22 @@ export function CreateTeamDialog({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/participant/teams/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId,
-          name: name.trim(),
-          description: description.trim() || undefined,
-        }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create team');
-      }
+      const data = await apiFetch<{ team: { name: string; joinCode: string } }>(
+        '/api/participant/teams/create',
+        {
+          method: 'POST',
+          body: {
+            eventId,
+            name: name.trim(),
+            description: description.trim() || undefined,
+          },
+        }
+      );
 
       setCreatedJoinCode(data.team.joinCode);
       toast.success(`Team "${data.team.name}" created!`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create team');
+      toast.error(messageOf(error, 'Failed to create team'));
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +121,7 @@ export function CreateTeamDialog({
                     size="icon"
                     className="h-10 w-10 hover:bg-teal-500/10"
                     onClick={handleCopyCode}
+                    aria-label={copied ? 'Join code copied' : 'Copy join code'}
                   >
                     {copied ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />

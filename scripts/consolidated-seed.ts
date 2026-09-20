@@ -28,9 +28,23 @@ const DATABASE_URL =
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const TEST_PROJECT_REF = 'lqqmxxbxvsnoivebdywb';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('❌ Missing required environment variables!');
+  process.exit(1);
+}
+
+// The seed deletes and recreates its sample events and accounts: only the test
+// project, unless a genuinely new project is being set up
+if (
+  !(DATABASE_URL.includes(TEST_PROJECT_REF) && SUPABASE_URL.includes(TEST_PROJECT_REF)) &&
+  process.env.DB_SETUP_ALLOW_ANY_PROJECT !== 'true'
+) {
+  console.error(
+    `Refusing: DATABASE_URL or NEXT_PUBLIC_SUPABASE_URL does not point at the test project (${TEST_PROJECT_REF}). ` +
+      'Set DB_SETUP_ALLOW_ANY_PROJECT=true to seed a new project.'
+  );
   process.exit(1);
 }
 
@@ -112,8 +126,27 @@ async function seed() {
 
     console.log(`  ✅ Organization ready: ${organization.name}`);
 
-    // Step 3: Create events with competitions
-    console.log('\n📅 Creating events and competitions...');
+    // The admin must belong to the organization (the admin API refuses an
+    // admin without one) and judges are visible to it only through membership.
+    const adminUsers = createdUsers.filter((u) => u.role === 'admin');
+    for (const admin of adminUsers) {
+      await db
+        .update(schema.users)
+        .set({ organizationId: organization.id })
+        .where(eq(schema.users.id, admin.id));
+    }
+    if (judgeUsers.length > 0) {
+      await db
+        .insert(schema.organizationMembers)
+        .values(judgeUsers.map((judge) => ({ organizationId: organization.id, userId: judge.id })))
+        .onConflictDoNothing();
+    }
+    console.log(
+      `  ✅ ${adminUsers.length} admin(s) assigned and ${judgeUsers.length} judge(s) added as members`
+    );
+
+    // Step 3: Create events
+    console.log('\n📅 Creating events...');
 
     const eventsData = [
       {
@@ -123,15 +156,6 @@ async function seed() {
             'A competition for teams building technology solutions to modernize agriculture — from precision farming and IoT sensors to supply chain and crop management platforms.',
           status: 'open' as const,
         },
-        competition: {
-          title: 'AgriTech Innovation Challenge',
-          shortDescription:
-            'Modernize agriculture with precision farming, IoT, and smart crop management solutions.',
-          challengeType: 'global',
-          tags: ['agri-tech', 'precision-farming', 'IoT', 'crop-management'],
-          prize: '$60,000 in grants and accelerator access',
-          country: 'USA',
-        },
       },
       {
         event: {
@@ -139,15 +163,6 @@ async function seed() {
           description:
             'Design and prototype next-generation food systems that are resilient, equitable, and sustainable — tackling everything from urban farming to waste reduction.',
           status: 'open' as const,
-        },
-        competition: {
-          title: 'Future Food Systems Challenge',
-          shortDescription:
-            'Reimagine food systems for a resilient, equitable, and sustainable future.',
-          challengeType: 'global',
-          tags: ['food-systems', 'urban-farming', 'sustainability', 'waste-reduction'],
-          prize: '$45,000 + pilot program partnerships',
-          country: 'USA',
         },
       },
       {
@@ -157,15 +172,6 @@ async function seed() {
             'Harness machine learning, computer vision, and data analytics to solve critical agricultural challenges — from pest detection and yield prediction to climate-adaptive farming.',
           status: 'active' as const,
         },
-        competition: {
-          title: 'AI for Agriculture Challenge',
-          shortDescription:
-            'Apply AI and ML to boost farm productivity, pest control, and climate resilience.',
-          challengeType: 'global',
-          tags: ['AI', 'machine-learning', 'yield-prediction', 'pest-detection', 'agri-tech'],
-          prize: '$80,000 + research collaboration opportunities',
-          country: 'USA',
-        },
       },
       {
         event: {
@@ -173,15 +179,6 @@ async function seed() {
           description:
             "Address the world's most pressing food security challenges through technology — improving access, reducing hunger, strengthening supply chains, and supporting smallholder farmers.",
           status: 'open' as const,
-        },
-        competition: {
-          title: 'Food Security Innovation Challenge',
-          shortDescription:
-            'Build solutions that improve food access, reduce hunger, and support smallholder farmers globally.',
-          challengeType: 'global',
-          tags: ['food-security', 'hunger', 'smallholder-farmers', 'supply-chain', 'global-impact'],
-          prize: '$100,000 in impact funding',
-          country: 'USA',
         },
       },
       {
@@ -191,21 +188,6 @@ async function seed() {
             'Accelerating adoption of smart water technologies in agriculture — sensor-driven irrigation, drought resilience tools, and water-efficient crop systems for a water-scarce future.',
           status: 'active' as const,
         },
-        competition: {
-          title: 'Smart Water for Agriculture Challenge',
-          shortDescription:
-            'Develop sensor-driven and AI-powered water management solutions for sustainable farming.',
-          challengeType: 'global',
-          tags: [
-            'smart-irrigation',
-            'water-management',
-            'drought-resilience',
-            'agri-tech',
-            'sustainability',
-          ],
-          prize: '$55,000 + field pilot opportunities',
-          country: 'USA',
-        },
       },
       {
         event: {
@@ -214,28 +196,13 @@ async function seed() {
             'An intensive competition focused on harnessing farm data, remote sensing, and predictive analytics to improve crop yields and reduce agricultural waste. Now concluded.',
           status: 'completed' as const,
         },
-        competition: {
-          title: 'Farm Data & Predictive Analytics Challenge',
-          shortDescription:
-            'Use remote sensing, satellite data, and predictive models to optimize farm productivity.',
-          challengeType: 'global',
-          tags: [
-            'agri-data',
-            'remote-sensing',
-            'predictive-analytics',
-            'crop-yields',
-            'data-science',
-          ],
-          prize: '$40,000 in research grants',
-          country: 'USA',
-        },
       },
     ];
 
     const createdEvents = [];
 
     // Keep CI runs deterministic by removing prior seeded events for this org.
-    // Cascading deletes remove dependent rows like competitions and teams.
+    // Cascading deletes remove dependent rows like teams and scores.
     await db.delete(schema.events).where(
       and(
         eq(schema.events.organizationId, organization.id),
@@ -255,26 +222,8 @@ async function seed() {
         })
         .returning();
 
-      const competitionValues = {
-        eventId: createdEvent.id,
-        title: eventData.competition.title,
-        shortDescription: eventData.competition.shortDescription,
-        challengeType: eventData.competition.challengeType,
-        tags: eventData.competition.tags,
-        prize: eventData.competition.prize,
-        country: eventData.competition.country,
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        // Keep null so API can derive environment-specific URL via fallback.
-        participantSignupUrl: null,
-      };
-
-      await db.insert(schema.competitions).values(competitionValues).onConflictDoUpdate({
-        target: schema.competitions.eventId,
-        set: competitionValues,
-      });
-
       createdEvents.push(createdEvent);
-      console.log(`  ✅ Created event + competition: ${createdEvent.name}`);
+      console.log(`  ✅ Created event: ${createdEvent.name}`);
     }
 
     // Step 3–6: Criteria, teams, judges, and scores for every event
@@ -655,125 +604,6 @@ async function seed() {
 
     console.log(`\n  ✅ Created ${totalScoreCount} total sample scores across all events`);
 
-    console.log('Seeding mentor profiles...');
-    const sampleMentors = [
-      {
-        learnworldsUserId: 'lw_882',
-        fullName: 'Sarah Jenkins',
-        title: 'Senior Product Manager',
-        organization: 'SEED TechFlow Systems',
-        bio: 'Helping early-stage startups scale their product teams and internal processes.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl: null,
-        tags: ['Product Strategy', 'Agile', 'Leadership'],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_901',
-        fullName: 'Bo Li',
-        title: 'Designer',
-        organization: 'SEED Studio',
-        bio: 'Minimalist designer focusing on mobile-first interactions.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl: null,
-        tags: ['UI/UX'],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_442',
-        fullName: 'Dr. Elizabeth Montgomery-Westchester III',
-        title: 'Principal Software Architect and Global Head of Infrastructure Operations',
-        organization: 'SEED The International Consolidated Bureau of Technological Advancements',
-        bio: 'Expert in distributed systems, high-availability cloud infrastructure, and cross-continental team management.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl:
-          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
-        tags: [
-          'Architecture',
-          'K8s',
-          'Cloud',
-          'Scaling',
-          'DevOps',
-          'System Design',
-          'Security',
-          'Enterprise',
-          'Networking',
-          'Linux',
-        ],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_007',
-        fullName: 'Jordan Stealth',
-        title: 'Hidden Consultant',
-        organization: 'SEED Incognito LLC',
-        bio: 'This profile is currently set to invisible for privacy testing.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl: null,
-        tags: ['Internal'],
-        isVisible: false,
-      },
-      {
-        learnworldsUserId: 'lw_112',
-        fullName: 'Alex Rivera',
-        title: 'Junior Developer',
-        organization: 'SEED Open Source Corp',
-        bio: 'Passionate about React and contributing to the JavaScript ecosystem.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl:
-          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400',
-        tags: [],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_223',
-        fullName: 'Max Power',
-        title: 'CEO',
-        organization: 'SEED Global',
-        bio: 'I build things.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl:
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400',
-        tags: ['Business', 'Sales'],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_551',
-        fullName: 'Sam Taggart',
-        title: 'QA Engineer',
-        organization: 'SEED BugSlayer Inc',
-        bio: 'Specializing in end-to-end testing and automated regression suites.',
-        linkedinUrl: 'https://linkedin.com',
-        calendlyUrl: 'https://calendly.com',
-        photoUrl:
-          'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400',
-        tags: ['ExtremelyLongTagNameThatMightBreakLayouts', 'Testing'],
-        isVisible: true,
-      },
-      {
-        learnworldsUserId: 'lw_334',
-        fullName: 'Elena Rodriguez',
-        title: 'Marketing Director',
-        organization: 'SEED Growth Metrics',
-        bio: 'Focusing on organic growth strategy, SEO, and brand positioning for SaaS.',
-        linkedinUrl: null,
-        calendlyUrl: null,
-        photoUrl:
-          'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&q=80&w=400',
-        tags: ['Marketing', 'SEO', 'SaaS', 'Branding'],
-        isVisible: true,
-      },
-    ];
-
-    await db.insert(schema.mentorProfiles).values(sampleMentors).onConflictDoNothing();
-    console.log(`Seeded ${sampleMentors.length} mentor profiles`);
-
     // Done!
     console.log('\n✨ Database seeded successfully!\n');
     console.log('📋 Test Accounts:');
@@ -783,7 +613,7 @@ async function seed() {
     console.log('  Judge 3: judge3@example.com / judge123');
     console.log('\n🏢 Organization:');
     console.log('  NL Eats - Empowering the leaders | shaping our Food-Systems | Future');
-    console.log('\n� Events & Competitions:');
+    console.log('\n📅 Events:');
     console.log('  1. AgriTech Innovation Challenge 2025 (open)');
     console.log('  2. Future Food Systems Hackathon 2025 (open)');
     console.log('  3. AI for Agriculture Summit 2025 (active)');

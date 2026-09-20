@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { invitations } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { invitations, users, organizationMembers } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
 
@@ -49,36 +49,6 @@ export function isInvitationValid(invitation: Invitation): {
 }
 
 /**
- * Create a new invitation
- */
-export async function createInvitation(data: {
-  email: string;
-  role: InvitationRole;
-  customMessage?: string;
-  expiresInDays?: number;
-  createdBy: string;
-  organizationId?: string;
-}): Promise<Invitation> {
-  const token = generateInvitationToken();
-  const expiresAt = calculateExpirationDate(data.expiresInDays || 7);
-
-  const [invitation] = await db
-    .insert(invitations)
-    .values({
-      token,
-      email: data.email,
-      role: data.role,
-      customMessage: data.customMessage,
-      expiresAt,
-      createdBy: data.createdBy,
-      organizationId: data.organizationId,
-    })
-    .returning();
-
-  return invitation;
-}
-
-/**
  * Create multiple invitations (batch)
  */
 export async function createBatchInvitations(data: {
@@ -116,30 +86,40 @@ export async function getInvitationByToken(token: string): Promise<Invitation | 
 }
 
 /**
- * Get all invitations
+ * The pending invitation for `email` in `organizationId`, if any. Scoped to the
+ * organization (another organization's invitation never blocks this one) and
+ * matched ignoring case, like the accept route does.
  */
-export async function getAllInvitations(): Promise<Invitation[]> {
-  return db.select().from(invitations).orderBy(desc(invitations.createdAt));
-}
-
-/**
- * Check if pending invitation exists for email
- */
-export async function getExistingInvitation(email: string): Promise<Invitation | null> {
+export async function getExistingInvitation(
+  email: string,
+  organizationId: string
+): Promise<Invitation | null> {
   const result = await db
     .select()
     .from(invitations)
-    .where(and(eq(invitations.email, email), eq(invitations.status, 'pending')))
+    .where(
+      and(
+        sql`lower(${invitations.email}) = lower(${email})`,
+        eq(invitations.organizationId, organizationId),
+        eq(invitations.status, 'pending')
+      )
+    )
     .limit(1);
 
   return result[0] || null;
 }
 
+/** `db` or the transaction handle a caller is already inside. */
+type Executor = Pick<typeof db, 'select' | 'insert' | 'update'>;
+
 /**
  * Accept an invitation (mark as accepted)
  */
-export async function acceptInvitation(invitationId: string): Promise<void> {
-  const invitation = await db
+export async function acceptInvitation(
+  invitationId: string,
+  executor: Executor = db
+): Promise<void> {
+  const invitation = await executor
     .select()
     .from(invitations)
     .where(eq(invitations.id, invitationId))
@@ -155,7 +135,7 @@ export async function acceptInvitation(invitationId: string): Promise<void> {
   }
 
   // Mark invitation as accepted
-  await db
+  await executor
     .update(invitations)
     .set({
       status: 'accepted',
@@ -178,25 +158,106 @@ export async function revokeInvitation(invitationId: string): Promise<void> {
     .where(eq(invitations.id, invitationId));
 }
 
-/**
- * Update expired invitations status
- * Run this periodically or on-demand to mark expired invitations
- */
-export async function markExpiredInvitations(): Promise<number> {
-  const result = await db
-    .update(invitations)
-    .set({
-      status: 'expired',
-      updatedAt: new Date().toISOString(),
-    })
-    .where(
-      and(
-        eq(invitations.status, 'pending'),
-        // @ts-expect-error - SQL comparison
-        db.sql`expires_at < now()`
-      )
-    )
-    .returning({ id: invitations.id });
+const ROLE_HOME: Record<InvitationRole, string> = {
+  admin: '/admin',
+  judge: '/judge',
+  participant: '/participant',
+};
 
-  return result.length;
+/** Where a user lands after accepting an invitation for `role`. */
+export function invitationRedirectUrl(role: string): string {
+  return ROLE_HOME[role as InvitationRole] ?? '/';
+}
+
+/**
+ * Completes an invitation for a brand-new account: creates the `users` row with
+ * the invited role (and the organization for admin invites), adds the judge to
+ * the inviting organization, and marks the invitation accepted. The three
+ * writes are one transaction, so a failure leaves no profile row behind with
+ * the invitation still pending. `authUserId` is the id of the `auth.users` row
+ * that was just created; that row cannot be rolled back and the accept route
+ * recovers an orphaned one on the next attempt.
+ */
+export async function finalizeInvitationAcceptance(
+  invitation: Invitation,
+  authUserId: string
+): Promise<{ redirectUrl: string }> {
+  await db.transaction(async (tx) => {
+    await tx.insert(users).values({
+      id: authUserId,
+      email: invitation.email,
+      role: invitation.role,
+      organizationId: invitation.role === 'admin' ? invitation.organizationId : null,
+    });
+
+    if (invitation.role === 'judge' && invitation.organizationId) {
+      await tx
+        .insert(organizationMembers)
+        .values({ organizationId: invitation.organizationId, userId: authUserId })
+        .onConflictDoNothing();
+    }
+
+    await acceptInvitation(invitation.id, tx);
+  });
+
+  return { redirectUrl: invitationRedirectUrl(invitation.role) };
+}
+
+export type ExistingAccountResult =
+  | { accepted: true; redirectUrl: string; message: string }
+  | { accepted: false; redirectUrl: string; message: string };
+
+/**
+ * Applies an invitation to an account that already exists. Only one case is
+ * allowed: a judge invited to another organization gains that membership.
+ * Every other combination (role change, admin or participant invite for an
+ * existing user, judge already a member) is refused with the user's own home
+ * page as the redirect. The caller must have verified that the session
+ * belongs to `existingUser`.
+ */
+export async function acceptInvitationForExistingUser(
+  invitation: Invitation,
+  existingUser: { id: string; role: string | null }
+): Promise<ExistingAccountResult> {
+  const homeUrl = invitationRedirectUrl(existingUser.role ?? '');
+
+  const organizationId = invitation.organizationId;
+  if (existingUser.role === 'judge' && invitation.role === 'judge' && organizationId) {
+    const [membership] = await db
+      .select({ id: organizationMembers.id })
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.userId, existingUser.id),
+          eq(organizationMembers.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (membership) {
+      return {
+        accepted: false,
+        redirectUrl: homeUrl,
+        message: 'You are already a member of this organization.',
+      };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.insert(organizationMembers).values({ organizationId, userId: existingUser.id });
+      await acceptInvitation(invitation.id, tx);
+    });
+
+    return {
+      accepted: true,
+      redirectUrl: homeUrl,
+      message: 'You have been added to a new organization.',
+    };
+  }
+
+  return {
+    accepted: false,
+    redirectUrl: homeUrl,
+    message:
+      'You already have an account. Please contact an administrator if you need a role change.',
+  };
 }

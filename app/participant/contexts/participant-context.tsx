@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 export interface ParticipantEvent {
   id: string;
@@ -13,14 +14,6 @@ export interface ParticipantEvent {
   createdAt: string;
   isRegistered: boolean;
   registeredAt: string | null;
-  // Competition fields - only present when the event has been promoted to a competition
-  title: string | null;
-  shortDescription: string | null;
-  prize: string | null;
-  tags: string[] | null;
-  deadline: string | null;
-  country: string | null;
-  challengeType: string | null;
 }
 
 export interface ParticipantTeam {
@@ -63,29 +56,19 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const response = await fetch('/api/participant/events');
-      const data = await response.json();
-      if (response.ok) {
-        setEvents(data.events || []);
-      } else {
-        throw new Error(data.error || 'Failed to load events');
-      }
+      const data = await apiFetch<{ events: ParticipantEvent[] }>('/api/participant/events');
+      setEvents(data.events || []);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      toast.error(messageOf(error, 'Failed to load events'));
     }
   }, []);
 
   const fetchTeams = useCallback(async () => {
     try {
-      const response = await fetch('/api/participant/teams');
-      const data = await response.json();
-      if (response.ok) {
-        setMyTeams(data.teams || []);
-      } else {
-        throw new Error(data.error || 'Failed to load teams');
-      }
+      const data = await apiFetch<{ teams: ParticipantTeam[] }>('/api/participant/teams');
+      setMyTeams(data.teams || []);
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      toast.error(messageOf(error, 'Failed to load teams'));
     }
   }, []);
 
@@ -104,18 +87,12 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
   const registerForEvent = useCallback(
     async (eventId: string): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/participant/events/${eventId}/register`, {
-          method: 'POST',
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to register');
-        }
+        await apiFetch(`/api/participant/events/${eventId}/register`, { method: 'POST' });
         toast.success('Registered successfully!');
         await refreshEvents();
         return true;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to register');
+        toast.error(messageOf(error, 'Failed to register'));
         return false;
       }
     },
@@ -125,18 +102,12 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
   const unregisterFromEvent = useCallback(
     async (eventId: string): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/participant/events/${eventId}/register`, {
-          method: 'DELETE',
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to unregister');
-        }
+        await apiFetch(`/api/participant/events/${eventId}/register`, { method: 'DELETE' });
         toast.success('Unregistered from event');
         await refreshAll();
         return true;
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to unregister');
+        toast.error(messageOf(error, 'Failed to unregister'));
         return false;
       }
     },
@@ -155,13 +126,19 @@ export function ParticipantProvider({ children }: { children: ReactNode }) {
 
   const registeredEvents = events.filter((e) => e.isRegistered);
 
+  // The initial load is cancelled on unmount (or on a re-run) so a late
+  // response never flips the loading flag of a provider that is gone
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
       setIsLoading(true);
       await Promise.all([fetchEvents(), fetchTeams()]);
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     };
     init();
+    return () => {
+      cancelled = true;
+    };
   }, [fetchEvents, fetchTeams]);
 
   return (

@@ -3,10 +3,11 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, events, eventJudges } from '@/lib/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authServer.requireAuth();
+    const user = await authServer.requireJudge();
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
 
@@ -27,20 +28,13 @@ export async function GET(request: NextRequest) {
     if (eventId) {
       const selected = assignedEvents.find((e) => e.id === eventId);
       if (!selected) {
-        return NextResponse.json(
-          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
-          { status: 403 }
-        );
+        return sendApiError(403, 'NOT_ASSIGNED', 'You are not assigned to this event');
       }
       resolvedEventId = eventId;
     } else if (assignedEvents.length === 1) {
       resolvedEventId = assignedEvents[0].id;
     } else {
-      // Multiple events, no selection
-      return NextResponse.json(
-        { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
-        { status: 300 }
-      );
+      return sendApiError(400, 'SELECT_EVENT', 'Multiple events available');
     }
 
     // Get all teams for the resolved event, ordered by presentation_order
@@ -57,7 +51,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ teams: eventTeams });
   } catch (error) {
-    console.error('Error fetching teams:', error);
-    return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching teams');
   }
 }

@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, teamMembers, events, eventParticipants } from '@/lib/db/schema';
 import { eq, and, max, sql } from 'drizzle-orm';
 import { generateJoinCode } from '@/lib/utils/join-code';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { eventId, name, description } = await request.json();
 
     if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Team name is required');
     }
 
     // Verify event exists and is open
@@ -31,13 +29,14 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
     if (event.status !== 'open') {
-      return NextResponse.json(
-        { error: 'Teams can only be created when the event is in open status' },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Teams can only be created when the event is in open status'
       );
     }
 
@@ -51,16 +50,13 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!registration) {
-      return NextResponse.json(
-        { error: 'You must register for this event first' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'NOT_REGISTERED', 'You must register for this event first');
     }
 
-    // Use transaction with advisory lock for race condition prevention
     const result = await db.transaction(async (tx) => {
-      // Advisory lock on (eventId, participantId) to prevent concurrent team creation
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${eventId} || ${user.id}))`);
+      // Lock per event so two participants creating teams at the same time
+      // are serialised and never compute the same presentation order.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${eventId}))`);
 
       // Check participant is not already on a team for this event
       const existing = await tx
@@ -74,7 +70,6 @@ export async function POST(request: NextRequest) {
         throw new Error('ALREADY_ON_TEAM');
       }
 
-      // Calculate next presentation order
       const maxOrderResult = await tx
         .select({ maxOrder: max(teams.presentationOrder) })
         .from(teams)
@@ -83,10 +78,8 @@ export async function POST(request: NextRequest) {
 
       const nextOrder = (maxOrderResult[0]?.maxOrder || 0) + 1;
 
-      // Generate join code
       const joinCode = await generateJoinCode();
 
-      // Create team
       const [team] = await tx
         .insert(teams)
         .values({
@@ -99,7 +92,6 @@ export async function POST(request: NextRequest) {
         })
         .returning();
 
-      // Add creator as team member
       const [membership] = await tx
         .insert(teamMembers)
         .values({
@@ -112,31 +104,22 @@ export async function POST(request: NextRequest) {
       return { team, membership };
     });
 
-    return NextResponse.json({ team: result.team, membership: result.membership });
+    return NextResponse.json({ team: result.team, membership: result.membership }, { status: 201 });
   } catch (error) {
-    console.error('Error creating team:', error);
-
-    if (error instanceof Error) {
-      if (error.message === 'ALREADY_ON_TEAM') {
-        return NextResponse.json(
-          { error: 'You are already on a team for this event' },
-          { status: 400 }
-        );
-      }
-      if (error.message.includes('duplicate key')) {
-        if (error.message.includes('teams_event_id_name_key')) {
-          return NextResponse.json(
-            { error: 'A team with this name already exists in this event' },
-            { status: 400 }
-          );
-        }
-        if (error.message.includes('teams_event_id_presentation_order_key')) {
-          // Presentation order collision — rare but possible
-          return NextResponse.json({ error: 'Please try again' }, { status: 409 });
-        }
-      }
+    if (error instanceof Error && error.message === 'ALREADY_ON_TEAM') {
+      return sendApiError(400, 'ALREADY_ON_TEAM', 'You are already on a team for this event');
     }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (isUniqueOn(error, 'event_id', 'name')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_TEAM_NAME',
+        'A team with this name already exists in this event'
+      );
+    }
+    // two creates drew the same presentation order or the same join code: retry
+    if (isUniqueOn(error, 'event_id', 'presentation_order') || isUniqueOn(error, 'join_code')) {
+      return sendApiError(409, 'CONFLICT', 'Please try again');
+    }
+    return handleRouteError(error, 'Error creating team');
   }
 }

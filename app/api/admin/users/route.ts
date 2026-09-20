@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import {
   users,
@@ -11,15 +11,11 @@ import {
 } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
 
@@ -82,7 +78,6 @@ export async function GET() {
 
     return NextResponse.json({ users: allUsers });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching users');
   }
 }

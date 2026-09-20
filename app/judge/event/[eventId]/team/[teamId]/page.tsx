@@ -69,8 +69,11 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .where(criteriaFilter)
     .orderBy(asc(criteria.displayOrder));
 
+  // Keyed by team so each team gets its own state: a save still pending for the
+  // previous team can never land in the next one's "already saved" record
   return (
     <TeamScoringInterface
+      key={teamData.id}
       team={teamData}
       criteria={eventCriteria}
       judgeId={user.id}

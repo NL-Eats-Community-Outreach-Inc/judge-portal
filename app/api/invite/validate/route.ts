@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 import { organizations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { EMAIL_FEATURES_ENABLED } from '@/lib/config';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * GET /api/invite/validate?token=xxx
@@ -14,18 +16,22 @@ export async function GET(request: NextRequest) {
     const token = request.nextUrl.searchParams.get('token');
 
     if (!token) {
-      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Token is required');
     }
 
     const invitation = await getInvitationByToken(token);
 
     if (!invitation) {
-      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invalid invitation');
     }
 
     const validationResult = isInvitationValid(invitation);
     if (!validationResult.valid) {
-      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
+      return sendApiError(
+        400,
+        'INVITATION_INVALID',
+        validationResult.reason ?? 'Invalid invitation'
+      );
     }
 
     // Get org name for admin invites
@@ -49,34 +55,44 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Invitation info error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Invitation info error');
   }
 }
 
 /**
  * POST /api/invite/validate
- * Validates an invitation token and sends OTP code via email
+ * Validates an invitation token and sends OTP code via email.
+ *
+ * Kept for the email-based flow behind EMAIL_FEATURES_ENABLED; with the flag
+ * off it answers 404 before reading the body so no email can ever be sent.
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!EMAIL_FEATURES_ENABLED) {
+      return sendApiError(404, 'FEATURE_DISABLED', 'Email verification is not available');
+    }
+
     const { token } = await request.json();
 
     if (!token) {
-      return NextResponse.json({ error: 'Token is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Token is required');
     }
 
     // Get invitation
     const invitation = await getInvitationByToken(token);
 
     if (!invitation) {
-      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invalid invitation');
     }
 
     // Validate invitation
     const validationResult = isInvitationValid(invitation);
     if (!validationResult.valid) {
-      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
+      return sendApiError(
+        400,
+        'INVITATION_INVALID',
+        validationResult.reason ?? 'Invalid invitation'
+      );
     }
 
     // Trigger OTP code email via Supabase
@@ -97,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('OTP send error:', error);
-      return NextResponse.json({ error: 'Failed to send verification code' }, { status: 500 });
+      return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to send verification code');
     }
 
     // Return invitation details (without sensitive data)
@@ -110,7 +126,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Invitation validation error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Invitation validation error');
   }
 }

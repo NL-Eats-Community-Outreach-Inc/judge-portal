@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Building2, CheckCircle, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 interface Membership {
   orgId: string;
@@ -29,23 +30,14 @@ export function OrgManagementSettings() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [membershipsRes, orgsRes] = await Promise.all([
-        fetch('/api/judge/organizations'),
-        fetch('/api/organizations/public'),
+      const [membershipsData, orgsData] = await Promise.all([
+        apiFetch<{ memberships: Membership[] }>('/api/judge/organizations'),
+        apiFetch<{ organizations: PublicOrg[] }>('/api/organizations/public'),
       ]);
-
-      if (membershipsRes.ok) {
-        const membershipsData = await membershipsRes.json();
-        setMemberships(membershipsData.memberships);
-      }
-
-      if (orgsRes.ok) {
-        const orgsData = await orgsRes.json();
-        setAllOrgs(orgsData.organizations);
-      }
+      setMemberships(membershipsData.memberships);
+      setAllOrgs(orgsData.organizations);
     } catch (error) {
-      console.error('Error fetching organization data:', error);
-      toast.error('Failed to load organization data');
+      toast.error(messageOf(error, 'Failed to load organization data'));
     } finally {
       setIsLoading(false);
     }
@@ -59,22 +51,15 @@ export function OrgManagementSettings() {
     setJoiningOrgs((prev) => new Set(prev).add(orgId));
 
     try {
-      const response = await fetch('/api/judge/organizations', {
+      await apiFetch('/api/judge/organizations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationIds: [orgId] }),
+        body: { organizationIds: [orgId] },
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to join organization');
-      }
 
       toast.success('Joined organization successfully');
       await fetchData();
     } catch (error) {
-      console.error('Error joining organization:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to join organization');
+      toast.error(messageOf(error, 'Failed to join organization'));
     } finally {
       setJoiningOrgs((prev) => {
         const next = new Set(prev);

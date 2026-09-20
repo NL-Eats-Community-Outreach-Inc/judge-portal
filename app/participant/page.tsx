@@ -5,47 +5,9 @@ import { Target, Sparkles, Users, Clock, Rocket, ChevronRight } from 'lucide-rea
 import { useParticipant } from './contexts/participant-context';
 import { EventCard } from './components/event-card';
 import { TeamCard } from './components/team-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonList } from '@/components/ui/loading-state';
 import Link from 'next/link';
-
-function SkeletonCard() {
-  return (
-    <Card className="overflow-hidden">
-      <div className="p-5 md:p-6 animate-pulse">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="h-5 w-16 bg-muted rounded mb-2" />
-            <div className="h-6 w-48 bg-muted rounded mb-1" />
-            <div className="h-4 w-32 bg-muted rounded" />
-          </div>
-          <div className="w-12 h-12 bg-muted rounded-xl" />
-        </div>
-        <div className="h-4 w-full bg-muted rounded mb-2" />
-        <div className="h-4 w-2/3 bg-muted rounded mb-4" />
-        <div className="flex gap-2 mb-4">
-          <div className="h-5 w-16 bg-muted rounded-full" />
-          <div className="h-5 w-20 bg-muted rounded-full" />
-        </div>
-        <div className="pt-4 border-t border-border/50 flex justify-between">
-          <div className="h-4 w-24 bg-muted rounded" />
-          <div className="h-8 w-20 bg-muted rounded" />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function SkeletonTeamCard() {
-  return (
-    <Card className="min-w-[280px] md:min-w-[320px] snap-start border-l-4 border-l-muted">
-      <div className="p-4 sm:p-5 animate-pulse">
-        <div className="h-5 w-32 bg-muted rounded mb-2" />
-        <div className="h-4 w-24 bg-muted rounded mb-3" />
-        <div className="h-4 w-20 bg-muted rounded mb-3" />
-        <div className="h-9 w-full bg-muted rounded-lg" />
-      </div>
-    </Card>
-  );
-}
 
 export default function ParticipantPage() {
   const { events, myTeams, isLoading, registerForEvent, getTeamForEvent } = useParticipant();
@@ -98,10 +60,11 @@ export default function ParticipantPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="h-6 w-28 bg-muted rounded animate-pulse" />
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
-              <SkeletonTeamCard />
-              <SkeletonTeamCard />
-            </div>
+            <SkeletonList
+              rows={2}
+              rowClassName="h-40 min-w-[280px] md:min-w-[320px]"
+              className="flex gap-3 sm:gap-4 space-y-0 overflow-x-auto pb-3 -mx-1 px-1"
+            />
           </div>
         ) : (
           myTeams.length > 0 && (
@@ -141,11 +104,11 @@ export default function ParticipantPage() {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
+            <SkeletonList
+              rows={3}
+              rowClassName="h-56"
+              className="grid gap-4 sm:gap-6 space-y-0 md:grid-cols-2"
+            />
           ) : events.length > 0 ? (
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               {events.map((event) => (
@@ -158,18 +121,11 @@ export default function ParticipantPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-10 sm:py-12">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                <Clock className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">
-                No Active Events
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                There are currently no events open for participation. Check back soon for new
-                innovation challenges!
-              </p>
-            </div>
+            <EmptyState
+              icon={Clock}
+              title="No Active Events"
+              description="There are currently no events open for participation. Check back soon for new events."
+            />
           )}
         </div>
 

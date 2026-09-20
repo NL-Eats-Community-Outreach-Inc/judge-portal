@@ -55,3 +55,17 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local database backups (scripts/backup-database.ts)
+/backups/
+
+# Design-workflow artifacts (local only)
+/.impeccable/
+/PRODUCT.md
+/DESIGN.md
+
+# Playwright storage states written by tests/e2e/global-setup.ts
+/tests/e2e/.auth/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+/.playwright/

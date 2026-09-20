@@ -3,9 +3,12 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { scores, criteria, teams, events, eventJudges } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
-// Helper: resolve the event for this judge (shared by GET and POST)
-async function resolveJudgeEvent(userId: string, eventId: string | null) {
+type ResolvedEvent = { ok: true; eventId: string } | { ok: false; response: NextResponse };
+
+// Resolve the active event for this judge (shared by GET and POST)
+async function resolveJudgeEvent(userId: string, eventId: string | null): Promise<ResolvedEvent> {
   const assignedEvents = await db
     .select({ id: events.id })
     .from(eventJudges)
@@ -13,53 +16,43 @@ async function resolveJudgeEvent(userId: string, eventId: string | null) {
     .where(and(eq(eventJudges.judgeId, userId), eq(events.status, 'active')));
 
   if (assignedEvents.length === 0) {
-    return { error: 'No active event', status: 400, resolvedEventId: null };
+    return { ok: false, response: sendApiError(400, 'NO_ACTIVE_EVENT', 'No active event') };
   }
 
   if (eventId) {
     const selected = assignedEvents.find((e) => e.id === eventId);
     if (!selected) {
-      return { error: 'NOT_ASSIGNED', status: 403, resolvedEventId: null };
+      return {
+        ok: false,
+        response: sendApiError(403, 'NOT_ASSIGNED', 'You are not assigned to this event'),
+      };
     }
-    return { error: null, status: 200, resolvedEventId: eventId };
+    return { ok: true, eventId };
   }
 
   if (assignedEvents.length === 1) {
-    return { error: null, status: 200, resolvedEventId: assignedEvents[0].id };
+    return { ok: true, eventId: assignedEvents[0].id };
   }
 
-  return { error: 'SELECT_EVENT', status: 300, resolvedEventId: null };
+  return { ok: false, response: sendApiError(400, 'SELECT_EVENT', 'Multiple events available') };
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authServer.requireAuth();
+    const user = await authServer.requireJudge();
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('teamId');
     const eventId = searchParams.get('eventId');
 
     if (!teamId) {
-      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Team ID is required');
     }
 
-    const { error, status, resolvedEventId } = await resolveJudgeEvent(user.id, eventId);
-    if (!resolvedEventId) {
-      if (error === 'NOT_ASSIGNED') {
-        return NextResponse.json(
-          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
-          { status }
-        );
-      }
-      if (error === 'SELECT_EVENT') {
-        return NextResponse.json(
-          { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
-          { status }
-        );
-      }
-      return NextResponse.json({ error }, { status });
+    const resolved = await resolveJudgeEvent(user.id, eventId);
+    if (!resolved.ok) {
+      return resolved.response;
     }
 
-    // Get all scores for this judge and team in the resolved event
     const judgeScores = await db
       .select({
         id: scores.id,
@@ -72,112 +65,85 @@ export async function GET(request: NextRequest) {
         and(
           eq(scores.judgeId, user.id),
           eq(scores.teamId, teamId),
-          eq(scores.eventId, resolvedEventId)
+          eq(scores.eventId, resolved.eventId)
         )
       );
 
     return NextResponse.json({ scores: judgeScores });
   } catch (error) {
-    console.error('Error fetching scores:', error);
-    return NextResponse.json({ error: 'Failed to fetch scores' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching scores');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await authServer.requireAuth();
-
-    // Check if request has content
-    const contentLength = request.headers.get('content-length');
-    if (!contentLength || contentLength === '0') {
-      return NextResponse.json({ error: 'Request body is empty' }, { status: 400 });
-    }
+    const user = await authServer.requireJudge();
 
     let body;
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid JSON in request body');
     }
 
     const { teamId, criterionId, score, comment, eventId: bodyEventId } = body || {};
 
-    // Validate required fields
     if (!teamId || !criterionId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Missing required fields');
     }
 
-    const {
-      error: resolveError,
-      status: resolveStatus,
-      resolvedEventId,
-    } = await resolveJudgeEvent(user.id, bodyEventId || null);
-    if (!resolvedEventId) {
-      if (resolveError === 'NOT_ASSIGNED') {
-        return NextResponse.json(
-          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
-          { status: resolveStatus }
-        );
-      }
-      if (resolveError === 'SELECT_EVENT') {
-        return NextResponse.json(
-          { error: 'Multiple events available', errorType: 'SELECT_EVENT' },
-          { status: resolveStatus }
-        );
-      }
-      return NextResponse.json({ error: resolveError }, { status: resolveStatus });
+    // scores.score is NOT NULL: a comment can only be saved together with a score
+    if (!Number.isInteger(score)) {
+      return sendApiError(400, 'INVALID_SCORE', 'Score must be a whole number');
     }
 
-    // Verify the team belongs to the resolved event
-    const team = await db
-      .select({
-        id: teams.id,
-        eventId: teams.eventId,
-      })
+    const resolved = await resolveJudgeEvent(user.id, bodyEventId || null);
+    if (!resolved.ok) {
+      return resolved.response;
+    }
+    const resolvedEventId = resolved.eventId;
+
+    const [team] = await db
+      .select({ id: teams.id, awardType: teams.awardType })
       .from(teams)
       .where(and(eq(teams.id, teamId), eq(teams.eventId, resolvedEventId)))
       .limit(1);
 
-    if (!team.length) {
-      return NextResponse.json({ error: 'Team not found in active event' }, { status: 400 });
+    if (!team) {
+      return sendApiError(400, 'BAD_REQUEST', 'Team not found in active event');
     }
 
-    // Get the criterion to validate score range and ensure it belongs to the event
-    const criterion = await db
+    const [criterion] = await db
       .select({
         minScore: criteria.minScore,
         maxScore: criteria.maxScore,
-        eventId: criteria.eventId,
+        category: criteria.category,
       })
       .from(criteria)
       .where(and(eq(criteria.id, criterionId), eq(criteria.eventId, resolvedEventId)))
       .limit(1);
 
-    if (!criterion.length) {
-      return NextResponse.json({ error: 'Invalid criterion for active event' }, { status: 400 });
+    if (!criterion) {
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid criterion for active event');
     }
 
-    // Additional validation: ensure team and criterion belong to same event
-    if (team[0].eventId !== criterion[0].eventId) {
-      return NextResponse.json(
-        { error: 'Team and criterion must belong to the same event' },
-        { status: 400 }
+    // A technical-only team is never scored on business criteria and vice versa
+    if (team.awardType !== 'both' && criterion.category !== team.awardType) {
+      return sendApiError(
+        400,
+        'CRITERION_NOT_APPLICABLE',
+        'This criterion does not apply to the team’s award type'
       );
     }
 
-    // Validate score range only if score is provided
-    if (
-      score !== null &&
-      score !== undefined &&
-      (score < criterion[0].minScore || score > criterion[0].maxScore)
-    ) {
-      return NextResponse.json(
-        { error: `Score must be between ${criterion[0].minScore} and ${criterion[0].maxScore}` },
-        { status: 400 }
+    if (score < criterion.minScore || score > criterion.maxScore) {
+      return sendApiError(
+        400,
+        'INVALID_SCORE',
+        `Score must be between ${criterion.minScore} and ${criterion.maxScore}`
       );
     }
 
-    // Insert or update score
     const result = await db
       .insert(scores)
       .values({
@@ -199,12 +165,8 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({
-      success: true,
-      score: result[0],
-    });
+    return NextResponse.json({ success: true, score: result[0] });
   } catch (error) {
-    console.error('Error saving score:', error);
-    return NextResponse.json({ error: 'Failed to save score' }, { status: 500 });
+    return handleRouteError(error, 'Error saving score');
   }
 }

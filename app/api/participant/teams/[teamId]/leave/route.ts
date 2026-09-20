@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, teamMembers, events } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { teamId } = await params;
 
@@ -30,13 +27,14 @@ export async function POST(
       .limit(1);
 
     if (!teamEvent) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Team not found');
     }
 
     if (teamEvent.eventStatus !== 'open') {
-      return NextResponse.json(
-        { error: 'Cannot leave a team while the event is not in open status' },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Cannot leave a team while the event is not in open status'
       );
     }
 
@@ -89,10 +87,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, teamDeleted });
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_MEMBER') {
-      return NextResponse.json({ error: 'You are not a member of this team' }, { status: 403 });
-    }
-    console.error('Error leaving team:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error leaving team');
   }
 }

@@ -23,6 +23,7 @@ import postgres from 'postgres';
 config({ path: '.env.local' });
 
 const DATABASE_URL = process.env.DATABASE_URL;
+const TEST_PROJECT_REF = 'lqqmxxbxvsnoivebdywb';
 
 // Validate environment variables
 if (!DATABASE_URL) {
@@ -30,6 +31,19 @@ if (!DATABASE_URL) {
   console.error('\nPlease ensure the following are set in .env.local:');
   console.error('  - DATABASE_URL (for direct SQL execution)');
   console.error('\nYou can find this in your Supabase project settings > Database.');
+  process.exit(1);
+}
+
+// `drizzle-kit push --force` rebuilds tables: only the test project, unless a
+// genuinely new project is being set up (DB_SETUP_ALLOW_ANY_PROJECT=true)
+if (
+  !DATABASE_URL.includes(TEST_PROJECT_REF) &&
+  process.env.DB_SETUP_ALLOW_ANY_PROJECT !== 'true'
+) {
+  console.error(
+    `Refusing: DATABASE_URL does not point at the test project (${TEST_PROJECT_REF}). ` +
+      'Set DB_SETUP_ALLOW_ANY_PROJECT=true to set up a new project.'
+  );
   process.exit(1);
 }
 
@@ -58,36 +72,17 @@ async function executeSQLFile(filepath: string): Promise<boolean> {
 
     sql_connection = postgres(DATABASE_URL);
 
-    // Execute the SQL file
+    // Execute the SQL file. It runs as one transaction: any error means
+    // nothing in it applied, and every statement is guarded (IF NOT EXISTS,
+    // OR REPLACE, DROP … IF EXISTS), so no error is ever "safe" to ignore.
     await sql_connection.unsafe(sqlContent);
 
     console.log(`    ✅ Migration applied successfully`);
     return true;
-  } catch (error: any) {
-    // Check if it's a safe error (things already exist)
-    const safeErrors = [
-      'already exists',
-      'duplicate key',
-      'relation .* already exists',
-      'type .* already exists',
-      'function .* already exists',
-      'constraint .* already exists',
-      'index .* already exists',
-    ];
-
-    const isSafe = safeErrors.some((errorPattern) => {
-      const regex = new RegExp(errorPattern, 'i');
-      return regex.test(error.message || '');
-    });
-
-    if (!isSafe) {
-      console.error(`    ❌ Migration failed:`, error.message);
-      console.error(`    💡 Try running the SQL manually in Supabase Dashboard > SQL Editor`);
-      return false;
-    } else {
-      console.log(`    ⚠️  Some objects already exist (this is normal): ${error.message}`);
-      return true;
-    }
+  } catch (error) {
+    console.error(`    ❌ Migration failed:`, error instanceof Error ? error.message : error);
+    console.error(`    💡 Try running the SQL manually in Supabase Dashboard > SQL Editor`);
+    return false;
   } finally {
     // Close the connection
     if (sql_connection) {
@@ -107,21 +102,14 @@ async function setupDatabase() {
   console.log('');
 
   try {
-    // Step 1: Push Drizzle schema
+    // Step 1: Push Drizzle schema. `--force` skips drizzle-kit's interactive
+    // confirmation, which needs a TTY (without it the push silently applies
+    // nothing and the tables end up created by the SQL file instead, with
+    // different constraint names than production). This script is for a
+    // fresh database, where there is nothing for the push to destroy.
     console.log('📦 Step 1: Pushing Drizzle schema...');
-    try {
-      execSync('npm run db:push', {
-        stdio: 'pipe',
-        encoding: 'utf-8',
-      });
-      console.log('  ✅ Drizzle schema pushed successfully\n');
-    } catch (error: any) {
-      if (error.stdout?.includes('No config path')) {
-        console.log('  ⚠️  Drizzle config not found - assuming schema already exists\n');
-      } else {
-        throw error;
-      }
-    }
+    execSync('npx drizzle-kit push --force', { stdio: 'inherit' });
+    console.log('  ✅ Drizzle schema pushed successfully\n');
 
     // Step 2: Apply consolidated migration
     console.log('🔧 Step 2: Applying consolidated migration...');
@@ -132,7 +120,7 @@ async function setupDatabase() {
     if (!migrationSuccess) {
       console.error('\n❌ Automated migration failed!');
       printManualInstructions(migrationPath);
-      console.error('You can still continue with seeding after running SQL manually.');
+      process.exit(1);
     }
 
     console.log('  ✅ Migration applied successfully\n');
@@ -141,7 +129,7 @@ async function setupDatabase() {
     if (shouldSeed) {
       console.log('Applying seed prerequisite feature migrations...');
       try {
-        execSync('npm run db:update submission_ai_scores_event_id', {
+        execSync('npm run db:update submissions', {
           stdio: 'inherit',
         });
         console.log('  Seed prerequisite migrations applied successfully\n');
@@ -158,7 +146,7 @@ async function setupDatabase() {
         console.log('  ✅ Test data seeded successfully\n');
       } catch (error) {
         console.error('  ❌ Seeding failed:', error);
-        console.log('  ℹ️  You can run "npm run db:seed" manually later\n');
+        throw error;
       }
     }
 
@@ -195,4 +183,7 @@ function printManualInstructions(filepath: string): void {
 }
 
 // Run the setup
-setupDatabase().catch(console.error);
+setupDatabase().catch((error) => {
+  console.error('\n❌ Setup failed:', error);
+  process.exit(1);
+});

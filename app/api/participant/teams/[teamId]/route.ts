@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, teamMembers, events, submissions } from '@/lib/db/schema';
 import { eq, count, and } from 'drizzle-orm';
@@ -8,19 +8,15 @@ import {
   requireTeamCreator,
   requireTeamEventOpen,
 } from '@/lib/auth/participant';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireParticipant();
     const { teamId } = await params;
 
     const membership = await requireTeamMembership(teamId, user.id);
@@ -72,12 +68,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_MEMBER') {
-      return sendApiError(403, 'NOT_MEMBER', 'You are not a member of this team');
-    }
-
-    console.error('Error fetching team details:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching team details');
   }
 }
 
@@ -86,12 +77,7 @@ export async function PUT(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireParticipant();
     const { teamId } = await params;
 
     await requireTeamMembership(teamId, user.id);
@@ -125,37 +111,21 @@ export async function PUT(
 
     return NextResponse.json({ team: updated });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === 'NOT_MEMBER') {
-        return sendApiError(403, 'NOT_MEMBER', 'You are not a member of this team');
-      }
-
-      if (error.message === 'TEAM_NOT_FOUND') {
-        return sendApiError(404, 'TEAM_NOT_FOUND', 'Team not found');
-      }
-
-      if (error.message === 'EVENT_NOT_OPEN') {
-        return sendApiError(
-          400,
-          'EVENT_NOT_OPEN',
-          'Teams cannot be edited while the event is not in open status'
-        );
-      }
-
-      if (
-        error.message.includes('duplicate key') &&
-        error.message.includes('teams_event_id_name_key')
-      ) {
-        return sendApiError(
-          400,
-          'DUPLICATE_TEAM_NAME',
-          'A team with this name already exists in this event'
-        );
-      }
+    if (error instanceof Error && error.message === 'EVENT_NOT_OPEN') {
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Teams cannot be edited while the event is not in open status'
+      );
     }
-
-    console.error('Error updating team:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    if (isUniqueOn(error, 'event_id', 'name')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_TEAM_NAME',
+        'A team with this name already exists in this event'
+      );
+    }
+    return handleRouteError(error, 'Error updating team');
   }
 }
 
@@ -164,12 +134,7 @@ export async function DELETE(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireParticipant();
     const { teamId } = await params;
 
     await requireTeamCreator(teamId, user.id);
@@ -179,29 +144,16 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === 'NOT_MEMBER') {
-        return sendApiError(403, 'NOT_MEMBER', 'You are not a member of this team');
-      }
-
-      if (error.message === 'NOT_CREATOR') {
-        return sendApiError(403, 'NOT_CREATOR', 'Only the team creator can delete the team');
-      }
-
-      if (error.message === 'TEAM_NOT_FOUND') {
-        return sendApiError(404, 'TEAM_NOT_FOUND', 'Team not found');
-      }
-
-      if (error.message === 'EVENT_NOT_OPEN') {
-        return sendApiError(
-          400,
-          'EVENT_NOT_OPEN',
-          'Teams cannot be deleted while the event is not in open status'
-        );
-      }
+    if (error instanceof Error && error.message === 'NOT_CREATOR') {
+      return sendApiError(403, 'NOT_CREATOR', 'Only the team creator can delete the team');
     }
-
-    console.error('Error deleting team:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    if (error instanceof Error && error.message === 'EVENT_NOT_OPEN') {
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Teams cannot be deleted while the event is not in open status'
+      );
+    }
+    return handleRouteError(error, 'Error deleting team');
   }
 }

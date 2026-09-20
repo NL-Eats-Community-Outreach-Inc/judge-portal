@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/lib/db/schema';
+import { users, scores } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createAdminClient } from '@/lib/supabase/server';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function DELETE(
   request: Request,
@@ -35,6 +35,22 @@ export async function DELETE(
       return sendApiError(403, 'FORBIDDEN', 'Cannot delete super admin users');
     }
 
+    // scores.judge_id cascades: deleting a judge would take their scores out of
+    // every result. Admins remove a judge from the organization instead
+    const [scored] = await db
+      .select({ id: scores.id })
+      .from(scores)
+      .where(eq(scores.judgeId, userId))
+      .limit(1);
+
+    if (scored) {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        'This judge has scores; remove them from the organization instead'
+      );
+    }
+
     // Delete from database FIRST (removes FK reference to auth.users)
     try {
       await db.delete(users).where(eq(users.id, userId));
@@ -52,10 +68,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: `User "${targetUser.email}" deleted` });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error deleting user:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting user');
   }
 }

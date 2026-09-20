@@ -24,10 +24,13 @@ import {
 } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/use-media-query';
 import { useSuperAdmin, type OrgWithStats } from '../contexts/super-admin-context';
 import OrgDetailPanel from './org-detail-panel';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export default function OrgManagement() {
   const { organizations, isLoading, refreshOrgs, selectOrg, selectedOrg } = useSuperAdmin();
@@ -75,21 +78,17 @@ export default function OrgManagement() {
     setIsCreating(true);
 
     try {
-      const response = await fetch('/api/super-admin/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description || null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create organization');
-      }
+      const data = await apiFetch<{ organization: { name: string } }>(
+        '/api/super-admin/organizations',
+        {
+          method: 'POST',
+          body: {
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description || null,
+          },
+        }
+      );
 
       toast.success('Organization created', {
         description: `"${data.organization.name}" has been created`,
@@ -98,9 +97,7 @@ export default function OrgManagement() {
       setFormData({ name: '', slug: '', description: '' });
       await refreshOrgs();
     } catch (error) {
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to create organization',
-      });
+      toast.error(messageOf(error, 'Failed to create organization'));
     } finally {
       setIsCreating(false);
     }
@@ -174,11 +171,11 @@ export default function OrgManagement() {
   // Org list content (shared between mobile card and desktop left panel)
   const orgListContent =
     organizations.length === 0 ? (
-      <div className="text-center py-12 text-muted-foreground">
-        <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-        <p>No organizations yet</p>
-        <p className="text-sm">Create your first organization to get started</p>
-      </div>
+      <EmptyState
+        icon={Building2}
+        title="No organizations yet"
+        description="Create your first organization to get started"
+      />
     ) : (
       <div className="divide-y divide-border/50">
         {organizations.map((org) => (
@@ -195,8 +192,8 @@ export default function OrgManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -259,6 +256,7 @@ export default function OrgManagement() {
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   className="h-8 w-8"
+                  aria-label="Refresh organizations"
                 >
                   {isRefreshing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -298,6 +296,7 @@ export default function OrgManagement() {
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   className="h-7 w-7"
+                  aria-label="Refresh organizations"
                 >
                   {isRefreshing ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -1,36 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getInvitationByToken, acceptInvitation, isInvitationValid } from '@/lib/auth';
+import {
+  getInvitationByToken,
+  isInvitationValid,
+  finalizeInvitationAcceptance,
+  acceptInvitationForExistingUser,
+} from '@/lib/auth/invitation';
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
-import { users, organizationMembers } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { EMAIL_FEATURES_ENABLED } from '@/lib/config';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * POST /api/invite/verify
- * Verifies OTP and completes the invitation acceptance
+ * Verifies an OTP code and completes the invitation acceptance.
+ *
+ * Kept for the email-based flow behind EMAIL_FEATURES_ENABLED; the UI now
+ * uses /api/invite/accept, which sets a password instead of sending a code.
+ * With the flag off it answers 404 before reading the body.
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!EMAIL_FEATURES_ENABLED) {
+      return sendApiError(404, 'FEATURE_DISABLED', 'Email verification is not available');
+    }
+
     const { token, otp } = await request.json();
 
     if (!token || !otp) {
-      return NextResponse.json({ error: 'Token and OTP are required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Token and OTP are required');
     }
 
-    // Get invitation
     const invitation = await getInvitationByToken(token);
-
     if (!invitation) {
-      return NextResponse.json({ error: 'Invalid invitation' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invalid invitation');
     }
 
-    // Validate invitation
     const validationResult = isInvitationValid(invitation);
     if (!validationResult.valid) {
-      return NextResponse.json({ error: validationResult.reason }, { status: 400 });
+      return sendApiError(
+        400,
+        'INVITATION_INVALID',
+        validationResult.reason ?? 'Invalid invitation'
+      );
     }
 
-    // Verify OTP with Supabase
     const supabase = await createClient();
     const { data, error } = await supabase.auth.verifyOtp({
       email: invitation.email,
@@ -39,119 +54,39 @@ export async function POST(request: NextRequest) {
     });
 
     if (error || !data.user) {
-      return NextResponse.json({ error: 'Invalid or expired OTP code' }, { status: 400 });
+      return sendApiError(400, 'INVALID_OTP', 'Invalid or expired OTP code');
     }
 
-    // Check if user already exists in our database
-    const existingUser = await db.select().from(users).where(eq(users.id, data.user.id)).limit(1);
+    const [existingUser] = await db
+      .select({ id: users.id, email: users.email, role: users.role })
+      .from(users)
+      .where(eq(users.id, data.user.id))
+      .limit(1);
 
-    if (existingUser[0]) {
-      // Multi-org support: existing judge + judge invite with orgId → add to new org
-      if (
-        existingUser[0].role === 'judge' &&
-        invitation.role === 'judge' &&
-        invitation.organizationId
-      ) {
-        const existingMembership = await db
-          .select()
-          .from(organizationMembers)
-          .where(
-            and(
-              eq(organizationMembers.userId, existingUser[0].id),
-              eq(organizationMembers.organizationId, invitation.organizationId)
-            )
-          )
-          .limit(1);
-
-        if (existingMembership[0]) {
-          return NextResponse.json(
-            {
-              error: 'You are already a member of this organization.',
-              existingRole: existingUser[0].role,
-              redirectUrl: '/judge',
-            },
-            { status: 400 }
-          );
-        }
-
-        // Add judge to the new org
-        await db.insert(organizationMembers).values({
-          organizationId: invitation.organizationId,
-          userId: existingUser[0].id,
-        });
-
-        await acceptInvitation(invitation.id);
-
-        return NextResponse.json({
-          success: true,
-          redirectUrl: '/judge',
-          message: 'You have been added to a new organization!',
-          user: {
-            id: existingUser[0].id,
-            email: existingUser[0].email,
-            role: existingUser[0].role,
-          },
+    if (existingUser) {
+      const result = await acceptInvitationForExistingUser(invitation, existingUser);
+      if (!result.accepted) {
+        return sendApiError(400, 'ALREADY_HAS_ACCOUNT', result.message, {
+          existingRole: existingUser.role,
+          redirectUrl: result.redirectUrl,
         });
       }
-
-      // For non-judge roles or role mismatches, keep the existing rejection
-      const roleRedirect =
-        existingUser[0].role === 'admin'
-          ? '/admin'
-          : existingUser[0].role === 'judge'
-            ? '/judge'
-            : '/participant';
-
-      return NextResponse.json(
-        {
-          error:
-            'You already have an account. Please contact an administrator if you need a role change.',
-          existingRole: existingUser[0].role,
-          redirectUrl: roleRedirect,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Create new user record with role from invitation
-    // For admin invites, also set organizationId from the invitation
-    await db.insert(users).values({
-      id: data.user.id,
-      email: invitation.email,
-      role: invitation.role,
-      organizationId: invitation.role === 'admin' ? invitation.organizationId : null,
-    });
-
-    // For judge invites with org, create organization membership
-    if (invitation.role === 'judge' && invitation.organizationId) {
-      await db.insert(organizationMembers).values({
-        organizationId: invitation.organizationId,
-        userId: data.user.id,
+      return NextResponse.json({
+        success: true,
+        redirectUrl: result.redirectUrl,
+        message: result.message,
+        user: { id: existingUser.id, email: existingUser.email, role: existingUser.role },
       });
     }
 
-    // Accept invitation (mark as accepted)
-    await acceptInvitation(invitation.id);
-
-    // Determine redirect URL based on role
-    const redirectUrl =
-      invitation.role === 'admin'
-        ? '/admin'
-        : invitation.role === 'judge'
-          ? '/judge'
-          : '/participant';
+    const { redirectUrl } = await finalizeInvitationAcceptance(invitation, data.user.id);
 
     return NextResponse.json({
       success: true,
       redirectUrl,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        role: invitation.role,
-      },
+      user: { id: data.user.id, email: data.user.email, role: invitation.role },
     });
   } catch (error) {
-    console.error('Invitation verification error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Invitation verification error');
   }
 }

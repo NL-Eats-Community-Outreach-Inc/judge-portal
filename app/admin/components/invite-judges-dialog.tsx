@@ -21,6 +21,14 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Mail, Copy, Check, Info, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
+
+interface InvitationsResponse {
+  invitations?: Array<{ email: string; inviteLink: string }>;
+  autoAdded?: Array<{ email: string }>;
+  existingInvites?: string[];
+  alreadyRegistered?: Array<{ email: string; role: string }>;
+}
 
 interface InviteJudgesDialogProps {
   onInvitesSent?: () => void;
@@ -53,25 +61,15 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         return;
       }
 
-      const response = await fetch('/api/admin/invitations', {
+      const data = await apiFetch<InvitationsResponse>('/api/admin/invitations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           emails: emailList,
           role,
           customMessage: customMessage || undefined,
-          expiresInDays: parseInt(expiresInDays),
-        }),
+          expiresInDays,
+        },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error('Failed to create invitations', {
-          description: data.error || 'Please try again',
-        });
-        return;
-      }
 
       // Capture auto-added judges
       const autoAdded: Array<{ email: string }> = data.autoAdded || [];
@@ -80,17 +78,18 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       }
 
       // Handle results: invitations created and/or judges auto-added
-      const hasInvitations = data.invitations && data.invitations.length > 0;
+      const createdInvitations = data.invitations ?? [];
+      const hasInvitations = createdInvitations.length > 0;
       const hasAutoAdded = autoAdded.length > 0;
 
       if (hasInvitations || hasAutoAdded) {
         if (hasInvitations) {
-          setInviteLinks(data.invitations);
+          setInviteLinks(createdInvitations);
         }
 
         const parts: string[] = [];
         if (hasInvitations) {
-          parts.push(`Created ${data.invitations.length} invitation(s)`);
+          parts.push(`Created ${createdInvitations.length} invitation(s)`);
         }
         if (hasAutoAdded) {
           parts.push(`${autoAdded.length} judge(s) added to your organization`);
@@ -135,9 +134,9 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
       }
 
       onInvitesSent?.();
-    } catch {
-      toast.error('Something went wrong', {
-        description: 'Please try again later',
+    } catch (error) {
+      toast.error('Failed to create invitations', {
+        description: messageOf(error, 'Please try again later'),
       });
     } finally {
       setIsLoading(false);
@@ -185,8 +184,8 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
         <DialogHeader>
           <DialogTitle>Invite Users</DialogTitle>
           <DialogDescription>
-            Send invitation links via email. Invitees will be able to register without creating a
-            password.
+            Create invitation links to share with judges, participants or admins. Each invitee opens
+            their link and chooses a password; no email is sent.
           </DialogDescription>
         </DialogHeader>
 
