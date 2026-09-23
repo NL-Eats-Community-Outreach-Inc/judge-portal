@@ -76,7 +76,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
       const slugConflict = await db
         .select({ id: organizations.id })
         .from(organizations)
-        .where(eq(organizations.slug, slugValue))
+        .where(and(eq(organizations.slug, slugValue), ne(organizations.id, orgId)))
         .limit(1);
 
       if (slugConflict.length > 0) {
