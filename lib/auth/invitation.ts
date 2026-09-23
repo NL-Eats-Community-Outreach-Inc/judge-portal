@@ -59,7 +59,7 @@ export async function createBatchInvitations(data: {
   createdBy: string;
   organizationId?: string;
 }): Promise<Invitation[]> {
-  const expiresAt = calculateExpirationDate(Numbers(data.expiresInDays ?? 7));
+  const expiresAt = calculateExpirationDate(Number(data.expiresInDays ?? 7));
 
   const invitationData = data.emails.map((email) => ({
     token: generateInvitationToken(),
