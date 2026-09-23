@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
-import { eq, and, count, ne, inArray } from 'drizzle-orm';
+import { eq, and, count, inArray } from 'drizzle-orm';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
@@ -76,10 +76,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
       const slugConflict = await db
         .select({ id: organizations.id })
         .from(organizations)
-        .where(and(eq(organizations.slug, slugValue), ne(organizations.id, orgId)))
+        .where(eq(organizations.slug, slugValue))
         .limit(1);
-
-      if (slugConflict.length > 0) {
+      console.log("orgId", orgId);
+      if (slugConflict.length > 0 && slugConflict[0].id !== orgId) {
         return sendApiError(409, 'CONFLICT', 'An organization with this slug already exists');
       }
       updateValues.slug = slugValue;
