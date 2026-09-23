@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
-import { eq, and, count, inArray } from 'drizzle-orm';
+import { eq, and, count, ne, inArray } from 'drizzle-orm';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
