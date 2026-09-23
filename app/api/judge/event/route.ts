@@ -3,10 +3,11 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { events, eventJudges, organizations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authServer.requireAuth();
+    const user = await authServer.requireJudge();
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
 
@@ -32,10 +33,7 @@ export async function GET(request: NextRequest) {
     if (eventId) {
       const selected = assignedEvents.find((e) => e.id === eventId);
       if (!selected) {
-        return NextResponse.json(
-          { error: 'You are not assigned to this event', errorType: 'NOT_ASSIGNED' },
-          { status: 403 }
-        );
+        return sendApiError(403, 'NOT_ASSIGNED', 'You are not assigned to this event');
       }
       return NextResponse.json({ event: selected });
     }
@@ -45,17 +43,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ event: assignedEvents[0] });
     }
 
-    // Multiple events, no selection — tell client to pick
-    return NextResponse.json(
-      {
-        error: 'Multiple events available',
-        errorType: 'SELECT_EVENT',
-        events: assignedEvents,
-      },
-      { status: 300 }
-    );
+    // Multiple events, no selection — the client picks from /api/judge/events
+    return sendApiError(400, 'SELECT_EVENT', 'Multiple events available');
   } catch (error) {
-    console.error('Error fetching active event:', error);
-    return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching active event');
   }
 }

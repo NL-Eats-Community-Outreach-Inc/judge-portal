@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
-import { eq, and, ne, count } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { eq, and, count, inArray } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -35,11 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error fetching organization:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching organization');
   }
 }
 
@@ -76,14 +72,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
       if (!slugValue) {
         return sendApiError(400, 'BAD_REQUEST', 'Organization slug cannot be empty');
       }
-      // Check slug uniqueness (excluding self)
+      // Check slug uniqueness
       const slugConflict = await db
         .select({ id: organizations.id })
         .from(organizations)
-        .where(and(eq(organizations.slug, slugValue), ne(organizations.id, orgId)))
+        .where(eq(organizations.slug, slugValue))
         .limit(1);
-
-      if (slugConflict.length > 0) {
+      console.log("orgId", orgId);
+      if (slugConflict.length > 0 && slugConflict[0].id !== orgId) {
         return sendApiError(409, 'CONFLICT', 'An organization with this slug already exists');
       }
       updateValues.slug = slugValue;
@@ -103,11 +99,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
 
     return NextResponse.json({ organization: updated });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error updating organization:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error updating organization');
   }
 }
 
@@ -127,15 +119,27 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
       return sendApiError(404, 'NOT_FOUND', 'Organization not found');
     }
 
+    // The cascade would take live teams and scores with it: refuse while any
+    // event is open or active (the same discipline as the event delete guard)
+    const [live] = await db
+      .select({ id: events.id, name: events.name })
+      .from(events)
+      .where(and(eq(events.organizationId, orgId), inArray(events.status, ['open', 'active'])))
+      .limit(1);
+
+    if (live) {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        `Cannot delete an organization with a live event ("${live.name}"); complete or reset it first`
+      );
+    }
+
     // Delete org (cascades to events via FK)
     await db.delete(organizations).where(eq(organizations.id, orgId));
 
     return NextResponse.json({ success: true, message: `Organization "${existing.name}" deleted` });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error deleting organization:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting organization');
   }
 }

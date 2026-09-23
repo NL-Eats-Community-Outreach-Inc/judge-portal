@@ -1,10 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession, type UserRole } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
+import type { UserRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, organizationMembers } from '@/lib/db/schema';
+import {
+  users,
+  organizationMembers,
+  events,
+  eventParticipants,
+  teams,
+  teamMembers,
+} from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+
+/**
+ * A participant belongs to an organization when they are registered for one
+ * of its events or are on a team in one (the same set the admin Users tab lists).
+ */
+async function participantBelongsToOrg(userId: string, orgId: string) {
+  const [registration] = await db
+    .select({ participantId: eventParticipants.participantId })
+    .from(eventParticipants)
+    .innerJoin(events, eq(events.id, eventParticipants.eventId))
+    .where(and(eq(eventParticipants.participantId, userId), eq(events.organizationId, orgId)))
+    .limit(1);
+  if (registration) return true;
+
+  const [membership] = await db
+    .select({ participantId: teamMembers.participantId })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .innerJoin(events, eq(events.id, teams.eventId))
+    .where(and(eq(teamMembers.participantId, userId), eq(events.organizationId, orgId)))
+    .limit(1);
+  return Boolean(membership);
+}
 
 export async function PUT(
   request: NextRequest,
@@ -12,22 +43,13 @@ export async function PUT(
 ) {
   try {
     const { userId } = await params;
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const adminOrgId = await getAdminOrgId(user.id);
     const { role } = await request.json();
 
     if (!role || !['admin', 'judge', 'participant'].includes(role)) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
-    }
-
-    // Block promotion to super_admin
-    if (role === 'super_admin') {
-      return sendApiError(403, 'FORBIDDEN', 'Cannot promote to super_admin');
     }
 
     // Prevent admin from demoting themselves
@@ -40,6 +62,37 @@ export async function PUT(
 
     if (!currentTargetUser) {
       return sendApiError(404, 'NOT_FOUND', 'User not found');
+    }
+
+    // The target must belong to this admin's organization (same guards as DELETE)
+    if (currentTargetUser.role === 'super_admin') {
+      return sendApiError(403, 'FORBIDDEN', 'Cannot change the role of a super admin');
+    }
+
+    if (currentTargetUser.role === 'admin' && currentTargetUser.organizationId !== adminOrgId) {
+      return sendApiError(403, 'FORBIDDEN', 'Cannot change admins from other organizations');
+    }
+
+    if (currentTargetUser.role === 'judge') {
+      const memberships = await db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, userId));
+
+      if (!memberships.some((m) => m.organizationId === adminOrgId)) {
+        return sendApiError(403, 'FORBIDDEN', 'This judge is not a member of your organization');
+      }
+    }
+
+    if (
+      currentTargetUser.role === 'participant' &&
+      !(await participantBelongsToOrg(userId, adminOrgId))
+    ) {
+      return sendApiError(
+        403,
+        'FORBIDDEN',
+        'This participant is not associated with your organization'
+      );
     }
 
     // Build update data with org assignment logic
@@ -88,7 +141,6 @@ export async function PUT(
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
-    console.error('Error updating user role:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error updating user role');
   }
 }

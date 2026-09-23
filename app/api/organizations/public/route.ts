@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { organizations } from '@/lib/db/schema';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * GET /api/organizations/public
@@ -21,7 +22,6 @@ export async function GET() {
 
     return NextResponse.json({ organizations: orgs });
   } catch (error) {
-    console.error('Error fetching organizations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching organizations');
   }
 }

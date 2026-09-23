@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 interface JoinTeamDialogProps {
   open: boolean;
@@ -45,22 +46,16 @@ export function JoinTeamDialog({ open, onOpenChange, onSuccess }: JoinTeamDialog
     setError(null);
 
     try {
-      const response = await fetch('/api/participant/teams/join', {
+      const data = await apiFetch<{ team: { name: string } }>('/api/participant/teams/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ joinCode: code }),
+        body: { joinCode: code },
       });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to join team');
-      }
 
       toast.success(`Joined team "${data.team.name}"!`);
       handleClose(false);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join team');
+      setError(messageOf(err, 'Failed to join team'));
     } finally {
       setIsSubmitting(false);
     }

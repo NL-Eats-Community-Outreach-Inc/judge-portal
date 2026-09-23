@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Users, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 interface Judge {
   id: string;
@@ -57,12 +58,9 @@ export default function JudgeAssignmentDialog({
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/event-judges?eventId=${eventId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch judge assignments');
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<{ available: Judge[]; assigned: AssignedJudge[] }>(
+        `/api/admin/event-judges?eventId=${eventId}`
+      );
       setJudges(data.available);
       setAssignedJudges(data.assigned);
 
@@ -75,10 +73,7 @@ export default function JudgeAssignmentDialog({
           .map((aj: AssignedJudge) => aj.judgeId)
       );
     } catch (error) {
-      console.error('Error fetching judge assignments:', error);
-      toast.error('Error', {
-        description: 'Failed to load judge assignments',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to load judge assignments') });
     } finally {
       setLoading(false);
     }
@@ -95,20 +90,10 @@ export default function JudgeAssignmentDialog({
 
     setSaving(true);
     try {
-      const response = await fetch('/api/admin/event-judges', {
+      await apiFetch('/api/admin/event-judges', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          eventId,
-          judgeIds: selectedJudgeIds,
-        }),
+        body: { eventId, judgeIds: selectedJudgeIds },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update judge assignments');
-      }
 
       toast.success('Success', {
         description: 'Judge assignments updated successfully',
@@ -117,10 +102,7 @@ export default function JudgeAssignmentDialog({
       onAssignmentsUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error updating judge assignments:', error);
-      toast.error('Error', {
-        description: 'Failed to update judge assignments',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to update judge assignments') });
     } finally {
       setSaving(false);
     }

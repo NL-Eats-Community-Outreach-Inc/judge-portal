@@ -2,27 +2,7 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useJudgeAssignment, AssignmentStatus } from '@/lib/hooks/use-judge-assignment';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'setup' | 'open' | 'active' | 'completed';
-  organizationName?: string | null;
-}
-
-interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  presentationOrder: number;
-}
-
-interface ScoreCompletion {
-  teamId: string;
-  completed: boolean;
-  partial: boolean;
-}
+import type { JudgeEvent as Event, JudgeTeam as Team, ScoreCompletion } from '@/lib/types';
 
 interface JudgeAssignmentContextType {
   status: AssignmentStatus;

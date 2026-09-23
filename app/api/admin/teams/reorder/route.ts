@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { teams } from '@/lib/db/schema';
+import { teams, events } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const { eventId, teamOrders } = await request.json();
@@ -38,13 +35,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const [event] = await db
+      .select({ status: events.status })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
+
+    if (!event) {
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
+    }
+
+    // The Teams tab disables dragging for completed events; this guard is what
+    // protects the final order from a stale tab
+    if (event.status === 'completed') {
+      return sendApiError(400, 'INVALID_STATUS', 'The event is completed');
+    }
+
     // Use a transaction to avoid unique constraint violations
     const updatedTeams = await db.transaction(async (tx) => {
-      // First, update all affected teams to temporary high values (add 1000 to avoid conflicts)
-      const tempUpdatePromises = teamOrders.map(({ id }) =>
+      // First, park every affected team on a distinct negative order: real
+      // orders are positive, so the temporaries cannot collide with them or each other
+      const tempUpdatePromises = teamOrders.map(({ id }, index) =>
         tx
           .update(teams)
-          .set({ presentationOrder: Math.floor(1000 + Math.random() * 1000) }) // Use random high integer values to avoid any conflicts
+          .set({ presentationOrder: -(index + 1) })
           .where(and(eq(teams.id, id), eq(teams.eventId, eventId)))
       );
 
@@ -73,15 +87,9 @@ export async function POST(request: NextRequest) {
       updatedTeams,
     });
   } catch (error) {
-    console.error('Error updating team orders:', error);
-
-    // Handle unique constraint violations
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      if (error.message.includes('teams_event_id_presentation_order')) {
-        return sendApiError(400, 'BAD_REQUEST', 'Duplicate presentation order detected');
-      }
+    if (isUniqueOn(error, 'event_id', 'presentation_order')) {
+      return sendApiError(409, 'CONFLICT', 'Duplicate presentation order detected');
     }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error updating team orders');
   }
 }

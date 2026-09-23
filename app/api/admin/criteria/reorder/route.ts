@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { criteria } from '@/lib/db/schema';
+import { criteria, events } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const { eventId, criteriaOrders } = await request.json();
@@ -38,13 +35,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const [event] = await db
+      .select({ status: events.status })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
+
+    if (!event) {
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
+    }
+
+    // The Criteria tab disables dragging once judging has started; this guard
+    // is what protects the judges' view from a stale tab
+    if (event.status === 'active' || event.status === 'completed') {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        'Criteria cannot be changed once judging has started'
+      );
+    }
+
     // Use a transaction to avoid unique constraint violations
     const updatedCriteria = await db.transaction(async (tx) => {
-      // First, update all affected criteria to temporary high values (add 1000 to avoid conflicts)
-      const tempUpdatePromises = criteriaOrders.map(({ id }) =>
+      // First, park every affected criterion on a distinct negative order: real
+      // orders are positive, so the temporaries cannot collide with them or each other
+      const tempUpdatePromises = criteriaOrders.map(({ id }, index) =>
         tx
           .update(criteria)
-          .set({ displayOrder: Math.floor(1000 + Math.random() * 1000) }) // Use random high integer values to avoid any conflicts
+          .set({ displayOrder: -(index + 1) })
           .where(and(eq(criteria.id, id), eq(criteria.eventId, eventId)))
       );
 
@@ -73,15 +91,9 @@ export async function POST(request: NextRequest) {
       updatedCriteria,
     });
   } catch (error) {
-    console.error('Error updating criteria orders:', error);
-
-    // Handle unique constraint violations
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      if (error.message.includes('criteria_event_id_display_order')) {
-        return sendApiError(400, 'BAD_REQUEST', 'Duplicate display order detected');
-      }
+    if (isUniqueOn(error, 'event_id', 'display_order')) {
+      return sendApiError(409, 'CONFLICT', 'Duplicate display order detected');
     }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error updating criteria orders');
   }
 }

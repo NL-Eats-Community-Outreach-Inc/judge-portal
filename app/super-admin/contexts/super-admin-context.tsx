@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 export interface OrgWithStats {
   id: string;
@@ -32,17 +33,13 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
 
   const fetchOrgs = useCallback(async () => {
     try {
-      const response = await fetch('/api/super-admin/organizations');
-      const data = await response.json();
+      const data = await apiFetch<{ organizations: OrgWithStats[] }>(
+        '/api/super-admin/organizations'
+      );
 
-      if (response.ok) {
-        setOrganizations(data.organizations);
-      } else {
-        throw new Error(data.error);
-      }
+      setOrganizations(data.organizations);
     } catch (error) {
-      console.error('Error fetching organizations:', error);
-      toast.error('Failed to load organizations');
+      toast.error(messageOf(error, 'Failed to load organizations'));
     } finally {
       setIsLoading(false);
     }

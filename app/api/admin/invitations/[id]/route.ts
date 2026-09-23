@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { invitations } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * PATCH /api/admin/invitations/[id]
@@ -29,8 +29,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
+    // Another organization's invitation is invisible here, like any cross-org row
     if (invitation.organizationId !== orgId) {
-      return sendApiError(403, 'FORBIDDEN', 'Invitation does not belong to your organization');
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     // Revoke invitation
@@ -40,14 +41,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       success: true,
       message: 'Invitation revoked successfully',
     });
-  } catch (error: unknown) {
-    console.error('Revoke invitation error:', error);
-
-    if (error instanceof Error && error.message?.includes('role required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
-    }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+  } catch (error) {
+    return handleRouteError(error, 'Revoke invitation error');
   }
 }
 
@@ -77,8 +72,9 @@ export async function DELETE(
       return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
+    // Another organization's invitation is invisible here, like any cross-org row
     if (invitation.organizationId !== orgId) {
-      return sendApiError(403, 'FORBIDDEN', 'Invitation does not belong to your organization');
+      return sendApiError(404, 'NOT_FOUND', 'Invitation not found');
     }
 
     // Delete invitation
@@ -88,13 +84,7 @@ export async function DELETE(
       success: true,
       message: 'Invitation deleted successfully',
     });
-  } catch (error: unknown) {
-    console.error('Delete invitation error:', error);
-
-    if (error instanceof Error && error.message?.includes('role required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
-    }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+  } catch (error) {
+    return handleRouteError(error, 'Delete invitation error');
   }
 }

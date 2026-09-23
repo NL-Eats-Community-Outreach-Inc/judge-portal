@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { criteria } from '@/lib/db/schema';
+import { criteria, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function PUT(
   request: NextRequest,
@@ -14,12 +15,7 @@ export async function PUT(
     // Await params for Next.js 15+ compatibility
     const { criterionId } = await params;
 
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
 
     const { name, description, minScore, maxScore, displayOrder, weight, category } =
@@ -29,30 +25,32 @@ export async function PUT(
       return sendApiError(400, 'BAD_REQUEST', 'Criteria name is required');
     }
 
-    if (typeof minScore !== 'number' || typeof maxScore !== 'number') {
-      return sendApiError(400, 'BAD_REQUEST', 'Min and max scores must be numbers');
+    // Scores are whole numbers (judges pick integers; the column is an integer)
+    if (!Number.isInteger(minScore) || !Number.isInteger(maxScore)) {
+      return sendApiError(400, 'BAD_REQUEST', 'Min and max scores must be whole numbers');
     }
 
     if (minScore >= maxScore) {
       return sendApiError(400, 'BAD_REQUEST', 'Min score must be less than max score');
     }
 
-    if (typeof displayOrder !== 'number') {
-      return sendApiError(400, 'BAD_REQUEST', 'Display order must be a number');
+    if (!Number.isInteger(displayOrder) || displayOrder < 1) {
+      return sendApiError(400, 'BAD_REQUEST', 'Display order must be a whole number of at least 1');
     }
 
-    if (typeof weight !== 'number' || weight < 0 || weight > 100) {
-      return sendApiError(400, 'BAD_REQUEST', 'Weight must be a number between 0 and 100');
+    if (!Number.isInteger(weight) || weight < 0 || weight > 100) {
+      return sendApiError(400, 'BAD_REQUEST', 'Weight must be a whole number between 0 and 100');
     }
 
     if (!category || !['technical', 'business'].includes(category)) {
       return sendApiError(400, 'BAD_REQUEST', 'Category must be either "technical" or "business"');
     }
 
-    // Get the current criterion to check its current weight and category
+    // Get the current criterion and the status of its event
     const [currentCriterion] = await db
-      .select()
+      .select({ id: criteria.id, eventId: criteria.eventId, eventStatus: events.status })
       .from(criteria)
+      .innerJoin(events, eq(events.id, criteria.eventId))
       .where(eq(criteria.id, criterionId))
       .limit(1);
 
@@ -62,6 +60,17 @@ export async function PUT(
 
     // Verify criterion's event belongs to org
     await requireEventInOrg(currentCriterion.eventId, orgId);
+
+    // Category and range decide which scores count and how. The Criteria tab
+    // disables editing once judging has started; this guard is what protects
+    // the judges' work from a stale tab
+    if (currentCriterion.eventStatus === 'active' || currentCriterion.eventStatus === 'completed') {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        'Criteria cannot be changed once judging has started'
+      );
+    }
 
     // Get all criteria in the same event to validate weight totals
     const allCriteria = await db
@@ -113,23 +122,21 @@ export async function PUT(
 
     return NextResponse.json({ criterion });
   } catch (error) {
-    console.error('Error updating criterion:', error);
-
-    // Handle unique constraint violations
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      if (error.message.includes('criteria_event_id_name_key')) {
-        return sendApiError(400, 'BAD_REQUEST', 'A criterion with this name already exists');
-      }
-      if (error.message.includes('criteria_event_id_display_order_key')) {
-        return sendApiError(
-          400,
-          'BAD_REQUEST',
-          'A criterion with this display order already exists'
-        );
-      }
+    if (isUniqueOn(error, 'event_id', 'name')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_CRITERION_NAME',
+        'A criterion with this name already exists'
+      );
     }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    if (isUniqueOn(error, 'event_id', 'display_order')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_DISPLAY_ORDER',
+        'A criterion with this display order already exists'
+      );
+    }
+    return handleRouteError(error, 'Error updating criterion');
   }
 }
 
@@ -141,18 +148,14 @@ export async function DELETE(
     // Await params for Next.js 15+ compatibility
     const { criterionId } = await params;
 
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
 
     // Verify criterion's event belongs to org
     const [existingCriterion] = await db
-      .select({ eventId: criteria.eventId })
+      .select({ eventId: criteria.eventId, eventStatus: events.status })
       .from(criteria)
+      .innerJoin(events, eq(events.id, criteria.eventId))
       .where(eq(criteria.id, criterionId))
       .limit(1);
 
@@ -161,6 +164,20 @@ export async function DELETE(
     }
 
     await requireEventInOrg(existingCriterion.eventId, orgId);
+
+    // Deleting a criterion cascades its scores. The Criteria tab disables the
+    // control once judging has started; this guard is what protects the
+    // judges' work from a stale tab
+    if (
+      existingCriterion.eventStatus === 'active' ||
+      existingCriterion.eventStatus === 'completed'
+    ) {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        'Criteria cannot be changed once judging has started'
+      );
+    }
 
     // Delete criterion (cascade will handle related scores)
     const [deletedCriterion] = await db
@@ -174,7 +191,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting criterion:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting criterion');
   }
 }

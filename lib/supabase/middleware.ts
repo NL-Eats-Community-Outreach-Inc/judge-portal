@@ -1,16 +1,11 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { hasEnvVars } from '../utils';
+import { sendApiError } from '@/lib/utils/api-errors';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
-
-  // If the env vars are not set, skip middleware check.
-  if (!hasEnvVars) {
-    return supabaseResponse;
-  }
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
@@ -45,7 +40,9 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
 
   const pathname = request.nextUrl.pathname;
-  console.log('Middleware: Processing path:', pathname, 'User authenticated:', !!user);
+  // API callers read JSON: a redirect to the login page would reach `apiFetch`
+  // as an HTML 200 and look like an empty result. Pages keep the redirects.
+  const isApiRequest = pathname.startsWith('/api/');
 
   // Handle unauthenticated users
   if (!user) {
@@ -55,13 +52,12 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith('/auth') ||
       pathname.startsWith('/invite') ||
       pathname.startsWith('/api/invite') ||
-      pathname.startsWith('/api/organizations/public') ||
-      pathname.startsWith('/api/webhooks')
+      pathname.startsWith('/api/organizations/public')
     ) {
       return supabaseResponse;
     }
-    if (pathname.startsWith('/api/admin/mentors')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (isApiRequest) {
+      return sendApiError(401, 'UNAUTHORIZED', 'Authentication required');
     }
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
@@ -76,8 +72,6 @@ export async function updateSession(request: NextRequest) {
 
   // Handle authenticated users - get their role
   try {
-    console.log('Middleware: Looking for user with ID:', user.sub);
-
     let userRole;
     let selectError = null;
 
@@ -100,7 +94,9 @@ export async function updateSession(request: NextRequest) {
 
     // If user doesn't exist in database, redirect to signup
     if (!userRole && !selectError) {
-      console.log('Middleware: User not found in database, redirecting to signup');
+      if (isApiRequest) {
+        return sendApiError(403, 'NO_PROFILE', 'Your account has no profile yet');
+      }
       const url = request.nextUrl.clone();
       url.pathname = '/auth/sign-up';
       return NextResponse.redirect(url);
@@ -109,6 +105,9 @@ export async function updateSession(request: NextRequest) {
     // Handle database errors
     if (selectError) {
       console.error('Middleware: Database error:', selectError);
+      if (isApiRequest) {
+        return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+      }
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
       return NextResponse.redirect(url);
@@ -116,7 +115,6 @@ export async function updateSession(request: NextRequest) {
 
     // Role-based routing - user should exist at this point
     const role = userRole;
-    console.log('Middleware: User role:', role, 'Path:', pathname);
 
     // Root path - redirect based on role
     if (pathname === '/') {
@@ -130,31 +128,23 @@ export async function updateSession(request: NextRequest) {
       } else {
         url.pathname = '/judge';
       }
-      console.log('Middleware: Redirecting from root to:', url.pathname);
       return NextResponse.redirect(url);
     }
 
     // Super admin routes - only super_admin can access
     if (pathname.startsWith('/super-admin')) {
       if (role !== 'super_admin') {
-        console.log(
-          'Middleware: Non-super_admin trying to access super-admin route, redirecting based on role'
-        );
         const url = request.nextUrl.clone();
         url.pathname =
           role === 'admin' ? '/admin' : role === 'participant' ? '/participant' : '/judge';
         return NextResponse.redirect(url);
       }
-      console.log('Middleware: Super admin access granted to super-admin route');
       return supabaseResponse;
     }
 
     // Admin routes - only admins can access (super_admin CANNOT access /admin)
     if (pathname.startsWith('/admin')) {
       if (role !== 'admin') {
-        console.log(
-          'Middleware: Non-admin trying to access admin route, redirecting based on role'
-        );
         const url = request.nextUrl.clone();
         url.pathname =
           role === 'super_admin'
@@ -164,16 +154,12 @@ export async function updateSession(request: NextRequest) {
               : '/judge';
         return NextResponse.redirect(url);
       }
-      console.log('Middleware: Admin access granted to admin route');
       return supabaseResponse;
     }
 
     // Judge routes - only judges can access
     if (pathname.startsWith('/judge')) {
       if (role !== 'judge') {
-        console.log(
-          'Middleware: Non-judge trying to access judge route, redirecting based on role'
-        );
         const url = request.nextUrl.clone();
         url.pathname =
           role === 'super_admin'
@@ -185,29 +171,26 @@ export async function updateSession(request: NextRequest) {
                 : '/';
         return NextResponse.redirect(url);
       }
-      console.log('Middleware: Judge access granted to judge route');
       return supabaseResponse;
     }
 
     // Participant routes - only participants can access
     if (pathname.startsWith('/participant')) {
       if (role !== 'participant') {
-        console.log(
-          'Middleware: Non-participant trying to access participant route, redirecting based on role'
-        );
         const url = request.nextUrl.clone();
         url.pathname =
           role === 'super_admin' ? '/super-admin' : role === 'admin' ? '/admin' : '/judge';
         return NextResponse.redirect(url);
       }
-      console.log('Middleware: Participant access granted to participant route');
       return supabaseResponse;
     }
 
     // All other authenticated routes
-    console.log('Middleware: Allowing access to other authenticated route');
   } catch (error) {
     console.error('Error in middleware:', error);
+    if (isApiRequest) {
+      return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    }
     // On error, redirect to login
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';

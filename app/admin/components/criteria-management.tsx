@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Plus, Target, Edit, Trash2, RefreshCw, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import {
   DndContext,
@@ -63,20 +64,9 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-interface Criterion {
-  id: string;
-  name: string;
-  description: string | null;
-  minScore: number;
-  maxScore: number;
-  displayOrder: number;
-  weight: number;
-  category: 'technical' | 'business';
-  createdAt: string;
-  updatedAt: string;
-  eventId: string;
-}
+import type { Criterion } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface CriterionFormData {
   name: string;
@@ -198,33 +188,25 @@ export default function CriteriaManagement() {
 
     // Send to backend
     try {
-      const response = await fetch('/api/admin/criteria/reorder', {
+      await apiFetch('/api/admin/criteria/reorder', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           eventId: selectedEvent?.id,
           criteriaOrders: updatedCriteria.map((criterion) => ({
             id: criterion.id,
             displayOrder: criterion.displayOrder,
           })),
-        }),
+        },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update criteria order');
-      }
 
       toast.success('Success', {
         description: 'Criteria order updated successfully',
       });
     } catch (error) {
-      console.error('Error updating criteria order:', error);
       // Revert on error
       setCriteria(criteria);
       toast.error('Error', {
-        description: 'Failed to update criteria order',
+        description: messageOf(error, 'Failed to update criteria order'),
       });
     }
   };
@@ -238,19 +220,12 @@ export default function CriteriaManagement() {
     }
 
     try {
-      const response = await fetch(`/api/admin/criteria?eventId=${selectedEvent.id}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setCriteria(data.criteria);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await apiFetch<{ criteria: Criterion[] }>(
+        `/api/admin/criteria?eventId=${selectedEvent.id}`
+      );
+      setCriteria(data.criteria);
     } catch (error) {
-      console.error('Error fetching criteria:', error);
-      toast.error('Error', {
-        description: 'Failed to load criteria',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to load criteria') });
     } finally {
       setIsLoading(false);
     }
@@ -397,20 +372,7 @@ export default function CriteriaManagement() {
         ? { ...formData, displayOrder: editingCriterion.displayOrder }
         : { ...formData, eventId: selectedEvent.id };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save criterion');
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<{ criterion: Criterion }>(url, { method, body: requestBody });
 
       if (editingCriterion) {
         setCriteria((prev) =>
@@ -432,10 +394,7 @@ export default function CriteriaManagement() {
 
       closeDialog();
     } catch (error) {
-      console.error('Error saving criterion:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to save criterion',
-      });
+      toast.error(messageOf(error, 'Failed to save criterion'));
     } finally {
       setIsSubmitting(false);
     }
@@ -447,14 +406,7 @@ export default function CriteriaManagement() {
     setDeletingCriteria((prev) => new Set(prev).add(criterionToDelete.id));
 
     try {
-      const response = await fetch(`/api/admin/criteria/${criterionToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete criterion');
-      }
+      await apiFetch(`/api/admin/criteria/${criterionToDelete.id}`, { method: 'DELETE' });
 
       setCriteria((prev) => {
         const filtered = prev.filter((criterion) => criterion.id !== criterionToDelete.id);
@@ -469,10 +421,7 @@ export default function CriteriaManagement() {
       });
       setCriterionToDelete(null);
     } catch (error) {
-      console.error('Error deleting criterion:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete criterion',
-      });
+      toast.error(messageOf(error, 'Failed to delete criterion'));
     } finally {
       setDeletingCriteria((prev) => {
         const next = new Set(prev);
@@ -513,8 +462,8 @@ export default function CriteriaManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -867,11 +816,11 @@ export default function CriteriaManagement() {
           </CardHeader>
           <CardContent>
             {criteria.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p>No scoring criteria yet</p>
-                <p className="text-sm">Create your first criterion to get started</p>
-              </div>
+              <EmptyState
+                icon={Target}
+                title="No scoring criteria yet"
+                description="Create your first criterion to get started"
+              />
             ) : (
               <div className="rounded-md border">
                 <DndContext
