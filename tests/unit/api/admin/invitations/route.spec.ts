@@ -81,10 +81,16 @@ describe('POST /api/admin/invitations', () => {
     dbMock.insert.mockReturnValue(insert.insertMock);
 
     const body = await expectJson<{ invitations: Array<{ inviteLink: string }> }>(
-      await post({ emails: ['new@example.com'], role: 'judge', expiresInDays: 3 }),
+      await post({ emails: ['new@example.com'], role: 'judge', expiresInDays: '3' }),
       201
     );
 
+    //test case for if it can handle string number additoons
+    const insertedInvintation = insert.chain.values.mock.calls[0][0][0];
+    const expiredDate = new Date(insertedInvintation.expiresAt).getTime();
+    const expExperation = Date.now() + 3 * 86_400_000;
+
+    expect(Math.abs(expiredDate - expExperation)).toBeLessThan(5_000);
     expect(body.invitations[0].inviteLink).toBe('http://localhost:3000/invite/tok-1');
     expect(insert.chain.values).toHaveBeenCalledWith([
       expect.objectContaining({
