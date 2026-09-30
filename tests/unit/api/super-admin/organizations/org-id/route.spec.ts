@@ -96,6 +96,28 @@ describe('PUT /api/super-admin/organizations/[orgId]', () => {
     await expectApiError(await put({ slug: 'taken' }), 409, 'CONFLICT');
   });
 
+  it('allows changing of an organizations name and description of its own slug', async () => {
+    mockSelectSequence(dbMock.select, [{ id: 'org-1' }], [{ id: 'org-1' }]);
+
+    const update = buildAssertableMutationMock([
+      { id: 'org-1', name: 'Very New', slug: 'nl-eats', description: 'new' },
+    ]);
+    dbMock.update.mockReturnValue(update.insertMock);
+
+    const body = await expectJson(
+      await put({ name: 'Very New', slug: 'nl-eats', description: 'new ' })
+    );
+
+    expect(body).toEqual({
+      organization: { id: 'org-1', name: 'Very New', slug: 'nl-eats', description: 'new' },
+    });
+    expect(update.chain.set).toHaveBeenCalledWith({
+      name: 'Very New',
+      slug: 'nl-eats',
+      description: 'new',
+    });
+  });
+
   it('updates the given fields', async () => {
     mockSelectSequence(dbMock.select, [{ id: 'org-1' }], []);
     const update = buildAssertableMutationMock([{ id: 'org-1', name: 'New', slug: 'new' }]);
