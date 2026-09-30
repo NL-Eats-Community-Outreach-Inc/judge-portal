@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teamMembers, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireTeamMembership } from '@/lib/auth/participant';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { teamId } = await params;
 
@@ -37,10 +34,6 @@ export async function GET(
 
     return NextResponse.json({ members });
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_MEMBER') {
-      return NextResponse.json({ error: 'You are not a member of this team' }, { status: 403 });
-    }
-    console.error('Error fetching team members:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching team members');
   }
 }

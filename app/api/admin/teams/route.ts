@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, events, teamMembers, users } from '@/lib/db/schema';
-import { eq, max, inArray } from 'drizzle-orm';
+import { eq, max, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { generateJoinCode } from '@/lib/utils/join-code';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -27,6 +23,8 @@ export async function GET(request: NextRequest) {
       repoUrl: teams.repoUrl,
       presentationOrder: teams.presentationOrder,
       awardType: teams.awardType,
+      // shown in the Teams tab so participants can join an admin-created team
+      joinCode: teams.joinCode,
       createdAt: teams.createdAt,
       updatedAt: teams.updatedAt,
       eventId: teams.eventId,
@@ -81,19 +79,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ teams: teamsWithMembers });
   } catch (error) {
-    console.error('Error fetching teams:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching teams');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { eventId, name, description, demoUrl, repoUrl, awardType } = await request.json();
 
@@ -107,60 +99,71 @@ export async function POST(request: NextRequest) {
 
     // Verify event exists and belongs to org
     await requireEventInOrg(eventId, orgId);
-    const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
+    const [event] = await db
+      .select({ status: events.status })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
 
-    if (event.length === 0) {
+    if (!event) {
       return sendApiError(400, 'BAD_REQUEST', 'Event not found');
     }
 
-    // Get the next presentation order by finding the max existing order
-    const maxOrderResult = await db
-      .select({ maxOrder: max(teams.presentationOrder) })
-      .from(teams)
-      .where(eq(teams.eventId, eventId))
-      .limit(1);
-
-    const nextOrder = (maxOrderResult[0]?.maxOrder || 0) + 1;
-
-    // Create new team with join code
-    const joinCode = await generateJoinCode();
-    const [team] = await db
-      .insert(teams)
-      .values({
-        eventId,
-        name: name.trim(),
-        description: description?.trim() || null,
-        demoUrl: demoUrl?.trim() || null,
-        repoUrl: repoUrl?.trim() || null,
-        awardType: awardType || 'both',
-        presentationOrder: nextOrder,
-        joinCode,
-      })
-      .returning();
-
-    return NextResponse.json({ team: { ...team, members: [] } });
-  } catch (error) {
-    console.error('Error creating team:', error);
-
-    // Handle unique constraint violations (Drizzle nests PostgreSQL errors in error.cause)
-    const errorMsg =
-      error instanceof Error
-        ? `${error.message} ${error.cause instanceof Error ? error.cause.message : ''}`
-        : '';
-
-    if (errorMsg.includes('duplicate key')) {
-      if (errorMsg.includes('teams_event_id_name_key')) {
-        sendApiError(400, 'BAD_REQUEST', 'A team with this name already exists in this event');
-      }
-      if (errorMsg.includes('teams_event_id_presentation_order_key')) {
-        return sendApiError(
-          400,
-          'BAD_REQUEST',
-          'A team with this presentation order already exists'
-        );
-      }
+    // The Teams tab disables adding for completed events; this guard is what
+    // protects the final results from a stale tab
+    if (event.status === 'completed') {
+      return sendApiError(400, 'INVALID_STATUS', 'The event is completed');
     }
 
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    const team = await db.transaction(async (tx) => {
+      // Lock per event so two admins adding teams at the same time are
+      // serialised and never compute the same presentation order.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${eventId}))`);
+
+      // Get the next presentation order by finding the max existing order
+      const maxOrderResult = await tx
+        .select({ maxOrder: max(teams.presentationOrder) })
+        .from(teams)
+        .where(eq(teams.eventId, eventId))
+        .limit(1);
+
+      const nextOrder = (maxOrderResult[0]?.maxOrder || 0) + 1;
+
+      // Create new team with join code
+      const joinCode = await generateJoinCode();
+      const [created] = await tx
+        .insert(teams)
+        .values({
+          eventId,
+          name: name.trim(),
+          description: description?.trim() || null,
+          demoUrl: demoUrl?.trim() || null,
+          repoUrl: repoUrl?.trim() || null,
+          awardType: awardType || 'both',
+          presentationOrder: nextOrder,
+          joinCode,
+        })
+        .returning();
+
+      return created;
+    });
+
+    return NextResponse.json({ team: { ...team, members: [] } }, { status: 201 });
+  } catch (error) {
+    if (isUniqueOn(error, 'event_id', 'name')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_TEAM_NAME',
+        'A team with this name already exists in this event'
+      );
+    }
+    if (isUniqueOn(error, 'event_id', 'presentation_order')) {
+      return sendApiError(
+        409,
+        'CONFLICT',
+        'A team with this presentation order already exists. Please try again'
+      );
+    }
+    return handleRouteError(error, 'Error creating team');
   }
 }

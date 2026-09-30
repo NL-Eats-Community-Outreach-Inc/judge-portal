@@ -57,7 +57,10 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { useSuperAdmin } from '../contexts/super-admin-context';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 interface OrgMembership {
   id: string;
@@ -89,17 +92,11 @@ export default function PlatformUsers() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/super-admin/users');
-      const data = await response.json();
+      const data = await apiFetch<{ users: PlatformUser[] }>('/api/super-admin/users');
 
-      if (response.ok) {
-        setUsers(data.users);
-      } else {
-        throw new Error(data.error);
-      }
+      setUsers(data.users);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to load users');
+      toast.error(messageOf(error, 'Failed to load users'));
     } finally {
       setIsLoading(false);
     }
@@ -121,17 +118,10 @@ export default function PlatformUsers() {
     setUpdatingRoles((prev) => new Set(prev).add(userId));
 
     try {
-      const response = await fetch(`/api/super-admin/users/${userId}/role`, {
+      await apiFetch(`/api/super-admin/users/${userId}/role`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, organizationId }),
+        body: { role, organizationId },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update role');
-      }
 
       // Refresh to get updated data including org memberships
       await fetchUsers();
@@ -140,9 +130,7 @@ export default function PlatformUsers() {
         description: `User role changed to ${role}`,
       });
     } catch (error) {
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to update role',
-      });
+      toast.error(messageOf(error, 'Failed to update role'));
     } finally {
       setUpdatingRoles((prev) => {
         const next = new Set(prev);
@@ -169,22 +157,14 @@ export default function PlatformUsers() {
     setDeletingUsers((prev) => new Set(prev).add(userId));
 
     try {
-      const response = await fetch(`/api/super-admin/users/${userId}`, {
+      const data = await apiFetch<{ message?: string }>(`/api/super-admin/users/${userId}`, {
         method: 'DELETE',
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete user');
-      }
 
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       toast.success('User deleted', { description: data.message });
     } catch (error) {
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete user',
-      });
+      toast.error(messageOf(error, 'Failed to delete user'));
     } finally {
       setDeletingUsers((prev) => {
         const next = new Set(prev);
@@ -291,11 +271,7 @@ export default function PlatformUsers() {
 
   const renderUserTable = (roleUsers: PlatformUser[], roleType: string) => {
     if (roleUsers.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No users in this role</p>
-        </div>
-      );
+      return <EmptyState title="No users in this role" className="py-8" />;
     }
 
     const showOrgColumn = roleType === 'admin' || roleType === 'judge';
@@ -373,7 +349,12 @@ export default function PlatformUsers() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={deletingUsers.has(user.id)}
+                            aria-label={`Delete ${user.email}`}
+                          >
                             {deletingUsers.has(user.id) ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
@@ -413,8 +394,8 @@ export default function PlatformUsers() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -520,11 +501,11 @@ export default function PlatformUsers() {
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p>No users found</p>
-              <p className="text-sm">Users will appear here after they sign up</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No users found"
+              description="Users will appear here after they sign up"
+            />
           ) : (
             <div className="space-y-4">
               {/* Super Admins Section */}

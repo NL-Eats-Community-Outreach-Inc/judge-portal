@@ -22,19 +22,15 @@ import {
   Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apiFetch, messageOf } from '@/lib/api/client';
+import { toast } from 'sonner';
 import type { Team, Criterion } from '@/lib/db/schema';
 import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompletionConfetti } from '@/components/completion-confetti';
 import { useJudgeAssignmentContext } from '@/app/judge/components/judge-assignment-provider';
-
-interface Score {
-  id?: string;
-  criterionId: string;
-  score: number | null;
-  comment: string;
-}
+import type { ScoreEntry as Score } from '@/lib/types';
 
 interface TeamScoringInterfaceProps {
   team: Team;
@@ -69,19 +65,26 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     return () => window.removeEventListener('resize', checkTouchDevice);
   }, []);
 
-  // Use callback to ensure stable reference for real-time sync
-  const fetchExistingScores = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/judge/scores?teamId=${team.id}&eventId=${eventId}`);
-      if (response.ok) {
-        const data = await response.json();
+  // Loads the judge's saved scores for this team. The form is blanked while
+  // the load runs and a response that arrives after the component was left is
+  // dropped; otherwise a stale load could overwrite what was just typed.
+  const fetchExistingScores = useCallback(
+    async (isCurrent: () => boolean) => {
+      setLoading(true);
+      try {
+        const data = await apiFetch<{
+          scores: Array<{
+            id?: string;
+            criterionId: string;
+            score: number;
+            comment: string | null;
+          }>;
+        }>(`/api/judge/scores?teamId=${team.id}&eventId=${eventId}`);
+        if (!isCurrent()) return;
 
         // Initialize scores array with existing scores or empty values
         const initialScores = criteria.map((criterion) => {
-          const existingScore = data.scores.find(
-            (s: { id?: string; criterionId: string; score: number; comment: string }) =>
-              s.criterionId === criterion.id
-          );
+          const existingScore = data.scores.find((s) => s.criterionId === criterion.id);
           return {
             id: existingScore?.id,
             criterionId: criterion.id,
@@ -96,7 +99,6 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
         const newLastSavedState = initialScores.reduce(
           (acc, score) => {
             if (score.id) {
-              // Only track scores that exist in database
               acc[score.criterionId] = { score: score.score, comment: score.comment };
             }
             return acc;
@@ -104,17 +106,23 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
           {} as Record<string, { score: number | null; comment: string }>
         );
         setLastSavedState(newLastSavedState);
+      } catch (error) {
+        if (!isCurrent()) return;
+        toast.error(messageOf(error, 'Failed to load your scores'));
+      } finally {
+        if (isCurrent()) setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching scores:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [team.id, criteria, eventId]);
+    },
+    [team.id, criteria, eventId]
+  );
 
   // Initialize scores from database
   useEffect(() => {
-    fetchExistingScores();
+    let current = true;
+    fetchExistingScores(() => current);
+    return () => {
+      current = false;
+    };
   }, [fetchExistingScores]);
 
   const saveScore = useCallback(
@@ -140,44 +148,33 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
       setSaveStatus((prev) => ({ ...prev, [criterionId]: 'saving' }));
 
       try {
-        const response = await fetch('/api/judge/scores', {
+        const data = await apiFetch<{ score: { id: string } }>('/api/judge/scores', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            teamId: team.id,
-            criterionId,
-            score,
-            comment,
-            eventId,
-          }),
+          body: { teamId: team.id, criterionId, score, comment, eventId },
+          // a save in flight when the judge leaves the page must outlive the navigation
+          keepalive: true,
         });
 
-        if (response.ok) {
-          const data = await response.json();
+        // Update the score ID if it was a new score
+        setScores((prev) =>
+          prev.map((s) => (s.criterionId === criterionId ? { ...s, id: data.score.id } : s))
+        );
 
-          // Update the score ID if it was a new score
-          setScores((prev) =>
-            prev.map((s) => (s.criterionId === criterionId ? { ...s, id: data.score.id } : s))
-          );
+        // Update lastSavedState to prevent duplicate saves
+        setLastSavedState((prev) => ({ ...prev, [criterionId]: { score, comment } }));
 
-          // Update lastSavedState to prevent duplicate saves
-          setLastSavedState((prev) => ({ ...prev, [criterionId]: { score, comment } }));
+        setSaveStatus((prev) => ({ ...prev, [criterionId]: 'saved' }));
 
-          setSaveStatus((prev) => ({ ...prev, [criterionId]: 'saved' }));
+        // Notify sidebar to refresh completion status
+        window.dispatchEvent(new CustomEvent('scoreUpdated'));
 
-          // Notify sidebar to refresh completion status
-          window.dispatchEvent(new CustomEvent('scoreUpdated'));
-
-          // Clear saved status after 2 seconds
-          setTimeout(() => {
-            setSaveStatus((prev) => ({ ...prev, [criterionId]: 'idle' }));
-          }, 2000);
-        } else {
-          setSaveStatus((prev) => ({ ...prev, [criterionId]: 'error' }));
-        }
+        // Clear saved status after 2 seconds
+        setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [criterionId]: 'idle' }));
+        }, 2000);
       } catch (error) {
-        console.error('Error saving score:', error);
         setSaveStatus((prev) => ({ ...prev, [criterionId]: 'error' }));
+        toast.error(messageOf(error, 'Failed to save score'));
       }
     },
     [team.id, lastSavedState, eventId]
@@ -188,6 +185,21 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
   const pendingData = useRef<
     Map<string, { score: number | null; comment: string; timestamp: number }>
   >(new Map());
+  // the latest saveScore, for the flush that runs from the unmount cleanup
+  const saveScoreRef = useRef(saveScore);
+  saveScoreRef.current = saveScore;
+
+  // Sends every pending save now instead of waiting out the debounce: used when
+  // the judge switches team or leaves the page, so the last click is not lost
+  const flushPendingSaves = useCallback(() => {
+    pendingSaves.current.forEach((timeout) => clearTimeout(timeout));
+    pendingSaves.current.clear();
+    const pending = [...pendingData.current.entries()];
+    pendingData.current.clear();
+    for (const [criterionId, { score, comment }] of pending) {
+      void saveScoreRef.current(criterionId, score, comment);
+    }
+  }, []);
 
   const scheduleSave = useCallback(
     (criterionId: string, score: number | null, comment: string) => {
@@ -237,19 +249,15 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     }));
   };
 
-  // Clean up timeouts on component unmount
+  // Flush pending saves when the component unmounts (team switch, dashboard
+  // link) and when the document is left through a full navigation or a closed tab
   useEffect(() => {
-    const savesRef = pendingSaves.current;
-    const dataRef = pendingData.current;
+    window.addEventListener('pagehide', flushPendingSaves);
     return () => {
-      // Clear pending timeouts to prevent memory leaks
-      savesRef.forEach((timeout) => {
-        clearTimeout(timeout);
-      });
-      savesRef.clear();
-      dataRef.clear();
+      window.removeEventListener('pagehide', flushPendingSaves);
+      flushPendingSaves();
     };
-  }, []);
+  }, [flushPendingSaves]);
 
   const handleCommentChange = (criterionId: string, newComment: string) => {
     // Capture current score before state update
@@ -540,6 +548,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
             }}
             disabled={score?.score === criterion.minScore}
             className="h-9 w-9 md:h-10 md:w-10 transition-all duration-200 hover:scale-110 hover:bg-muted"
+            aria-label="Decrease score"
           >
             <Minus className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
@@ -570,6 +579,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
             }}
             disabled={score?.score === criterion.maxScore}
             className="h-9 w-9 md:h-10 md:w-10 transition-all duration-200 hover:scale-110 hover:bg-muted"
+            aria-label="Increase score"
           >
             <Plus className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
@@ -689,10 +699,13 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
 
                   {/* Score input */}
                   <div className="space-y-2">
-                    <Label htmlFor={`score-${criterion.id}`}>
+                    {/* the score control is a group of buttons (or a slider), named by this label */}
+                    <Label id={`score-label-${criterion.id}`}>
                       Score ({criterion.minScore}-{criterion.maxScore})
                     </Label>
-                    {renderScoreInput(criterion, score)}
+                    <div role="group" aria-labelledby={`score-label-${criterion.id}`}>
+                      {renderScoreInput(criterion, score)}
+                    </div>
                   </div>
 
                   {/* Comment input */}

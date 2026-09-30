@@ -21,6 +21,13 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Mail, Copy, Check, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
+
+interface InvitationsResponse {
+  invitations?: Array<{ email: string; inviteLink: string }>;
+  existingInvites?: string[];
+  alreadyRegistered?: Array<{ email: string; role: string }>;
+}
 
 interface AdminInviteDialogProps {
   orgId: string;
@@ -52,33 +59,26 @@ export function AdminInviteDialog({ orgId, orgName, onInviteSent }: AdminInviteD
         return;
       }
 
-      const response = await fetch(`/api/super-admin/organizations/${orgId}/admins`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          emails: emailList,
-          customMessage: customMessage || undefined,
-          expiresInDays: parseInt(expiresInDays),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error('Failed to create invitations', {
-          description: data.error || 'Please try again',
-        });
-        return;
-      }
+      const data = await apiFetch<InvitationsResponse>(
+        `/api/super-admin/organizations/${orgId}/admins`,
+        {
+          method: 'POST',
+          body: {
+            emails: emailList,
+            customMessage: customMessage || undefined,
+            expiresInDays: parseInt(expiresInDays),
+          },
+        }
+      );
 
       if (data.invitations && data.invitations.length > 0) {
         setInviteLinks(data.invitations);
 
         const warnings: string[] = [];
-        if (data.existingInvites?.length > 0) {
+        if (data.existingInvites && data.existingInvites.length > 0) {
           warnings.push(`${data.existingInvites.length} email(s) already had pending invitations`);
         }
-        if (data.alreadyRegistered?.length > 0) {
+        if (data.alreadyRegistered && data.alreadyRegistered.length > 0) {
           warnings.push(`${data.alreadyRegistered.length} user(s) already registered`);
         }
 
@@ -99,9 +99,9 @@ export function AdminInviteDialog({ orgId, orgName, onInviteSent }: AdminInviteD
       }
 
       onInviteSent?.();
-    } catch {
-      toast.error('Something went wrong', {
-        description: 'Please try again later',
+    } catch (error) {
+      toast.error('Failed to create invitations', {
+        description: messageOf(error, 'Please try again later'),
       });
     } finally {
       setIsLoading(false);
@@ -146,8 +146,8 @@ export function AdminInviteDialog({ orgId, orgName, onInviteSent }: AdminInviteD
         <DialogHeader>
           <DialogTitle>Invite Admin to {orgName}</DialogTitle>
           <DialogDescription>
-            Send invitation links to admins. They&apos;ll be assigned to this organization upon
-            registration.
+            Create invitation links to share with admins. They&apos;ll be assigned to this
+            organization when they open the link and choose a password; no email is sent.
           </DialogDescription>
         </DialogHeader>
 

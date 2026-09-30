@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, teamMembers, events, eventParticipants } from '@/lib/db/schema';
 import { eq, and, sql, count } from 'drizzle-orm';
 import { isValidJoinCode } from '@/lib/utils/join-code';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { joinCode } = await request.json();
 
     if (!joinCode || typeof joinCode !== 'string') {
-      return NextResponse.json({ error: 'Join code is required' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Join code is required');
     }
 
     const normalizedCode = joinCode.toUpperCase().trim();
 
     if (!isValidJoinCode(normalizedCode)) {
-      return NextResponse.json({ error: 'Invalid join code format' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid join code format');
     }
 
     // Find team by join code
@@ -38,7 +35,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!team) {
-      return NextResponse.json({ error: 'Invalid join code' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Invalid join code');
     }
 
     // Verify event is open
@@ -49,9 +46,10 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!event || event.status !== 'open') {
-      return NextResponse.json(
-        { error: 'Teams can only be joined when the event is in open status' },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'EVENT_NOT_OPEN',
+        'Teams can only be joined when the event is in open status'
       );
     }
 
@@ -68,10 +66,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!registration) {
-      return NextResponse.json(
-        { error: 'You must register for this event first' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'NOT_REGISTERED', 'You must register for this event first');
     }
 
     // Use transaction with advisory lock
@@ -120,22 +115,16 @@ export async function POST(request: NextRequest) {
       return { membership };
     });
 
-    return NextResponse.json({ team, membership: result.membership });
+    return NextResponse.json({ team, membership: result.membership }, { status: 201 });
   } catch (error) {
-    console.error('Error joining team:', error);
-
     if (error instanceof Error) {
       if (error.message === 'ALREADY_ON_TEAM') {
-        return NextResponse.json(
-          { error: 'You are already on a team for this event' },
-          { status: 400 }
-        );
+        return sendApiError(400, 'ALREADY_ON_TEAM', 'You are already on a team for this event');
       }
       if (error.message === 'TEAM_FULL') {
-        return NextResponse.json({ error: 'This team is full' }, { status: 400 });
+        return sendApiError(400, 'TEAM_FULL', 'This team is full');
       }
     }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error joining team');
   }
 }

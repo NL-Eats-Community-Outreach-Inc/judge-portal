@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizationMembers, organizations } from '@/lib/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * GET /api/judge/organizations
@@ -10,10 +11,7 @@ import { eq, and, inArray } from 'drizzle-orm';
  */
 export async function GET() {
   try {
-    const user = await getUserFromSession();
-    if (!user || user.role !== 'judge') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireJudge();
 
     const memberships = await db
       .select({
@@ -29,8 +27,7 @@ export async function GET() {
 
     return NextResponse.json({ memberships });
   } catch (error) {
-    console.error('Error fetching judge organizations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching judge organizations');
   }
 }
 
@@ -40,19 +37,13 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-    if (!user || user.role !== 'judge') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireJudge();
 
     const body = await request.json();
     const { organizationIds } = body;
 
     if (!organizationIds || !Array.isArray(organizationIds) || organizationIds.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one organization ID is required' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'At least one organization ID is required');
     }
 
     // Validate that all orgs exist
@@ -64,7 +55,7 @@ export async function POST(request: NextRequest) {
     const existingOrgIds = new Set(existingOrgs.map((o) => o.id));
     const invalidIds = organizationIds.filter((id: string) => !existingOrgIds.has(id));
     if (invalidIds.length > 0) {
-      return NextResponse.json({ error: 'Some organizations do not exist' }, { status: 400 });
+      return sendApiError(400, 'BAD_REQUEST', 'Some organizations do not exist');
     }
 
     // Check current memberships
@@ -98,7 +89,6 @@ export async function POST(request: NextRequest) {
       alreadyMember: alreadyMemberIds.size,
     });
   } catch (error) {
-    console.error('Error joining organizations:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error joining organizations');
   }
 }

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 interface PasswordChangeFormProps {
   onSuccess?: () => void;
@@ -36,21 +37,7 @@ export function PasswordChangeForm({ onSuccess }: PasswordChangeFormProps = {}) 
       }
 
       // Call API to update password
-      const response = await fetch('/api/settings/password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          newPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update password');
-      }
+      await apiFetch('/api/settings/password', { method: 'POST', body: { newPassword } });
 
       toast.success('Password updated successfully');
 
@@ -63,7 +50,7 @@ export function PasswordChangeForm({ onSuccess }: PasswordChangeFormProps = {}) 
         onSuccess();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'An error occurred');
+      toast.error(messageOf(error, 'An error occurred'));
     } finally {
       setIsLoading(false);
     }

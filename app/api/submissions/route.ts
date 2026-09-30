@@ -1,35 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
+import { requireTeamMembership } from '@/lib/auth/participant';
 import { db } from '@/lib/db';
-import { events, submissionAiScores, submissions, teamMembers, teams } from '@/lib/db/schema';
+import { events, submissionAiScores, submissions, teams } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { SUBMISSIONS_ENABLED } from '@/lib/config';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function POST(req: Request) {
   try {
-    const user = await getUserFromSession();
-    if (!user) {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
+    if (!SUBMISSIONS_ENABLED) {
+      return sendApiError(404, 'FEATURE_DISABLED', 'Submissions are not enabled');
     }
+
+    const user = await authServer.requireParticipant();
 
     const { teamId, submissionText } = await req.json();
     const normalizedSubmissionText =
       typeof submissionText === 'string' ? submissionText.trim() : '';
 
+    if (!teamId) {
+      return sendApiError(400, 'BAD_REQUEST', 'Team ID is required');
+    }
+
     if (!normalizedSubmissionText) {
       return sendApiError(400, 'MISSING_SUBMISSION_TEXT', 'Missing submission text');
     }
 
-    // Verify user is on the team
-    const membership = await db
-      .select()
-      .from(teamMembers)
-      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.participantId, user.id)))
-      .limit(1);
-
-    if (membership.length === 0) {
-      return sendApiError(403, 'NOT_TEAM_MEMBER', 'Not part of this team');
-    }
+    await requireTeamMembership(teamId, user.id);
 
     const teamRecord = await db
       .select({
@@ -83,8 +82,14 @@ export async function POST(req: Request) {
         .returning({ id: submissions.id });
     });
 
+    // The scoring service is optional and runs outside Vercel; without a URL
+    // configured there is nothing to call, so the submit returns immediately.
+    const scoringUrl = process.env.AI_SCORING_URL;
+    if (!scoringUrl) {
+      return NextResponse.json({ success: true });
+    }
+
     try {
-      const scoringUrl = process.env.AI_SCORING_URL ?? 'http://127.0.0.1:8000/score';
       const configuredTimeoutMs = Number(process.env.AI_SCORING_TIMEOUT_MS);
       const scoringTimeoutMs =
         Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
@@ -124,23 +129,14 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error(error);
-
-    // Handle duplicate submission (DB constraint safety net)
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code?: string }).code === '23505'
-    ) {
+  } catch (error) {
+    if (isUniqueOn(error, 'event', 'team')) {
       return sendApiError(
         400,
         'SUBMISSION_ALREADY_EXISTS',
         'Submission already exists for this team'
       );
     }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error saving submission');
   }
 }

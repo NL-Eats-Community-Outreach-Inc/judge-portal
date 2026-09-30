@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { scores, teams, criteria, users, events, eventJudges } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { teams, users, events, eventJudges } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { csvRow, csvAttachment } from '@/lib/utils/csv';
+import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
+import { criterionApplies, formatAwardType } from '@/lib/results';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -24,187 +22,79 @@ export async function GET(request: NextRequest) {
 
     await requireEventInOrg(eventId, orgId);
 
-    // Get all scores with judge, team, and criterion details
-    // Filter scores by team award type vs criteria category (same filtering as main results API)
-    // Only include scores from assigned judges
-    const allScores = await db
-      .select({
-        score: scores.score,
-        teamId: teams.id,
-        teamName: teams.name,
-        teamPresentationOrder: teams.presentationOrder,
-        teamAwardType: teams.awardType,
-        judgeId: users.id,
-        judgeEmail: users.email,
-        criterionId: criteria.id,
-        criterionName: criteria.name,
-        criterionDisplayOrder: criteria.displayOrder,
-        criterionCategory: criteria.category,
-        criterionMaxScore: criteria.maxScore,
-      })
-      .from(scores)
-      .innerJoin(teams, eq(scores.teamId, teams.id))
-      .innerJoin(criteria, eq(scores.criterionId, criteria.id))
-      .innerJoin(users, eq(scores.judgeId, users.id))
-      .innerJoin(
-        eventJudges,
-        sql`${eventJudges.judgeId} = ${users.id} AND ${eventJudges.eventId} = ${teams.eventId}`
-      ).where(sql`${teams.eventId} = ${eventId} AND (
-        (${teams.awardType} = 'technical' AND ${criteria.category} = 'technical') OR
-        (${teams.awardType} = 'business' AND ${criteria.category} = 'business') OR
-        (${teams.awardType} = 'both')
-      )`);
+    // Counted rows only (assigned judges, applicable criteria), same as the dashboard
+    const [allScores, allCriteria, allTeams, allJudges, eventResult] = await Promise.all([
+      loadCountedScores(eventId),
+      loadEventCriteria(eventId),
+      db
+        .select({
+          id: teams.id,
+          name: teams.name,
+          presentationOrder: teams.presentationOrder,
+          awardType: teams.awardType,
+        })
+        .from(teams)
+        .where(eq(teams.eventId, eventId))
+        .orderBy(teams.presentationOrder),
+      db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .innerJoin(eventJudges, eq(eventJudges.judgeId, users.id))
+        .where(eq(eventJudges.eventId, eventId))
+        .orderBy(users.email),
+      db.select({ name: events.name }).from(events).where(eq(events.id, eventId)).limit(1),
+    ]);
 
-    // Get all teams, judges, and criteria for the event to build the matrix structure
-    const allTeams = await db
-      .select({
-        id: teams.id,
-        name: teams.name,
-        presentationOrder: teams.presentationOrder,
-        awardType: teams.awardType,
-      })
-      .from(teams)
-      .where(eq(teams.eventId, eventId))
-      .orderBy(teams.presentationOrder);
+    // score by team → judge → criterion
+    const scoreMatrix = new Map<string, number>();
+    for (const row of allScores) {
+      scoreMatrix.set(`${row.team.id}:${row.judge.id}:${row.criterion.id}`, row.score);
+    }
 
-    const allJudges = await db
-      .select({
-        id: users.id,
-        email: users.email,
-      })
-      .from(users)
-      .innerJoin(eventJudges, sql`${eventJudges.judgeId} = ${users.id}`)
-      .where(eq(eventJudges.eventId, eventId))
-      .orderBy(users.email);
-
-    const allCriteria = await db
-      .select({
-        id: criteria.id,
-        name: criteria.name,
-        displayOrder: criteria.displayOrder,
-        maxScore: criteria.maxScore,
-        category: criteria.category,
-      })
-      .from(criteria)
-      .where(eq(criteria.eventId, eventId))
-      .orderBy(criteria.displayOrder);
-
-    // Build score matrix
-    const scoreMatrix: Record<string, Record<string, Record<string, number | null>>> = {};
-
-    // Initialize matrix
-    allTeams.forEach((team) => {
-      scoreMatrix[team.id] = {};
-      allJudges.forEach((judge) => {
-        scoreMatrix[team.id][judge.id] = {};
-        allCriteria.forEach((criterion) => {
-          scoreMatrix[team.id][judge.id][criterion.id] = null;
-        });
-      });
-    });
-
-    // Populate matrix with actual scores
-    allScores.forEach((score) => {
-      if (
-        scoreMatrix[score.teamId] &&
-        scoreMatrix[score.teamId][score.judgeId] &&
-        scoreMatrix[score.teamId][score.judgeId][score.criterionId] !== undefined
-      ) {
-        scoreMatrix[score.teamId][score.judgeId][score.criterionId] = score.score;
+    // Row 1: team columns, then the judge's email local part repeated per criterion.
+    // Row 2: the criterion name and maximum under each judge.
+    const headerRow1: Array<string | number> = ['Team Name', 'Presentation Order', 'Award Type'];
+    const headerRow2: Array<string | number> = ['', '', ''];
+    for (const judge of allJudges) {
+      for (const criterion of allCriteria) {
+        headerRow1.push(judge.email.split('@')[0]);
+        headerRow2.push(`${criterion.name} (/${criterion.maxScore})`);
       }
-    });
+    }
 
-    // Helper function to escape CSV fields
-    const escapeCSV = (value: string | number | null): string => {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
+    const lines = [csvRow(headerRow1), csvRow(headerRow2)];
 
-    // Helper function to get criteria for a specific team based on award type
-    const getCriteriaForTeam = (teamAwardType: 'technical' | 'business' | 'both') => {
-      return allCriteria.filter((criterion) => {
-        if (teamAwardType === 'both') return true;
-        return criterion.category === teamAwardType;
-      });
-    };
-
-    // Create CSV content in matrix format
-    let csvContent = '';
-
-    // Helper function to format award type for better readability
-    const formatAwardType = (type: 'technical' | 'business' | 'both') => {
-      if (type === 'both') return 'General';
-      return type.charAt(0).toUpperCase() + type.slice(1);
-    };
-
-    // First header row: Team info columns, then judge names repeated for each criterion
-    const headerRow1 = ['Team Name', 'Presentation Order', 'Award Type'];
-    allJudges.forEach((judge) => {
-      allCriteria.forEach(() => {
-        headerRow1.push(escapeCSV(judge.email.split('@')[0]));
-      });
-    });
-    csvContent += headerRow1.join(',') + '\n';
-
-    // Second header row: Empty team columns, then criterion names under each judge
-    const headerRow2 = ['', '', ''];
-    allJudges.forEach(() => {
-      allCriteria.forEach((criterion) => {
-        headerRow2.push(escapeCSV(`${criterion.name} (/${criterion.maxScore})`));
-      });
-    });
-    csvContent += headerRow2.join(',') + '\n';
-
-    // Data rows: One row per team with scores
-    allTeams.forEach((team) => {
-      const teamCriteria = getCriteriaForTeam(team.awardType);
-      const teamCriteriaIds = new Set(teamCriteria.map((c) => c.id));
-
-      const row = [escapeCSV(team.name), team.presentationOrder, formatAwardType(team.awardType)];
-
-      allJudges.forEach((judge) => {
-        allCriteria.forEach((criterion) => {
-          const isRelevantCriteria = teamCriteriaIds.has(criterion.id);
-          const score = scoreMatrix[team.id][judge.id][criterion.id];
-
-          if (!isRelevantCriteria) {
+    // One row per team: integer score, blank when not scored, N/A when the
+    // criterion does not apply to the team's award type
+    for (const team of allTeams) {
+      const row: Array<string | number> = [
+        team.name,
+        team.presentationOrder,
+        formatAwardType(team.awardType),
+      ];
+      for (const judge of allJudges) {
+        for (const criterion of allCriteria) {
+          if (!criterionApplies(team.awardType, criterion.category)) {
             row.push('N/A');
-          } else if (score !== null) {
-            row.push(String(score));
-          } else {
-            row.push('');
+            continue;
           }
-        });
-      });
+          const score = scoreMatrix.get(`${team.id}:${judge.id}:${criterion.id}`);
+          row.push(score === undefined ? '' : score);
+        }
+      }
+      lines.push(csvRow(row));
+    }
 
-      csvContent += row.join(',') + '\n';
-    });
-
-    // Get event name for filename
-    const eventResult = await db
-      .select({ name: events.name })
-      .from(events)
-      .where(eq(events.id, eventId))
-      .limit(1);
+    const csvContent = lines.join('\n') + '\n';
 
     const eventName = eventResult[0]?.name || 'event';
-    const safeEventName = eventName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
 
-    // Set response headers for CSV download
     const headers = new Headers();
     headers.set('Content-Type', 'text/csv');
-    headers.set(
-      'Content-Disposition',
-      `attachment; filename="judge-scores-matrix-${safeEventName}-${new Date().toISOString().split('T')[0]}.csv"`
-    );
+    headers.set('Content-Disposition', csvAttachment('judge-scores-matrix', eventName));
 
     return new NextResponse(csvContent, { headers });
   } catch (error) {
-    console.error('Error exporting judge scores:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error exporting judge scores');
   }
 }

@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authServer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function POST(request: NextRequest) {
   try {
+    await authServer.requireAuth();
+    // The password update must go through the session-bound client
     const supabase = await createClient();
 
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get new password from request body
     const body = await request.json();
     const { newPassword } = body;
 
     // Validate input
     if (!newPassword || newPassword.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters long' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Password must be at least 6 characters long');
     }
 
     // Update password - user is already authenticated via session
@@ -33,14 +23,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+      return sendApiError(400, 'PASSWORD_UPDATE_FAILED', updateError.message);
     }
 
-    return NextResponse.json({
-      message: 'Password updated successfully',
-    });
+    return NextResponse.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Password update error:', error);
-    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
+    return handleRouteError(error, 'Password update error');
   }
 }

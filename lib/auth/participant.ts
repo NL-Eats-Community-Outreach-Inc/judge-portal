@@ -65,29 +65,6 @@ export async function requireTeamEventOpen(teamId: string) {
 }
 
 /**
- * Get team + event info (any status). Throws 'TEAM_NOT_FOUND'.
- */
-export async function getTeamWithEvent(teamId: string) {
-  const [result] = await db
-    .select({
-      teamId: teams.id,
-      eventId: events.id,
-      eventStatus: events.status,
-      eventName: events.name,
-      maxTeamSize: events.maxTeamSize,
-    })
-    .from(teams)
-    .innerJoin(events, eq(teams.eventId, events.id))
-    .where(eq(teams.id, teamId))
-    .limit(1);
-
-  if (!result) {
-    throw new Error('TEAM_NOT_FOUND');
-  }
-  return result;
-}
-
-/**
  * Verify participant is registered for an event. Throws 'NOT_REGISTERED'.
  */
 export async function requireEventRegistration(eventId: string, participantId: string) {

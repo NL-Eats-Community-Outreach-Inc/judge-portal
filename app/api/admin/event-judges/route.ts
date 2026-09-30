@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { eventJudges, users, organizationMembers } from '@/lib/db/schema';
-import { getUserFromSession } from '@/lib/auth/server';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { eq, and, inArray } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
@@ -51,18 +47,13 @@ export async function GET(request: NextRequest) {
       available: allJudges,
     });
   } catch (error) {
-    console.error('Failed to fetch event judges:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to fetch event judges');
+    return handleRouteError(error, 'Failed to fetch event judges');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const body = await request.json();
@@ -119,18 +110,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to update event judges:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to update event judges');
+    return handleRouteError(error, 'Failed to update event judges');
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
@@ -150,7 +136,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to remove event judge:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Failed to remove event judge');
+    return handleRouteError(error, 'Failed to remove event judge');
   }
 }

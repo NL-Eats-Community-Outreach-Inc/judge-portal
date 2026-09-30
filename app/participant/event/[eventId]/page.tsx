@@ -11,7 +11,6 @@ import {
   Trophy,
   Users,
   Target,
-  Sparkles,
   Lock,
   Loader2,
   Rocket,
@@ -19,19 +18,13 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
-  MapPin,
 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 import { useParticipant } from '../../contexts/participant-context';
 import { CreateTeamDialog } from '../../components/create-team-dialog';
 import { JoinTeamDialog } from '../../components/join-team-dialog';
 import { TeamDetailPanel } from '../../components/team-detail-panel';
-
-const tagColors = [
-  'bg-teal-500/10 text-teal-700 dark:text-teal-400',
-  'bg-violet-500/10 text-violet-700 dark:text-violet-400',
-  'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-  'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
-];
 
 export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params);
@@ -46,20 +39,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
   const event = events.find((e) => e.id === eventId);
   const team = getTeamForEvent(eventId);
-  const tags = event?.tags ?? [];
-  const allTags =
-    event?.country?.toLowerCase() !== 'canada' && event?.challengeType === 'global'
-      ? [...tags, 'Global']
-      : tags;
 
   // Loading state
   if (isLoading) {
     return (
       <div className="min-h-full flex items-center justify-center py-20">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-          <span className="text-muted-foreground">Loading event...</span>
-        </div>
+        <LoadingState label="Loading event…" showLabel size="md" />
       </div>
     );
   }
@@ -76,15 +61,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Link>
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-              <XCircle className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Event Not Found</h2>
-            <p className="text-muted-foreground">
-              This event may no longer be available or the link may be incorrect.
-            </p>
-          </div>
+          <EmptyState
+            icon={XCircle}
+            title={<h2 className="text-xl font-semibold">Event Not Found</h2>}
+            description="This event may no longer be available or the link may be incorrect."
+          />
         </div>
       </div>
     );
@@ -153,29 +134,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">
                 {event.name}
               </h1>
-              {event.title && (
-                <p className="text-sm text-muted-foreground mb-1">
-                  Competition: <span className="font-medium text-foreground">{event.title}</span>
-                </p>
-              )}
               {event.organizationName && (
                 <p className="text-sm text-muted-foreground">
                   by <span className="font-medium text-foreground">{event.organizationName}</span>
                 </p>
               )}
             </div>
-          </div>
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
-            {allTags.map((tag, index) => (
-              <span
-                key={tag}
-                className={`text-xs sm:text-sm px-2.5 py-1 rounded-full font-medium ${tagColors[index % tagColors.length]}`}
-              >
-                {tag}
-              </span>
-            ))}
           </div>
         </div>
       </div>
@@ -200,20 +164,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     </p>
                     <p className="text-sm text-muted-foreground leading-relaxed font-normal">
                       {event.description ||
-                        'An exciting innovation challenge awaits. Register to learn more about the event details, criteria, and start building with your team!'}
+                        'Register to learn more about the event details, criteria, and start building with your team!'}
                     </p>
                   </div>
-
-                  {event.shortDescription && (
-                    <div>
-                      <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
-                        Competition Description
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed font-normal">
-                        {event.shortDescription}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </Card>
 
@@ -227,29 +180,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <Users className="h-4 w-4" />
                     <span>Max team size: {event.maxTeamSize || 'Unlimited'}</span>
                   </div>
-                  {event.country && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span>Country: {event.country} </span>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>Started {new Date(event.createdAt).toLocaleDateString()}</span>
                   </div>
-                  {/* Only renders if a deadline/country exists */}
-                  {event.deadline && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>Deadline: {new Date(event.deadline).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {event.prize && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
-                      <span>Prize: {event.prize || 'TBA'} </span>
-                    </div>
-                  )}
                 </div>
               </Card>
             </div>
@@ -283,14 +217,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                       'Register Now'
                     )}
                   </Button>
-                </div>
-              </Card>
-
-              <Card className="p-4 sm:p-5 md:p-6 bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/15">
-                <div className="text-center">
-                  <Sparkles className="h-7 w-7 mx-auto mb-2 text-amber-500" />
-                  <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>
-                  <p className="text-xl font-bold text-foreground"> {event.prize || 'TBA'} </p>
                 </div>
               </Card>
             </div>
@@ -334,33 +260,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                       </p>
                       <p className="text-sm text-muted-foreground leading-relaxed font-normal">
                         {event.description ||
-                          'An exciting innovation challenge awaits. Register to learn more about the event details, criteria, and start building with your team!'}
+                          'Register to learn more about the event details, criteria, and start building with your team!'}
                       </p>
                     </div>
-
-                    {event.shortDescription && (
-                      <div>
-                        <p className="text-xs font-medium text-foreground uppercase tracking-wider mb-1">
-                          Competition Description
-                        </p>
-                        <p className="text-sm text-muted-foreground leading-relaxed font-normal">
-                          {event.shortDescription}
-                        </p>
-                      </div>
-                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mt-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
                       <span>Max team size: {event.maxTeamSize || 'Unlimited'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
-                      <span>Prize: {event.prize || 'TBA'} </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      <span>Country: {event.country} </span>
                     </div>
                   </div>
                 </Card>
@@ -427,10 +334,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                   <div className="flex items-center gap-1.5">
                     <Users className="h-4 w-4" />
                     <span>Max team size: {event.maxTeamSize || 'Unlimited'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    <span>Prize: {event.prize || 'TBA'} </span>
                   </div>
                 </div>
               </Card>

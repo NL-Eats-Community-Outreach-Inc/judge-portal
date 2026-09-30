@@ -3,9 +3,9 @@ import { authServer } from '@/lib/auth';
 import { createBatchInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users, invitations, organizationMembers } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 /**
  * POST /api/admin/invitations
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Check for existing pending invitations
     const existingInvites: string[] = [];
     for (const email of emails) {
-      const existing = await getExistingInvitation(email);
+      const existing = await getExistingInvitation(email, orgId);
       if (existing) {
         existingInvites.push(email);
       }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       const existingUser = await db
         .select({ id: users.id, email: users.email, role: users.role })
         .from(users)
-        .where(eq(users.email, email))
+        .where(sql`lower(${users.email}) = lower(${email})`)
         .limit(1);
 
       if (existingUser[0]) {
@@ -151,21 +151,18 @@ export async function POST(request: NextRequest) {
       inviteLink: `${origin}/invite/${invite.token}`,
     }));
 
-    return NextResponse.json({
-      success: true,
-      invitations: invitesWithLinks,
-      autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
-      existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
-      alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
-    });
-  } catch (error: unknown) {
-    console.error('Create invitations error:', error);
-
-    if (error instanceof Error && error.message?.includes('role required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
-    }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return NextResponse.json(
+      {
+        success: true,
+        invitations: invitesWithLinks,
+        autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
+        existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+        alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    return handleRouteError(error, 'Create invitations error');
   }
 }
 
@@ -204,13 +201,7 @@ export async function GET(request: NextRequest) {
       success: true,
       invitations: invitesWithLinks,
     });
-  } catch (error: unknown) {
-    console.error('List invitations error:', error);
-
-    if (error instanceof Error && error.message?.includes('role required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Admin access required');
-    }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+  } catch (error) {
+    return handleRouteError(error, 'List invitations error');
   }
 }

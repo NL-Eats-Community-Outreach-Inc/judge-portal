@@ -3,7 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, invitations } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -40,11 +40,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
 
     return NextResponse.json({ invitations: invitesWithLinks });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error fetching org invitations:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching org invitations');
   }
 }
 
@@ -76,11 +72,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
 
     return NextResponse.json({ success: true, message: 'Invitation revoked' });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error revoking invitation:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error revoking invitation');
   }
 }
 
@@ -109,10 +101,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
 
     return NextResponse.json({ success: true, message: 'Invitation deleted' });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-    console.error('Error deleting invitation:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting invitation');
   }
 }

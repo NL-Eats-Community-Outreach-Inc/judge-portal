@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ParticipantSidebar } from './participant-sidebar';
-import { ParticipantHeader } from './participant-header';
+import { AppHeader } from '@/components/app-header';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ParticipantProvider } from '../contexts/participant-context';
 import type { UserWithRole } from '@/lib/auth';
@@ -36,8 +36,12 @@ export function ParticipantLayoutClient({ user, children }: ParticipantLayoutCli
           {/* Main content area */}
           <div className="md:ml-64 lg:ml-80">
             <div className="sticky top-0 z-30 bg-background">
-              <ParticipantHeader
-                user={user}
+              <AppHeader
+                role="participant"
+                title="Participant Portal"
+                subtitle="Welcome to the event participant portal"
+                email={user.email ?? null}
+                settingsHref="/participant/settings"
                 onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
               />
             </div>

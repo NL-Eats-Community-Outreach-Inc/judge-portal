@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { events, eventParticipants, teamMembers, teams } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { eventId } = await params;
 
@@ -25,14 +22,11 @@ export async function POST(
       .limit(1);
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
     if (event.status !== 'open' && event.status !== 'active') {
-      return NextResponse.json(
-        { error: 'Event is not available for registration' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Event is not available for registration');
     }
 
     // Idempotent insert
@@ -63,10 +57,9 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ registration });
+    return NextResponse.json({ registration }, { status: 201 });
   } catch (error) {
-    console.error('Error registering for event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error registering for event');
   }
 }
 
@@ -75,11 +68,7 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     const { eventId } = await params;
 
@@ -91,14 +80,11 @@ export async function DELETE(
       .limit(1);
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
     if (event.status !== 'open') {
-      return NextResponse.json(
-        { error: 'Can only unregister from events in open status' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Can only unregister from events in open status');
     }
 
     // Check if participant is on a team for this event
@@ -110,10 +96,7 @@ export async function DELETE(
       .limit(1);
 
     if (teamMembership.length > 0) {
-      return NextResponse.json(
-        { error: 'Must leave your team before unregistering' },
-        { status: 400 }
-      );
+      return sendApiError(400, 'BAD_REQUEST', 'Must leave your team before unregistering');
     }
 
     // Delete registration
@@ -125,12 +108,11 @@ export async function DELETE(
       .returning();
 
     if (deleted.length === 0) {
-      return NextResponse.json({ error: 'Not registered for this event' }, { status: 404 });
+      return sendApiError(404, 'NOT_FOUND', 'Not registered for this event');
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error unregistering from event:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error unregistering from event');
   }
 }

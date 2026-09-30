@@ -11,7 +11,7 @@ import {
   scores,
 } from '@/lib/db/schema';
 import { eq, and, sql, asc } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 const VALID_ROLES = ['admin', 'judge', 'participant'] as const;
 
@@ -171,10 +171,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ user
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error updating user role:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error updating user role');
   }
 }

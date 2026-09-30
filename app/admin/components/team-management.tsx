@@ -54,8 +54,11 @@ import {
   RefreshCw,
   GripVertical,
   Users,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import {
   DndContext,
@@ -74,6 +77,9 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import type { TeamWithMembers as Team } from '@/lib/types';
+import { LoadingState } from '@/components/ui/loading-state';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Sortable Row Component
 function SortableRow({
@@ -124,28 +130,6 @@ function SortableRow({
   );
 }
 
-interface TeamMember {
-  teamId: string;
-  participantId: string;
-  email: string;
-  isCreator: boolean;
-  joinedAt: string;
-}
-
-interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  demoUrl: string | null;
-  repoUrl: string | null;
-  presentationOrder: number;
-  awardType: 'technical' | 'business' | 'both';
-  createdAt: string;
-  updatedAt: string;
-  eventId: string;
-  members: TeamMember[];
-}
-
 interface TeamFormData {
   name: string;
   description: string;
@@ -174,6 +158,7 @@ export default function TeamManagement() {
     'all'
   );
   const [membersDialogTeam, setMembersDialogTeam] = useState<Team | null>(null);
+  const [copiedTeamId, setCopiedTeamId] = useState<string | null>(null);
   const { selectedEvent } = useAdminEvent();
 
   // Drag and drop sensors
@@ -183,6 +168,18 @@ export default function TeamManagement() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const handleCopyJoinCode = async (team: Team) => {
+    if (!team.joinCode) return;
+    try {
+      await navigator.clipboard.writeText(team.joinCode);
+      setCopiedTeamId(team.id);
+      toast.success('Join code copied', { description: `${team.joinCode} for ${team.name}` });
+      setTimeout(() => setCopiedTeamId((current) => (current === team.id ? null : current)), 2000);
+    } catch {
+      toast.error('Failed to copy join code');
+    }
+  };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -210,33 +207,25 @@ export default function TeamManagement() {
 
     // Send to backend
     try {
-      const response = await fetch('/api/admin/teams/reorder', {
+      await apiFetch('/api/admin/teams/reorder', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           eventId: selectedEvent?.id,
           teamOrders: updatedTeams.map((team) => ({
             id: team.id,
             presentationOrder: team.presentationOrder,
           })),
-        }),
+        },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update team order');
-      }
 
       toast.success('Success', {
         description: 'Team order updated successfully',
       });
     } catch (error) {
-      console.error('Error updating team order:', error);
       // Revert on error
       setTeams(teams);
       toast.error('Error', {
-        description: 'Failed to update team order',
+        description: messageOf(error, 'Failed to update team order'),
       });
     }
   };
@@ -250,19 +239,12 @@ export default function TeamManagement() {
     }
 
     try {
-      const response = await fetch(`/api/admin/teams?eventId=${selectedEvent.id}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setTeams(data.teams);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await apiFetch<{ teams: Team[] }>(
+        `/api/admin/teams?eventId=${selectedEvent.id}`
+      );
+      setTeams(data.teams);
     } catch (error) {
-      console.error('Error fetching teams:', error);
-      toast.error('Error', {
-        description: 'Failed to load teams',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to load teams') });
     } finally {
       setIsLoading(false);
     }
@@ -333,23 +315,13 @@ export default function TeamManagement() {
         ? { ...formData, presentationOrder: editingTeam.presentationOrder }
         : { ...formData, eventId: selectedEvent.id };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save team');
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<{ team: Team }>(url, { method, body: requestBody });
 
       if (editingTeam) {
-        setTeams((prev) => prev.map((team) => (team.id === editingTeam.id ? data.team : team)));
+        // PUT returns the bare row; keep the members the list loaded
+        setTeams((prev) =>
+          prev.map((team) => (team.id === editingTeam.id ? { ...team, ...data.team } : team))
+        );
         toast.success('Success', {
           description: 'Team updated successfully',
         });
@@ -364,10 +336,7 @@ export default function TeamManagement() {
 
       closeDialog();
     } catch (error) {
-      console.error('Error saving team:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to save team',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to save team') });
     } finally {
       setIsSubmitting(false);
     }
@@ -379,14 +348,7 @@ export default function TeamManagement() {
     setDeletingTeams((prev) => new Set(prev).add(teamToDelete.id));
 
     try {
-      const response = await fetch(`/api/admin/teams/${teamToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete team');
-      }
+      await apiFetch(`/api/admin/teams/${teamToDelete.id}`, { method: 'DELETE' });
 
       setTeams((prev) => {
         const filtered = prev.filter((team) => team.id !== teamToDelete.id);
@@ -402,10 +364,7 @@ export default function TeamManagement() {
 
       setTeamToDelete(null);
     } catch (error) {
-      console.error('Error deleting team:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete team',
-      });
+      toast.error(messageOf(error, 'Failed to delete team'));
     } finally {
       setDeletingTeams((prev) => {
         const next = new Set(prev);
@@ -456,8 +415,8 @@ export default function TeamManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -634,15 +593,15 @@ export default function TeamManagement() {
           </CardHeader>
           <CardContent>
             {filteredTeams.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Trophy className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p>{teams.length === 0 ? 'No teams yet' : `No ${awardTypeFilter} teams`}</p>
-                <p className="text-sm">
-                  {teams.length === 0
+              <EmptyState
+                icon={Trophy}
+                title={teams.length === 0 ? 'No teams yet' : `No ${awardTypeFilter} teams`}
+                description={
+                  teams.length === 0
                     ? 'Create your first team to get started'
-                    : 'Try a different filter or create more teams'}
-                </p>
-              </div>
+                    : 'Try a different filter or create more teams'
+                }
+              />
             ) : (
               <div className="rounded-md border">
                 <DndContext
@@ -656,6 +615,7 @@ export default function TeamManagement() {
                         <TableHead className="w-24">Order</TableHead>
                         <TableHead className="w-40">Team Name</TableHead>
                         <TableHead className="w-44">Members</TableHead>
+                        <TableHead className="w-36">Join code</TableHead>
                         <TableHead className="w-48">Description</TableHead>
                         <TableHead className="w-28">Award Type</TableHead>
                         <TableHead className="w-28">Links</TableHead>
@@ -689,6 +649,44 @@ export default function TeamManagement() {
                                   {(team.members?.length ?? 0) !== 1 ? 's' : ''}
                                 </span>
                               </button>
+                            </TableCell>
+                            <TableCell className="w-36">
+                              {/* teams created before join codes existed have none */}
+                              {!team.joinCode ? (
+                                <span className="text-muted-foreground">—</span>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <code
+                                    className="rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 font-mono text-xs font-semibold tracking-[0.15em] text-foreground"
+                                    title="Participants join with this code while the event is open"
+                                  >
+                                    {team.joinCode}
+                                  </code>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleCopyJoinCode(team)}
+                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                        aria-label={`Copy join code for ${team.name}`}
+                                      >
+                                        {copiedTeamId === team.id ? (
+                                          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        ) : (
+                                          <Copy className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>
+                                        Copy join code. Participants join with it while the event is
+                                        open.
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-muted-foreground w-48">
                               <div className="truncate" title={team.description || ''}>

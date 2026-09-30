@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { OrgWithStats } from '../contexts/super-admin-context';
 import { AdminInviteDialog } from './admin-invite-dialog';
@@ -106,17 +107,12 @@ export default function OrgDetailPanel({
 
   const fetchAdmins = useCallback(async () => {
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}/admins`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setAdmins(data.admins);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await apiFetch<{ admins: OrgAdmin[] }>(
+        `/api/super-admin/organizations/${org.id}/admins`
+      );
+      setAdmins(data.admins);
     } catch (error) {
-      console.error('Error fetching admins:', error);
-      toast.error('Failed to load admins');
+      toast.error(messageOf(error, 'Failed to load admins'));
     } finally {
       setIsLoadingAdmins(false);
     }
@@ -124,16 +120,12 @@ export default function OrgDetailPanel({
 
   const fetchInvitations = useCallback(async () => {
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}/invitations`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setOrgInvitations(data.invitations);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await apiFetch<{ invitations: OrgInvitation[] }>(
+        `/api/super-admin/organizations/${org.id}/invitations`
+      );
+      setOrgInvitations(data.invitations);
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      toast.error(messageOf(error, 'Failed to load invitations'));
     } finally {
       setIsLoadingInvitations(false);
     }
@@ -157,39 +149,27 @@ export default function OrgDetailPanel({
 
   const handleRevokeInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}/invitations`, {
+      await apiFetch(`/api/super-admin/organizations/${org.id}/invitations`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitationId }),
+        body: { invitationId },
       });
-
-      if (response.ok) {
-        toast.success('Invitation revoked');
-        fetchInvitations();
-      } else {
-        toast.error('Failed to revoke invitation');
-      }
-    } catch {
-      toast.error('Failed to revoke invitation');
+      toast.success('Invitation revoked');
+      fetchInvitations();
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to revoke invitation'));
     }
   };
 
   const handleDeleteInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}/invitations`, {
+      await apiFetch(`/api/super-admin/organizations/${org.id}/invitations`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitationId }),
+        body: { invitationId },
       });
-
-      if (response.ok) {
-        toast.success('Invitation deleted');
-        fetchInvitations();
-      } else {
-        toast.error('Failed to delete invitation');
-      }
-    } catch {
-      toast.error('Failed to delete invitation');
+      toast.success('Invitation deleted');
+      fetchInvitations();
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to delete invitation'));
     }
   };
 
@@ -213,29 +193,20 @@ export default function OrgDetailPanel({
     setIsUpdating(true);
 
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}`, {
+      await apiFetch(`/api/super-admin/organizations/${org.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           name: editForm.name,
           slug: editForm.slug,
           description: editForm.description || null,
-        }),
+        },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update organization');
-      }
 
       toast.success('Organization updated');
       setEditOpen(false);
       await onRefresh();
     } catch (error) {
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to update organization',
-      });
+      toast.error(messageOf(error, 'Failed to update organization'));
     } finally {
       setIsUpdating(false);
     }
@@ -245,25 +216,16 @@ export default function OrgDetailPanel({
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`/api/super-admin/organizations/${org.id}`, {
-        method: 'DELETE',
-      });
+      const data = await apiFetch<{ message?: string }>(
+        `/api/super-admin/organizations/${org.id}`,
+        { method: 'DELETE' }
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete organization');
-      }
-
-      toast.success('Organization deleted', {
-        description: data.message,
-      });
+      toast.success('Organization deleted', { description: data.message });
       onClose();
       await onRefresh();
     } catch (error) {
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete organization',
-      });
+      toast.error(messageOf(error, 'Failed to delete organization'));
     } finally {
       setIsDeleting(false);
     }
@@ -322,7 +284,7 @@ export default function OrgDetailPanel({
       </AlertDialog>
 
       {variant === 'card' && (
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
         </Button>
       )}
@@ -332,6 +294,7 @@ export default function OrgDetailPanel({
           size="icon"
           onClick={onClose}
           className="text-muted-foreground hover:text-foreground"
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -458,7 +421,12 @@ export default function OrgDetailPanel({
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Actions for the invitation to ${invite.email}`}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

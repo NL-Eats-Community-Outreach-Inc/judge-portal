@@ -3,10 +3,11 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { events, eventJudges, organizations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
-    const user = await authServer.requireAuth();
+    const user = await authServer.requireJudge();
 
     // Get all active events the judge is assigned to, with org name
     const assignedEvents = await db
@@ -24,7 +25,6 @@ export async function GET() {
 
     return NextResponse.json({ events: assignedEvents });
   } catch (error) {
-    console.error('Error fetching judge events:', error);
-    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching judge events');
   }
 }

@@ -1,21 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'setup' | 'open' | 'active' | 'completed';
-  organizationId: string | null;
-  maxTeamSize: number | null;
-  prize: string | null;
-  tags: string[] | null;
-  submissionDeadline: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
+import type { Event } from '@/lib/types';
 
 interface AdminEventContextType {
   events: Event[];
@@ -28,47 +16,64 @@ interface AdminEventContextType {
 
 const AdminEventContext = createContext<AdminEventContextType | undefined>(undefined);
 
+// The selection survives reloads so an admin never lands on a different event
+// than the one they were working on.
+const STORAGE_KEY = 'judgeportal.admin.selectedEventId';
+
+function readStoredEventId(): string | null {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredEventId(eventId: string | null) {
+  try {
+    if (eventId) {
+      window.localStorage.setItem(STORAGE_KEY, eventId);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // Storage may be unavailable (private mode); the in-memory selection still works
+  }
+}
+
 export function AdminEventProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [organizationName, setOrganizationName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const selectedEventRef = useRef<Event | null>(null);
+  selectedEventRef.current = selectedEvent;
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('/api/admin/event');
-      const data = await response.json();
+      const data = await apiFetch<{ events: Event[]; organizationName: string | null }>(
+        '/api/admin/event'
+      );
 
-      if (response.ok) {
-        setEvents(data.events || []);
-        setOrganizationName(data.organizationName ?? null);
+      const loadedEvents: Event[] = data.events || [];
+      setEvents(loadedEvents);
+      setOrganizationName(data.organizationName ?? null);
 
-        // Smart event selection logic (supports multiple active events)
-        if (data.events?.length > 0) {
-          const currentEventStillExists = selectedEvent
-            ? data.events.find((e: Event) => e.id === selectedEvent.id)
-            : null;
-
-          if (currentEventStillExists) {
-            // Keep current selection if it still exists
-            setSelectedEvent(currentEventStillExists);
-          } else {
-            // Auto-select first active event, or fallback to first event
-            const activeEvent = data.events.find((e: Event) => e.status === 'active');
-            setSelectedEvent(activeEvent || data.events[0]);
-          }
-        }
-      } else {
-        throw new Error(data.error);
+      if (loadedEvents.length === 0) {
+        setSelectedEvent(null);
+        return;
       }
+
+      // Keep the current selection, else the stored one, else the first active
+      // event, else the first event
+      const preferredId = selectedEventRef.current?.id ?? readStoredEventId();
+      const preferred = preferredId ? loadedEvents.find((e) => e.id === preferredId) : undefined;
+      const activeEvent = loadedEvents.find((e) => e.status === 'active');
+      const next = preferred ?? activeEvent ?? loadedEvents[0];
+      setSelectedEvent(next);
+      writeStoredEventId(next.id);
     } catch (error) {
       console.error('Error fetching events:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load events',
-        variant: 'destructive',
-      });
+      toast.error(messageOf(error, 'Failed to load events'));
     } finally {
       setIsLoading(false);
     }
@@ -80,11 +85,13 @@ export function AdminEventProvider({ children }: { children: ReactNode }) {
 
   const selectEvent = (event: Event | null) => {
     setSelectedEvent(event);
+    writeStoredEventId(event?.id ?? null);
   };
 
+  // Load once on mount; refreshEvents is the explicit re-fetch
   useEffect(() => {
     fetchEvents();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const value: AdminEventContextType = {
     events,

@@ -1,27 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'setup' | 'open' | 'active' | 'completed';
-  organizationName?: string | null;
-}
-
-interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  presentationOrder: number;
-}
-
-interface ScoreCompletion {
-  teamId: string;
-  completed: boolean;
-  partial: boolean;
-}
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { apiFetch, ApiError, messageOf } from '@/lib/api/client';
+import type { JudgeEvent as Event, JudgeTeam as Team, ScoreCompletion } from '@/lib/types';
 
 export type AssignmentStatus = 'loading' | 'assigned' | 'not-assigned' | 'no-event' | 'dashboard';
 
@@ -36,6 +19,7 @@ interface JudgeAssignmentState {
 }
 
 export function useJudgeAssignment(eventId?: string | null) {
+  const router = useRouter();
   const [state, setState] = useState<JudgeAssignmentState>({
     status: 'loading',
     event: null,
@@ -46,72 +30,83 @@ export function useJudgeAssignment(eventId?: string | null) {
     availableEvents: [],
   });
 
+  // An expired session must not look like an empty event: say so and go to login
+  const reportFetchError = useCallback(
+    (context: string, error: unknown) => {
+      if (error instanceof ApiError && error.status === 401) {
+        toast.error(messageOf(error, 'Your session has expired. Sign in again.'), {
+          id: 'session-expired',
+        });
+        router.replace('/auth/login');
+        return;
+      }
+      console.error(`${context}:`, error);
+    },
+    [router]
+  );
+
   // Fetch available events for dashboard mode
   const fetchAvailableEvents = useCallback(async () => {
     try {
-      const response = await fetch('/api/judge/events');
-      if (response.ok) {
-        const data = await response.json();
-        return (data.events || []) as Event[];
-      }
-      return [] as Event[];
+      const data = await apiFetch<{ events?: Event[] }>('/api/judge/events');
+      return data.events || [];
     } catch (error) {
-      console.error('Error fetching available events:', error);
+      reportFetchError('Error fetching available events', error);
       return [] as Event[];
     }
-  }, []);
+  }, [reportFetchError]);
 
   // Fetch event data — with optional eventId
-  const fetchEvent = useCallback(async (id?: string) => {
-    try {
-      const url = id ? `/api/judge/event?eventId=${id}` : '/api/judge/event';
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (response.ok) {
-        return { event: data.event as Event | null, isAssigned: true };
-      } else if (response.status === 403) {
-        if (data.errorType === 'NOT_ASSIGNED') {
+  const fetchEvent = useCallback(
+    async (id?: string) => {
+      try {
+        const url = id ? `/api/judge/event?eventId=${id}` : '/api/judge/event';
+        const data = await apiFetch<{ event: Event | null }>(url);
+        return { event: data.event, isAssigned: true };
+      } catch (error) {
+        // NOT_ASSIGNED: no assignment; SELECT_EVENT: several active ones and no
+        // eventId given (dashboard mode). Neither is an error worth logging.
+        if (error instanceof ApiError && error.code === 'NOT_ASSIGNED') {
           return { event: null as Event | null, isAssigned: false };
         }
+        if (error instanceof ApiError && error.code === 'SELECT_EVENT') {
+          return { event: null as Event | null, isAssigned: true };
+        }
+        reportFetchError('Error fetching event', error);
+        return { event: null as Event | null, isAssigned: true };
       }
-      return { event: null as Event | null, isAssigned: true };
-    } catch (error) {
-      console.error('Error fetching event:', error);
-      return { event: null as Event | null, isAssigned: true };
-    }
-  }, []);
+    },
+    [reportFetchError]
+  );
 
   // Fetch teams data
-  const fetchTeams = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(`/api/judge/teams?eventId=${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        return { teams: (data.teams || []) as Team[] };
+  const fetchTeams = useCallback(
+    async (id: string) => {
+      try {
+        const data = await apiFetch<{ teams?: Team[] }>(`/api/judge/teams?eventId=${id}`);
+        return { teams: data.teams || [] };
+      } catch (error) {
+        reportFetchError('Error fetching teams', error);
+        return { teams: [] as Team[] };
       }
-      return { teams: [] as Team[] };
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-      return { teams: [] as Team[] };
-    }
-  }, []);
+    },
+    [reportFetchError]
+  );
 
   // Fetch score completion
-  const fetchScoreCompletion = useCallback(async (id?: string) => {
-    try {
-      const url = id ? `/api/judge/completion?eventId=${id}` : '/api/judge/completion';
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        return (data.completion || []) as ScoreCompletion[];
+  const fetchScoreCompletion = useCallback(
+    async (id?: string) => {
+      try {
+        const url = id ? `/api/judge/completion?eventId=${id}` : '/api/judge/completion';
+        const data = await apiFetch<{ completion?: ScoreCompletion[] }>(url);
+        return data.completion || [];
+      } catch (error) {
+        reportFetchError('Error fetching completion', error);
+        return [] as ScoreCompletion[];
       }
-      return [] as ScoreCompletion[];
-    } catch (error) {
-      console.error('Error fetching completion:', error);
-      return [] as ScoreCompletion[];
-    }
-  }, []);
+    },
+    [reportFetchError]
+  );
 
   // Main fetch function — behavior depends on whether eventId is provided
   const fetchAllData = useCallback(async () => {

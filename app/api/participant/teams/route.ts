@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { teams, teamMembers, events } from '@/lib/db/schema';
 import { eq, and, inArray, count } from 'drizzle-orm';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'participant') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authServer.requireParticipant();
 
     // Get all teams the participant is a member of (in open/active events)
     const myTeams = await db
@@ -73,7 +70,6 @@ export async function GET() {
 
     return NextResponse.json({ teams: result });
   } catch (error) {
-    console.error('Error fetching participant teams:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleRouteError(error, 'Error fetching participant teams');
   }
 }

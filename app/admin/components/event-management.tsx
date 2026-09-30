@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,36 +34,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Switch } from '@/components/ui/switch';
 import { Save, Loader2, Plus, Edit2, Trash2, Calendar, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { useAdminEvent } from '../contexts/admin-event-context';
 import JudgeAssignmentDialog from '@/components/judge-assignment-dialog';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'setup' | 'open' | 'active' | 'completed';
-  organizationId: string | null;
-  maxTeamSize: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Competition {
-  id: string;
-  eventId: string;
-  title: string | null;
-  shortDescription: string | null;
-  coverImageUrl: string | null;
-  challengeType: string | null;
-  tags: string[] | null;
-  prize: string | null;
-  deadline: string | null;
-  country: string | null;
-  participantSignupUrl: string | null;
-}
+import type { Event } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export default function EventManagement() {
   const { events, isLoading, refreshEvents } = useAdminEvent();
@@ -73,32 +51,6 @@ export default function EventManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
 
-  //Competitions stored as a dictionary keyed eventId so we can check if an event has a competition wihout looping through array
-  const [competitions, setCompetitions] = useState<Record<string, Competition>>({});
-
-  // Tracks whether the "Promote to competiton" toggle is on or off
-  const [isCompetition, setIsCompetition] = useState(false);
-  const [competitionFormData, setCompetitionFormData] = useState<{
-    title: string;
-    shortDescription: string;
-    coverImageUrl: string;
-    challengeType: string;
-    tags: string;
-    prize: string;
-    deadline: string;
-    country: string;
-    participantSignupUrl: string;
-  }>({
-    title: '',
-    shortDescription: '',
-    coverImageUrl: '',
-    challengeType: 'global',
-    tags: '',
-    prize: '',
-    deadline: '',
-    country: '',
-    participantSignupUrl: '',
-  });
   const [judgeAssignmentDialog, setJudgeAssignmentDialog] = useState<{
     isOpen: boolean;
     eventId: string | null;
@@ -129,43 +81,8 @@ export default function EventManagement() {
       status: 'setup',
       maxTeamSize: '',
     });
-    setIsCompetition(false);
-    setCompetitionFormData({
-      title: '',
-      shortDescription: '',
-      coverImageUrl: '',
-      challengeType: 'global',
-      tags: '',
-      prize: '',
-      deadline: '',
-      country: '',
-      participantSignupUrl: '',
-    });
     setEditingEvent(null);
   };
-
-  const fetchCompetitions = async () => {
-    try {
-      const response = await fetch('/api/admin/competitions');
-      if (response.ok) {
-        const data = await response.json();
-
-        // Convert the list into a dictionary keyed by eventId so its easier to look up competitions by event later
-        const map: Record<string, Competition> = {};
-        data.forEach((c: Competition) => {
-          map[c.eventId] = c;
-        });
-        setCompetitions(map);
-      }
-    } catch (error) {
-      console.error('Error fetching competitions', error);
-    }
-  };
-
-  // Render competitions when the page first opens
-  useEffect(() => {
-    fetchCompetitions();
-  }, []);
 
   const openCreateDialog = () => {
     resetForm();
@@ -180,23 +97,6 @@ export default function EventManagement() {
       status: event.status,
       maxTeamSize: event.maxTeamSize != null ? String(event.maxTeamSize) : '',
     });
-
-    //If this event already has a competition, turn toggle on, and fill fields
-    const existing = competitions[event.id];
-    if (existing) {
-      setIsCompetition(true);
-      setCompetitionFormData({
-        title: existing.title || '',
-        shortDescription: existing.shortDescription || '',
-        coverImageUrl: existing.coverImageUrl || '',
-        challengeType: existing.challengeType || 'global',
-        tags: existing.tags?.join(', ') || '', //Tags come back as an array from db, join them as a comma seperated string
-        prize: existing.prize || '',
-        deadline: existing.deadline ? existing.deadline.slice(0, 16) : '', // Slices ISO deadline to the YYYY-MM-DDTHH:mm datetime-local format
-        country: existing.country || '',
-        participantSignupUrl: existing.participantSignupUrl || '',
-      });
-    }
 
     setIsDialogOpen(true);
   };
@@ -218,85 +118,14 @@ export default function EventManagement() {
         maxTeamSize: formData.maxTeamSize ? parseInt(formData.maxTeamSize, 10) : null,
       };
 
-      let response;
       if (editingEvent) {
-        // Update existing event
-        response = await fetch(`/api/admin/events/${editingEvent.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+        await apiFetch(`/api/admin/events/${editingEvent.id}`, { method: 'PUT', body: payload });
       } else {
-        // Create new event
-        response = await fetch('/api/admin/event', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+        await apiFetch('/api/admin/event', { method: 'POST', body: payload });
       }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save event');
-      }
-
-      const { event: savedEvent } = await response.json();
-
-      // If edting we already have eventId, if creating event then we use the one returned from the API
-      const eventId = editingEvent ? editingEvent.id : savedEvent.id;
-
-      // Build the competition payload from the form converting tags back to an array
-      const competitionPayload = {
-        eventId,
-        title: competitionFormData.title || null,
-        shortDescription: competitionFormData.shortDescription || null,
-        coverImageUrl: competitionFormData.coverImageUrl || null,
-        challengeType: competitionFormData.challengeType,
-        tags: competitionFormData.tags
-          ? competitionFormData.tags
-              .split(',')
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : null,
-        prize: competitionFormData.prize || null,
-        deadline: competitionFormData.deadline || null,
-        country: competitionFormData.country || null,
-        participantSignupUrl: competitionFormData.participantSignupUrl || null,
-      };
-
-      const existing = competitions[eventId];
-
-      if (isCompetition) {
-        // Toggle is on -> create or update the competition record
-        if (existing) {
-          // Competition already exists, update it
-          await fetch(`/api/admin/competitions/${existing.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(competitionPayload),
-          });
-        } else {
-          // No competition yet, create one linked to this event
-          await fetch('/api/admin/competitions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(competitionPayload),
-          });
-        }
-      } else if (!isCompetition && existing) {
-        // Toggle is off but a competiiton record exists - remove it
-        await fetch(`/api/admin/competitions/${existing.id}`, {
-          method: 'DELETE',
-        });
-      }
-
-      // Refresh events and competitions list in context (this will update both EventSelector and EventManagement)
+      // Refresh events in context (this updates both EventSelector and EventManagement)
       await refreshEvents();
-      await fetchCompetitions();
 
       // Close dialog and reset form
       setIsDialogOpen(false);
@@ -306,10 +135,7 @@ export default function EventManagement() {
         description: editingEvent ? 'Event updated successfully' : 'Event created successfully',
       });
     } catch (error) {
-      console.error('Error saving event:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to save event',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to save event') });
     } finally {
       setIsSaving(false);
     }
@@ -319,14 +145,7 @@ export default function EventManagement() {
     if (!deletingEvent) return;
 
     try {
-      const response = await fetch(`/api/admin/events/${deletingEvent.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete event');
-      }
+      await apiFetch(`/api/admin/events/${deletingEvent.id}`, { method: 'DELETE' });
 
       // Refresh events list in context (this will update both EventSelector and EventManagement)
       await refreshEvents();
@@ -338,9 +157,7 @@ export default function EventManagement() {
       setDeletingEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete event',
-      });
+      toast.error(messageOf(error, 'Failed to delete event'));
     }
   };
 
@@ -385,8 +202,8 @@ export default function EventManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -442,25 +259,28 @@ export default function EventManagement() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="event-status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: 'setup' | 'open' | 'active' | 'completed') =>
-                      setFormData((prev) => ({ ...prev, status: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="setup">Setup - Preparing event</SelectItem>
-                      <SelectItem value="open">Open - Registration &amp; team forming</SelectItem>
-                      <SelectItem value="active">Active - Judging in progress</SelectItem>
-                      <SelectItem value="completed">Completed - Event finished</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* every event starts in Setup; the status is changed from Edit Event */}
+                {editingEvent && (
+                  <div className="space-y-2">
+                    <Label htmlFor="event-status">Status</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: 'setup' | 'open' | 'active' | 'completed') =>
+                        setFormData((prev) => ({ ...prev, status: value }))
+                      }
+                    >
+                      <SelectTrigger id="event-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="setup">Setup - Preparing event</SelectItem>
+                        <SelectItem value="open">Open - Registration &amp; team forming</SelectItem>
+                        <SelectItem value="active">Active - Judging in progress</SelectItem>
+                        <SelectItem value="completed">Completed - Event finished</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="max-team-size">Max Team Size</Label>
@@ -477,126 +297,6 @@ export default function EventManagement() {
                   <p className="text-xs text-muted-foreground">
                     Maximum number of members per team. Leave empty for no limit.
                   </p>
-                </div>
-
-                {/* Divider and toggle to promote this event to a competition */}
-                <div className="border-t border-border/50 pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Promote to Competition</p>
-                      <p className="text-xs text-muted-foreground">
-                        Adds extra details like prize, tags, and deadline for the participant view.
-                      </p>
-                    </div>
-                    {/* Toggle switch - clickting it flips isCompetiton between true and false */}
-                    <Switch
-                      checked={isCompetition}
-                      onCheckedChange={(checked) => setIsCompetition(checked)}
-                    />
-                  </div>
-
-                  {/* Competition fields - only visible when the toggle is on */}
-                  {isCompetition && (
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="competition-title">Title</Label>
-                        <Input
-                          id="competition-title"
-                          value={competitionFormData.title}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({ ...prev, title: e.target.value }))
-                          }
-                          placeholder="Competition title"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label htmlFor="competition-prize">Prize</Label>
-                        <Input
-                          id="competition-prize"
-                          value={competitionFormData.prize}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({ ...prev, prize: e.target.value }))
-                          }
-                          placeholder="e.g. $10,000"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label htmlFor="competition-country">Country</Label>
-                        <Input
-                          id="competition-country"
-                          value={competitionFormData.country}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({ ...prev, country: e.target.value }))
-                          }
-                          placeholder="e.g. Canada"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label htmlFor="competition-deadline">Deadline</Label>
-                        <Input
-                          id="competition-deadline"
-                          type="datetime-local"
-                          value={competitionFormData.deadline}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({
-                              ...prev,
-                              deadline: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-1 col-span-2">
-                        <Label htmlFor="competition-tags">Tags</Label>
-                        <Input
-                          id="competition-tags"
-                          value={competitionFormData.tags}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({ ...prev, tags: e.target.value }))
-                          }
-                          placeholder="e.g. Sustainability, Design"
-                        />
-                        <p className="text-xs text-muted-foreground">Seperate tags with commas.</p>
-                      </div>
-
-                      <div className="space-y-1 col-span-2">
-                        <Label htmlFor="competition-shortDescription">Short Description</Label>
-                        <Textarea
-                          id="competition-shortDescription"
-                          value={competitionFormData.shortDescription}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({
-                              ...prev,
-                              shortDescription: e.target.value,
-                            }))
-                          }
-                          placeholder="Brief public-facing description"
-                          rows={2}
-                          className="resize-none"
-                        />
-                      </div>
-
-                      <div className="space-y-1 col-span-2">
-                        <Label htmlFor="competition-participantSignupUrl">
-                          Participant Signup Url
-                        </Label>
-                        <Input
-                          id="competition-participantSignupUrl"
-                          value={competitionFormData.participantSignupUrl}
-                          onChange={(e) =>
-                            setCompetitionFormData((prev) => ({
-                              ...prev,
-                              participantSignupUrl: e.target.value,
-                            }))
-                          }
-                          placeholder="https://..."
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -664,11 +364,11 @@ export default function EventManagement() {
           </CardHeader>
           <CardContent>
             {events.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p>No events yet</p>
-                <p className="text-sm">Create your first judging event to get started</p>
-              </div>
+              <EmptyState
+                icon={Calendar}
+                title="No events yet"
+                description="Create your first judging event to get started"
+              />
             ) : (
               <div className="space-y-4">
                 {events.map((event) => (

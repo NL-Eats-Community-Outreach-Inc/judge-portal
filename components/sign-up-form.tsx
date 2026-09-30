@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { EMAIL_FEATURES_ENABLED } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,9 +15,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { getLearnWorldsParams, getPostAuthRedirect } from '@/lib/utils/learnworlds-params';
+import { apiFetch, messageOf } from '@/lib/api/client';
 
 type UserRole = 'judge' | 'participant';
+
+const ROLE_HOME: Record<UserRole, string> = { judge: '/judge', participant: '/participant' };
+
+/**
+ * Participants who arrived through an event deep link (`?next=/participant/...`)
+ * go back there after sign-up; only relative participant paths are honoured.
+ */
+function getPostAuthRedirect(role: UserRole): string {
+  if (role === 'participant' && typeof window !== 'undefined') {
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next && next.startsWith('/participant') && !next.startsWith('//')) {
+      return next.split('?')[0];
+    }
+  }
+  return ROLE_HOME[role];
+}
 type AuthMethod = 'password' | 'passwordless';
 type StepType = 'role-email' | 'organizations' | 'auth';
 
@@ -72,7 +89,9 @@ function getStepMeta(stepType: StepType): { title: string; description: string }
     case 'auth':
       return {
         title: 'Set up sign-in',
-        description: 'Choose your preferred authentication method',
+        description: EMAIL_FEATURES_ENABLED
+          ? 'Choose your preferred authentication method'
+          : 'Choose a password for your account',
       };
   }
 }
@@ -104,23 +123,12 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const currentStepType = stepSequence[currentStep];
   const stepMeta = getStepMeta(currentStepType);
 
-  // Pre-fill from LearnWorlds URL params (ref, email, name)
-  useEffect(() => {
-    const params = getLearnWorldsParams();
-    if (params.isLearnWorlds) {
-      if (params.email) setEmail(params.email);
-      // Auto-select participant role for LearnWorlds users
-      setRole('participant');
-    }
-  }, []);
-
   // Prefetch orgs on mount
   useEffect(() => {
     setOrgsLoading(true);
-    fetch('/api/organizations/public')
-      .then((res) => res.json())
+    apiFetch<{ organizations: OrgOption[] }>('/api/organizations/public')
       .then((data) => setAvailableOrgs(data.organizations || []))
-      .catch(() => toast.error('Failed to load organizations'))
+      .catch((error) => toast.error(messageOf(error, 'Failed to load organizations')))
       .finally(() => setOrgsLoading(false));
   }, []);
 
@@ -322,6 +330,39 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     }
   };
 
+  const passwordForm = (
+    <form onSubmit={handlePasswordSignUp} className="space-y-4">
+      <div className="grid gap-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={6}
+          placeholder="At least 6 characters"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="repeat-password">Confirm Password</Label>
+        <Input
+          id="repeat-password"
+          type="password"
+          required
+          value={repeatPassword}
+          onChange={(e) => setRepeatPassword(e.target.value)}
+          minLength={6}
+          placeholder="Repeat your password"
+        />
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Creating account...' : 'Create account'}
+      </Button>
+    </form>
+  );
+
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
@@ -494,99 +535,72 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                     <p className="text-sm font-medium truncate">{email}</p>
                   </div>
 
-                  <Tabs
-                    value={authMethod}
-                    onValueChange={(value) => setAuthMethod(value as AuthMethod)}
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="password">Password</TabsTrigger>
-                      <TabsTrigger value="passwordless">Passwordless</TabsTrigger>
-                    </TabsList>
+                  {EMAIL_FEATURES_ENABLED ? (
+                    <Tabs
+                      value={authMethod}
+                      onValueChange={(value) => setAuthMethod(value as AuthMethod)}
+                    >
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="password">Password</TabsTrigger>
+                        <TabsTrigger value="passwordless">Passwordless</TabsTrigger>
+                      </TabsList>
 
-                    {/* Password Registration */}
-                    <TabsContent value="password">
-                      <form onSubmit={handlePasswordSignUp} className="space-y-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="password">Password</Label>
-                          <Input
-                            id="password"
-                            type="password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            minLength={6}
-                            placeholder="At least 6 characters"
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="repeat-password">Confirm Password</Label>
-                          <Input
-                            id="repeat-password"
-                            type="password"
-                            required
-                            value={repeatPassword}
-                            onChange={(e) => setRepeatPassword(e.target.value)}
-                            minLength={6}
-                            placeholder="Repeat your password"
-                          />
-                        </div>
-                        {error && <p className="text-sm text-red-500">{error}</p>}
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                          {isLoading ? 'Creating account...' : 'Create account'}
-                        </Button>
-                      </form>
-                    </TabsContent>
+                      {/* Password Registration */}
+                      <TabsContent value="password">{passwordForm}</TabsContent>
 
-                    {/* Passwordless Registration */}
-                    <TabsContent value="passwordless">
-                      {!otpSent ? (
-                        <form onSubmit={handleSendOtp} className="space-y-4">
-                          <p className="text-xs text-muted-foreground">
-                            We&apos;ll send a 6-digit verification code to{' '}
-                            <span className="font-medium text-foreground">{email}</span>
-                          </p>
-                          {error && <p className="text-sm text-red-500">{error}</p>}
-                          <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? 'Sending code...' : 'Send verification code'}
-                          </Button>
-                        </form>
-                      ) : (
-                        <form onSubmit={handleVerifyOtp} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Verification Code</Label>
-                            <p className="text-sm text-muted-foreground">
-                              Enter the 6-digit code sent to {email}
+                      {/* Passwordless Registration */}
+                      <TabsContent value="passwordless">
+                        {!otpSent ? (
+                          <form onSubmit={handleSendOtp} className="space-y-4">
+                            <p className="text-xs text-muted-foreground">
+                              We&apos;ll send a 6-digit verification code to{' '}
+                              <span className="font-medium text-foreground">{email}</span>
                             </p>
-                            <OTPInput value={otp} onChange={setOtp} />
-                          </div>
-                          {error && <p className="text-sm text-red-500">{error}</p>}
-                          <div className="space-y-2">
-                            <Button
-                              type="submit"
-                              className="w-full"
-                              disabled={isLoading || otp.length !== 6}
-                            >
-                              {isLoading ? 'Verifying...' : 'Verify and create account'}
+                            {error && <p className="text-sm text-red-500">{error}</p>}
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                              {isLoading ? 'Sending code...' : 'Send verification code'}
                             </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="w-full"
-                              onClick={() => {
-                                setOtpSent(false);
-                                setOtp('');
-                                setError(null);
-                                setCurrentStep(0);
-                                setDirection('backward');
-                              }}
-                            >
-                              Use a different email
-                            </Button>
-                          </div>
-                        </form>
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                          </form>
+                        ) : (
+                          <form onSubmit={handleVerifyOtp} className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Verification Code</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Enter the 6-digit code sent to {email}
+                              </p>
+                              <OTPInput value={otp} onChange={setOtp} />
+                            </div>
+                            {error && <p className="text-sm text-red-500">{error}</p>}
+                            <div className="space-y-2">
+                              <Button
+                                type="submit"
+                                className="w-full"
+                                disabled={isLoading || otp.length !== 6}
+                              >
+                                {isLoading ? 'Verifying...' : 'Verify and create account'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full"
+                                onClick={() => {
+                                  setOtpSent(false);
+                                  setOtp('');
+                                  setError(null);
+                                  setCurrentStep(0);
+                                  setDirection('backward');
+                                }}
+                              >
+                                Use a different email
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  ) : (
+                    passwordForm
+                  )}
                 </div>
               )}
             </div>

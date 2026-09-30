@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { teams } from '@/lib/db/schema';
+import { teams, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { isUniqueOn } from '@/lib/db/errors';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { teamId } = await params;
 
     // Verify team belongs to org
     const [existingTeam] = await db
-      .select({ eventId: teams.eventId })
+      .select({ eventId: teams.eventId, eventStatus: events.status })
       .from(teams)
+      .innerJoin(events, eq(events.id, teams.eventId))
       .where(eq(teams.id, teamId))
       .limit(1);
 
@@ -33,6 +30,12 @@ export async function PUT(
 
     await requireEventInOrg(existingTeam.eventId, orgId);
 
+    // The Teams tab disables editing for completed events; this guard is what
+    // protects the final results from a stale tab
+    if (existingTeam.eventStatus === 'completed') {
+      return sendApiError(400, 'INVALID_STATUS', 'The event is completed');
+    }
+
     const { name, description, demoUrl, repoUrl, presentationOrder, awardType } =
       await request.json();
 
@@ -40,8 +43,12 @@ export async function PUT(
       return sendApiError(400, 'BAD_REQUEST', 'Team name is required');
     }
 
-    if (typeof presentationOrder !== 'number') {
-      return sendApiError(400, 'BAD_REQUEST', 'Presentation order must be a number');
+    if (!Number.isInteger(presentationOrder) || presentationOrder < 1) {
+      return sendApiError(
+        400,
+        'BAD_REQUEST',
+        'Presentation order must be a whole number of at least 1'
+      );
     }
 
     // Update team (updatedAt is handled automatically by schema .$onUpdate)
@@ -64,23 +71,21 @@ export async function PUT(
 
     return NextResponse.json({ team });
   } catch (error) {
-    console.error('Error updating team:', error);
-
-    // Handle unique constraint violations
-    if (error instanceof Error && error.message.includes('duplicate key')) {
-      if (error.message.includes('teams_event_id_name_key')) {
-        return sendApiError(400, 'BAD_REQUEST', 'A team with this name already exists');
-      }
-      if (error.message.includes('teams_event_id_presentation_order_key')) {
-        return sendApiError(
-          400,
-          'BAD_REQUEST',
-          'A team with this presentation order already exists'
-        );
-      }
+    if (isUniqueOn(error, 'event_id', 'name')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_TEAM_NAME',
+        'A team with this name already exists in this event'
+      );
     }
-
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    if (isUniqueOn(error, 'event_id', 'presentation_order')) {
+      return sendApiError(
+        400,
+        'DUPLICATE_PRESENTATION_ORDER',
+        'A team with this presentation order already exists'
+      );
+    }
+    return handleRouteError(error, 'Error updating team');
   }
 }
 
@@ -89,19 +94,15 @@ export async function DELETE(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { teamId } = await params;
 
     // Verify team belongs to org
     const [existingTeam] = await db
-      .select({ eventId: teams.eventId })
+      .select({ eventId: teams.eventId, eventStatus: events.status })
       .from(teams)
+      .innerJoin(events, eq(events.id, teams.eventId))
       .where(eq(teams.id, teamId))
       .limit(1);
 
@@ -110,6 +111,17 @@ export async function DELETE(
     }
 
     await requireEventInOrg(existingTeam.eventId, orgId);
+
+    // Deleting a team cascades its scores. The Teams tab disables the control
+    // once judging has started; this guard is what protects a live team from a
+    // stale tab (set the event back to open first when the removal is wanted)
+    if (existingTeam.eventStatus !== 'setup' && existingTeam.eventStatus !== 'open') {
+      return sendApiError(
+        400,
+        'INVALID_STATUS',
+        'Teams can only be deleted while the event is in setup or open'
+      );
+    }
 
     // Delete team (cascade will handle related scores)
     const [deletedTeam] = await db.delete(teams).where(eq(teams.id, teamId)).returning();
@@ -120,7 +132,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting team:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting team');
   }
 }

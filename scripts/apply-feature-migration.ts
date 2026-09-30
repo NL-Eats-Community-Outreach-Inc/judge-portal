@@ -65,32 +65,14 @@ async function applyFeature(sql: ReturnType<typeof postgres>, feature: string): 
     const sqlContent = readFileSync(migrationPath, 'utf-8');
 
     console.log(`  📝 Applying ${feature}...`);
+    // One transaction per file: an error means nothing in it applied. Every
+    // file is idempotent, so a failure is real and a re-run after the fix is safe.
     await sql.unsafe(sqlContent);
 
     console.log(`  ✅ ${feature} applied successfully`);
     return true;
-  } catch (error: any) {
-    // Check for safe errors (things already exist)
-    const safeErrors = [
-      'already exists',
-      'duplicate key',
-      'type .* already exists',
-      'function .* already exists',
-      'constraint .* already exists',
-      'index .* already exists',
-    ];
-
-    const isSafe = safeErrors.some((errorPattern) => {
-      const regex = new RegExp(errorPattern, 'i');
-      return regex.test(error.message || '');
-    });
-
-    if (isSafe) {
-      console.log(`  ⚠️  ${feature} - some objects already exist (this is normal)`);
-      return true;
-    }
-
-    console.error(`  ❌ ${feature} failed:`, error.message);
+  } catch (error) {
+    console.error(`  ❌ ${feature} failed:`, error instanceof Error ? error.message : error);
     return false;
   }
 }
@@ -134,33 +116,27 @@ async function main() {
       console.log('');
     }
 
-    // Apply features in order
+    // Apply features in order and stop at the first failure: later files may
+    // depend on the failed one
     let successCount = 0;
-    let failCount = 0;
 
     for (const feature of featuresToApply) {
       const success = await applyFeature(sql_connection, feature);
-      if (success) {
-        successCount++;
-      } else {
-        failCount++;
+      if (!success) {
+        console.error(`\n❌ Stopped at ${feature}: ${successCount} feature(s) applied before it.`);
+        console.error('   Fix the file and run the command again (every file is idempotent).');
+        process.exit(1);
       }
+      successCount++;
     }
 
     // Summary
     console.log('\n' + '='.repeat(50));
     console.log(`✨ Feature update complete!`);
     console.log(`   Applied: ${successCount} feature(s)`);
-    if (failCount > 0) {
-      console.log(`   Failed: ${failCount} feature(s)`);
-    }
     console.log('');
-
-    if (failCount > 0) {
-      process.exit(1);
-    }
-  } catch (error: any) {
-    console.error('\n❌ Update failed:', error.message);
+  } catch (error) {
+    console.error('\n❌ Update failed:', error instanceof Error ? error.message : error);
     console.error('\n💡 Troubleshooting:');
     console.error('1. Ensure db:setup has been run first');
     console.error('2. Verify DATABASE_URL in .env.local');

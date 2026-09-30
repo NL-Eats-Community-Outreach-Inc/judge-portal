@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, invitations } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import {
   generateInvitationToken,
   calculateExpirationDate,
   getExistingInvitation,
 } from '@/lib/auth/invitation';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   try {
@@ -39,11 +39,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
 
     return NextResponse.json({ admins });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error fetching org admins:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching org admins');
   }
 }
 
@@ -73,9 +69,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
     if (invalidEmails.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid email addresses', invalidEmails },
-        { status: 400 }
+      return sendApiError(
+        400,
+        'BAD_REQUEST',
+        `Invalid email addresses: ${invalidEmails.join(', ')}`
       );
     }
 
@@ -85,7 +82,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
 
     for (const email of emails) {
       // Check existing pending invitation
-      const existing = await getExistingInvitation(email);
+      const existing = await getExistingInvitation(email, orgId);
       if (existing) {
         existingInvites.push(email);
         continue;
@@ -95,7 +92,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       const [existingUser] = await db
         .select({ email: users.email, role: users.role })
         .from(users)
-        .where(eq(users.email, email))
+        .where(sql`lower(${users.email}) = lower(${email})`)
         .limit(1);
 
       if (existingUser) {
@@ -117,8 +114,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       });
     }
 
-    // Insert invitations directly via Drizzle to include organizationId
-    // (createInvitation() doesn't accept organizationId yet — that's Phase 7)
+    // Insert invitations directly so the organization is stored on each row
     const expiresAt = calculateExpirationDate(expiresInDays);
     const invitationData = newEmails.map((email: string) => ({
       token: generateInvitationToken(),
@@ -142,18 +138,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       inviteLink: `${origin}/invite/${invite.token}`,
     }));
 
-    return NextResponse.json({
-      success: true,
-      invitations: invitesWithLinks,
-      organizationName: org.name,
-      existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
-      alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        invitations: invitesWithLinks,
+        organizationName: org.name,
+        existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
+        alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-    console.error('Error inviting admin:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error inviting admin');
   }
 }

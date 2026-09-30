@@ -3,7 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { organizations, users, events } from '@/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
@@ -40,11 +40,7 @@ export async function GET() {
 
     return NextResponse.json({ organizations: orgsWithStats });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error fetching organizations:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching organizations');
   }
 }
 
@@ -93,10 +89,6 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error creating organization:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error creating organization');
   }
 }

@@ -19,72 +19,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, BarChart3, Download, Trophy, Star, RefreshCw, Medal } from 'lucide-react';
+import {
+  Loader2,
+  BarChart3,
+  Download,
+  Trophy,
+  Star,
+  RefreshCw,
+  Medal,
+  MessageSquareText,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, apiDownload, messageOf } from '@/lib/api/client';
+import { applicableCriteria, rankTeamTotals } from '@/lib/results';
 import { useAdminEvent } from '../contexts/admin-event-context';
-
-interface Score {
-  id: string;
-  score: number;
-  comment: string | null;
-  createdAt: string;
-  updatedAt: string;
-  team: {
-    id: string;
-    name: string;
-    presentationOrder: number;
-    awardType: 'technical' | 'business' | 'both';
-  };
-  criterion: {
-    id: string;
-    name: string;
-    displayOrder: number;
-    minScore: number;
-    maxScore: number;
-    category: 'technical' | 'business';
-  };
-  judge: {
-    id: string;
-    email: string;
-  };
-}
-
-interface TeamTotal {
-  teamId: string;
-  teamName: string;
-  presentationOrder: number;
-  totalScore: number;
-  averageScore: number;
-  weightedScore: number;
-  totalScores: number;
-  judgeCount: number;
-  awardType: 'technical' | 'business' | 'both';
-}
-
-interface CriteriaAverage {
-  teamId: string;
-  teamName: string;
-  criterionId: string;
-  criterionName: string;
-  averageScore: number;
-  judgeCount: number;
-}
-
-interface Criterion {
-  id: string;
-  name: string;
-  category: 'technical' | 'business';
-  displayOrder: number;
-}
+import { EmptyState } from '@/components/ui/empty-state';
+import type { ResultScore as Score, TeamTotal, CriterionSummary as Criterion } from '@/lib/types';
 
 export default function ResultsDashboard() {
   const [scores, setScores] = useState<Score[]>([]);
   const [teamTotals, setTeamTotals] = useState<TeamTotal[]>([]);
   const [allCriteria, setAllCriteria] = useState<Criterion[]>([]);
-  const [, setCriteriaAverages] = useState<CriteriaAverage[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingJudgeScores, setIsExportingJudgeScores] = useState(false);
+  const [isExportingComments, setIsExportingComments] = useState(false);
   const [scoreMode, setScoreMode] = useState<'total' | 'average' | 'weighted'>('total');
   const [awardTypeFilter, setAwardTypeFilter] = useState<'all' | 'technical' | 'business' | 'both'>(
     'all'
@@ -97,24 +56,17 @@ export default function ResultsDashboard() {
 
     setIsLoadingResults(true);
     try {
-      const response = await fetch(`/api/admin/results?eventId=${selectedEvent.id}`);
-      const data = await response.json();
+      const data = await apiFetch<{
+        scores: Score[];
+        teamTotals: TeamTotal[];
+        allCriteria?: Criterion[];
+      }>(`/api/admin/results?eventId=${selectedEvent.id}`);
 
-      if (response.ok) {
-        setScores(data.scores);
-        setTeamTotals(data.teamTotals);
-        setAllCriteria(data.allCriteria || []);
-        setCriteriaAverages(data.criteriaAverages);
-
-        // Weights are now managed in database, no frontend initialization needed
-      } else {
-        throw new Error(data.error);
-      }
+      setScores(data.scores);
+      setTeamTotals(data.teamTotals);
+      setAllCriteria(data.allCriteria || []);
     } catch (error) {
-      console.error('Error fetching results:', error);
-      toast.error('Error', {
-        description: 'Failed to load results',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to load results') });
     } finally {
       setIsLoadingResults(false);
     }
@@ -133,6 +85,22 @@ export default function ResultsDashboard() {
     }
   }, [selectedEvent, fetchResults]);
 
+  // Fetches a CSV export and hands it to the browser as a download named by
+  // the server's Content-Disposition header (or `fallbackName` without one)
+  const downloadCsv = async (url: string, fallbackName: string) => {
+    const { blob, filename } = await apiDownload(url);
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename || fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+    document.body.removeChild(a);
+  };
+
+  const today = () => new Date().toISOString().split('T')[0];
+
   const handleExport = async () => {
     if (!selectedEvent) return;
 
@@ -144,38 +112,16 @@ export default function ResultsDashboard() {
       url.searchParams.set('scoreMode', scoreMode);
       url.searchParams.set('awardTypeFilter', awardTypeFilter);
 
-      const response = await fetch(url.toString());
-
-      if (!response.ok) {
-        throw new Error('Failed to export results');
-      }
-
-      // Create download link - use filename from backend Content-Disposition header
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-
-      // Extract filename from Content-Disposition header if available
-      const contentDisposition = response.headers.get('content-disposition');
-      const filenameMatch = contentDisposition?.match(/filename="([^"]*)"/);
-      a.download =
-        filenameMatch?.[1] ||
-        `judging-results-${selectedEvent?.name || 'event'}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv`;
-
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
+      await downloadCsv(
+        url.toString(),
+        `judging-results-${selectedEvent.name || 'event'}-${scoreMode}-${today()}.csv`
+      );
 
       toast.success('Success', {
         description: `Results exported successfully (${scoreMode} scores)`,
       });
     } catch (error) {
-      console.error('Error exporting results:', error);
-      toast.error('Error', {
-        description: 'Failed to export results',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to export results') });
     } finally {
       setIsExporting(false);
     }
@@ -186,35 +132,38 @@ export default function ResultsDashboard() {
 
     setIsExportingJudgeScores(true);
     try {
-      const response = await fetch(
-        `/api/admin/results/export-judge-scores?eventId=${selectedEvent.id}`
+      await downloadCsv(
+        `/api/admin/results/export-judge-scores?eventId=${selectedEvent.id}`,
+        `judge-scores-detail-${selectedEvent.name || 'event'}-${today()}.csv`
       );
-
-      if (!response.ok) {
-        throw new Error('Failed to export judge scores');
-      }
-
-      // Create download link
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `judge-scores-detail-${selectedEvent?.name || 'event'}-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
 
       toast.success('Success', {
         description: 'Judge scores exported successfully',
       });
     } catch (error) {
-      console.error('Error exporting judge scores:', error);
-      toast.error('Error', {
-        description: 'Failed to export judge scores',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to export judge scores') });
     } finally {
       setIsExportingJudgeScores(false);
+    }
+  };
+
+  const handleExportComments = async () => {
+    if (!selectedEvent) return;
+
+    setIsExportingComments(true);
+    try {
+      await downloadCsv(
+        `/api/admin/results/export-comments?eventId=${selectedEvent.id}`,
+        `judging-comments-${selectedEvent.name || 'event'}-${today()}.csv`
+      );
+
+      toast.success('Success', {
+        description: 'Comments exported successfully',
+      });
+    } catch (error) {
+      toast.error('Error', { description: messageOf(error, 'Failed to export comments') });
+    } finally {
+      setIsExportingComments(false);
     }
   };
 
@@ -240,37 +189,18 @@ export default function ResultsDashboard() {
     }
   };
 
-  // Helper function to calculate relevant criteria count for a team based on award type
+  // The criteria that count for a team (all of the event's, not only the scored ones)
   const getRelevantCriteriaCount = (teamId: string) => {
-    // Find the team's award type
     const team = teamTotals.find((t) => t.teamId === teamId);
-    if (!team) return 0;
-
-    // Use ALL criteria from the event (from API), not just scored ones
-    return allCriteria.filter((criterion) => {
-      if (team.awardType === 'both') return true;
-      return criterion.category === team.awardType;
-    }).length;
+    return team ? applicableCriteria(team.awardType, allCriteria).length : 0;
   };
 
-  // Filter and sort teams based on selected filters
-  const sortedTeamTotals = [...teamTotals]
-    .filter((team) => {
-      if (awardTypeFilter === 'all') return true;
-      return team.awardType === awardTypeFilter;
-    })
-    .sort((a, b) => {
-      switch (scoreMode) {
-        case 'total':
-          return b.totalScore - a.totalScore;
-        case 'average':
-          return b.averageScore - a.averageScore;
-        case 'weighted':
-          return b.weightedScore - a.weightedScore;
-        default:
-          return b.totalScore - a.totalScore;
-      }
-    });
+  // Same ranking as the CSV export: mode, then Total, then presentation order;
+  // `tied` marks rows whose score in the selected mode equals a neighbour's
+  const sortedTeamTotals = rankTeamTotals(
+    teamTotals.filter((team) => awardTypeFilter === 'all' || team.awardType === awardTypeFilter),
+    scoreMode
+  );
 
   const getStatsCards = () => {
     const totalScores = scores.length;
@@ -586,11 +516,11 @@ export default function ResultsDashboard() {
           </CardHeader>
           <CardContent>
             {teamTotals.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p>No scores yet</p>
-                <p className="text-sm">Results will appear here as judges submit scores</p>
-              </div>
+              <EmptyState
+                icon={BarChart3}
+                title="No scores yet"
+                description="Results will appear here as judges submit scores"
+              />
             ) : (
               <div className="rounded-md border">
                 <Table>
@@ -635,12 +565,21 @@ export default function ResultsDashboard() {
                       return (
                         <TableRow
                           key={team.teamId}
-                          className={`${getRankStyle(index + 1)} transition-all duration-200`}
+                          className={`${getRankStyle(team.rank)} transition-all duration-200`}
                         >
                           <TableCell className="flex items-center gap-3 py-4">
                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/80 shadow-sm">
-                              {getRankIcon(index + 1)}
+                              {getRankIcon(team.rank)}
                             </div>
+                            {team.tied && (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-400/70 bg-amber-50/80 text-amber-800 dark:border-amber-500/60 dark:bg-amber-950/40 dark:text-amber-200 text-[11px] font-semibold uppercase tracking-wide px-1.5 py-0"
+                                title="Same score as a neighbouring team in this mode; the order between them is the tie-break (Total, then presentation order)"
+                              >
+                                Tie
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="py-4 w-[220px] max-w-[220px]">
                             <div className="space-y-1">
@@ -684,7 +623,7 @@ export default function ResultsDashboard() {
                             <div className="flex items-center gap-3">
                               <div className="flex-1 bg-muted/60 rounded-full h-3 shadow-inner">
                                 <div
-                                  className={`${getProgressBarStyle(index + 1)} h-3 rounded-full shadow-sm transition-all duration-500`}
+                                  className={`${getProgressBarStyle(team.rank)} h-3 rounded-full shadow-sm transition-all duration-500`}
                                   style={{
                                     width: `${(() => {
                                       const relevantCriteriaCount = getRelevantCriteriaCount(
@@ -745,11 +684,11 @@ export default function ResultsDashboard() {
         </CardHeader>
         <CardContent>
           {scores.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Star className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p>No scores yet</p>
-              <p className="text-sm">Individual scores will appear here as judges submit them</p>
-            </div>
+            <EmptyState
+              icon={Star}
+              title="No scores yet"
+              description="Individual scores will appear here as judges submit them"
+            />
           ) : (
             <div className="rounded-md border">
               <Table>
@@ -797,7 +736,7 @@ export default function ResultsDashboard() {
           className={`relative ${isLoadingResults ? 'opacity-60' : ''} transition-opacity duration-200`}
         >
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <Star className="h-5 w-5 text-primary" />
                 <div>
@@ -807,18 +746,33 @@ export default function ResultsDashboard() {
                   </CardDescription>
                 </div>
               </div>
-              <Button
-                onClick={handleExportJudgeScores}
-                disabled={isExportingJudgeScores}
-                className="flex items-center gap-2"
-              >
-                {isExportingJudgeScores ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Export CSV
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportComments}
+                  disabled={isExportingComments}
+                  className="flex items-center gap-2"
+                >
+                  {isExportingComments ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquareText className="h-4 w-4" />
+                  )}
+                  Export comments
+                </Button>
+                <Button
+                  onClick={handleExportJudgeScores}
+                  disabled={isExportingJudgeScores}
+                  className="flex items-center gap-2"
+                >
+                  {isExportingJudgeScores ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Export CSV
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -858,12 +812,8 @@ export default function ResultsDashboard() {
                 .sort((a, b) => a.displayOrder - b.displayOrder);
 
               // Helper function to get criteria for a specific team based on award type
-              const getCriteriaForTeam = (teamAwardType: 'technical' | 'business' | 'both') => {
-                return allCriteria.filter((criterion) => {
-                  if (teamAwardType === 'both') return true;
-                  return criterion.category === teamAwardType;
-                });
-              };
+              const getCriteriaForTeam = (teamAwardType: 'technical' | 'business' | 'both') =>
+                applicableCriteria(teamAwardType, allCriteria);
 
               // Create score matrix: team[judge[criterion]] = score
               const scoreMatrix: Record<string, Record<string, Record<string, number>>> = {};
@@ -888,11 +838,11 @@ export default function ResultsDashboard() {
                 allCriteria.length === 0
               ) {
                 return (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Star className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                    <p>No detailed scores available</p>
-                    <p className="text-sm">Scores will appear here once judges start submitting</p>
-                  </div>
+                  <EmptyState
+                    icon={Star}
+                    title="No detailed scores available"
+                    description="Scores will appear here once judges start submitting"
+                  />
                 );
               }
 

@@ -40,9 +40,13 @@ import {
   Loader2,
   AlertTriangle,
   Shield,
+  UserMinus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
 import { useParticipant } from '../contexts/participant-context';
+import { SUBMISSIONS_ENABLED } from '@/lib/config';
+import type { ParticipantTeamMember as TeamMember } from '@/lib/types';
 
 interface TeamDetails {
   id: string;
@@ -61,14 +65,6 @@ interface TeamDetails {
   isCreator: boolean;
   memberCount: number;
   hasSubmitted: boolean;
-}
-
-interface TeamMember {
-  id: string;
-  participantId: string;
-  email: string;
-  isCreator: boolean;
-  joinedAt: string;
 }
 
 interface TeamDetailPanelProps {
@@ -96,6 +92,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const [isLeaving, setIsLeaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [submissionText, setSubmissionText] = useState('');
@@ -104,17 +101,14 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const fetchTeam = useCallback(async () => {
     setIsLoadingTeam(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setTeam(data.team);
-        setEditName(data.team.name);
-        setEditDescription(data.team.description || '');
-        setEditDemoUrl(data.team.demoUrl || '');
-        setEditRepoUrl(data.team.repoUrl || '');
-      }
+      const data = await apiFetch<{ team: TeamDetails }>(`/api/participant/teams/${teamId}`);
+      setTeam(data.team);
+      setEditName(data.team.name);
+      setEditDescription(data.team.description || '');
+      setEditDemoUrl(data.team.demoUrl || '');
+      setEditRepoUrl(data.team.repoUrl || '');
     } catch (error) {
-      console.error('Error fetching team:', error);
+      toast.error(messageOf(error, 'Failed to load team'));
     } finally {
       setIsLoadingTeam(false);
     }
@@ -123,13 +117,12 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const fetchMembers = useCallback(async () => {
     setIsLoadingMembers(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}/members`);
-      const data = await response.json();
-      if (response.ok) {
-        setMembers(data.members || []);
-      }
+      const data = await apiFetch<{ members: TeamMember[] }>(
+        `/api/participant/teams/${teamId}/members`
+      );
+      setMembers(data.members || []);
     } catch (error) {
-      console.error('Error fetching members:', error);
+      toast.error(messageOf(error, 'Failed to load members'));
     } finally {
       setIsLoadingMembers(false);
     }
@@ -152,6 +145,8 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   }, [editName, editDescription, editDemoUrl, editRepoUrl, team]);
 
   const isLocked = team?.eventStatus === 'active';
+  // The creator can remove another member while the event is open (the server enforces both)
+  const canRemoveMembers = team?.isCreator === true && team.eventStatus === 'open';
   const isResubmission = team?.eventStatus === 'open' && team?.hasSubmitted;
   const canSubmit = team?.eventStatus === 'open';
 
@@ -159,24 +154,21 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
     if (!team || !hasChanges) return;
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}`, {
+      const data = await apiFetch<{ team: TeamDetails }>(`/api/participant/teams/${teamId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           name: editName.trim(),
           description: editDescription.trim() || null,
           demoUrl: editDemoUrl.trim() || null,
           repoUrl: editRepoUrl.trim() || null,
-        }),
+        },
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to save');
-      setTeam(data.team);
+      setTeam((prev) => (prev ? { ...prev, ...data.team } : prev));
       setHasChanges(false);
       toast.success('Team updated!');
       await refreshAll();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save');
+      toast.error(messageOf(error, 'Failed to save'));
     } finally {
       setIsSaving(false);
     }
@@ -197,33 +189,47 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const handleRegenerateCode = async () => {
     setIsRegenerating(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}/regenerate-code`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to regenerate');
+      const data = await apiFetch<{ joinCode: string }>(
+        `/api/participant/teams/${teamId}/regenerate-code`,
+        { method: 'POST' }
+      );
       setTeam((prev) => (prev ? { ...prev, joinCode: data.joinCode } : null));
       toast.success('Join code regenerated!');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to regenerate');
+      toast.error(messageOf(error, 'Failed to regenerate'));
     } finally {
       setIsRegenerating(false);
+    }
+  };
+
+  const handleRemoveMember = async (member: TeamMember) => {
+    setRemovingMemberId(member.participantId);
+    try {
+      await apiFetch(`/api/participant/teams/${teamId}/members/${member.participantId}`, {
+        method: 'DELETE',
+      });
+      toast.success(`Removed ${member.email} from the team`);
+      await Promise.all([fetchMembers(), fetchTeam()]);
+      await refreshAll();
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to remove member'));
+    } finally {
+      setRemovingMemberId(null);
     }
   };
 
   const handleLeave = async () => {
     setIsLeaving(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}/leave`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to leave team');
+      const data = await apiFetch<{ teamDeleted: boolean }>(
+        `/api/participant/teams/${teamId}/leave`,
+        { method: 'POST' }
+      );
       toast.success(data.teamDeleted ? 'Team deleted (you were the last member)' : 'Left team');
       await refreshAll();
       router.push('/participant');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to leave team');
+      toast.error(messageOf(error, 'Failed to leave team'));
     } finally {
       setIsLeaving(false);
     }
@@ -232,18 +238,12 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/participant/teams/${teamId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete team');
-      }
+      await apiFetch(`/api/participant/teams/${teamId}`, { method: 'DELETE' });
       toast.success('Team deleted');
       await refreshAll();
       router.push('/participant');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete team');
+      toast.error(messageOf(error, 'Failed to delete team'));
     } finally {
       setIsDeleting(false);
     }
@@ -258,22 +258,10 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
     try {
       setIsSubmitting(true);
 
-      const res = await fetch('/api/submissions', {
+      await apiFetch('/api/submissions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          teamId: team?.id,
-          submissionText: submissionText.trim(),
-        }),
+        body: { teamId: team?.id, submissionText: submissionText.trim() },
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error_message || 'Submission failed');
-      }
 
       toast.success(
         isResubmission ? 'Proposal resubmitted successfully!' : 'Proposal submitted successfully!'
@@ -282,8 +270,8 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
       setSubmissionText('');
       await fetchTeam();
       await refreshAll();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Submission failed');
+    } catch (error) {
+      toast.error(messageOf(error, 'Submission failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -385,6 +373,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
               size="icon"
               className="h-8 w-8 hover:bg-teal-500/10"
               onClick={handleCopyCode}
+              aria-label={copied ? 'Join code copied' : 'Copy join code'}
             >
               {copied ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -399,6 +388,7 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                 className="h-8 w-8 hover:bg-teal-500/10"
                 onClick={handleRegenerateCode}
                 disabled={isRegenerating}
+                aria-label="Generate a new join code"
               >
                 <RefreshCw
                   className={`h-4 w-4 text-muted-foreground ${isRegenerating ? 'animate-spin' : ''}`}
@@ -408,41 +398,43 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Submit Proposal</h3>
-              <p className="text-sm text-muted-foreground">
-                Each team must submit one proposal before the event due date. Keep it concise and
-                explain the problem, your solution, working features, business value, scalability,
-                and technical implementation. Demo and repository URLs are also required in Team
-                Details before the event due date.
-              </p>
+        {SUBMISSIONS_ENABLED && (
+          <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">Submit Proposal</h3>
+                <p className="text-sm text-muted-foreground">
+                  Each team must submit one proposal before the event due date. Keep it concise and
+                  explain the problem, your solution, working features, business value, scalability,
+                  and technical implementation. Demo and repository URLs are also required in Team
+                  Details before the event due date.
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowSubmit(true)}
+                disabled={!canSubmit}
+                className={`w-full sm:w-auto sm:flex-shrink-0 ${
+                  isResubmission
+                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md'
+                    : canSubmit
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                }`}
+              >
+                {isResubmission ? (
+                  'Resubmit'
+                ) : team?.hasSubmitted ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Proposal Submitted
+                  </>
+                ) : (
+                  'Submit'
+                )}
+              </Button>
             </div>
-            <Button
-              onClick={() => setShowSubmit(true)}
-              disabled={!canSubmit}
-              className={`w-full sm:w-auto sm:flex-shrink-0 ${
-                isResubmission
-                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md'
-                  : canSubmit
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
-              }`}
-            >
-              {isResubmission ? (
-                'Resubmit'
-              ) : team?.hasSubmitted ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Proposal Submitted
-                </>
-              ) : (
-                'Submit'
-              )}
-            </Button>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* Members Card */}
@@ -482,13 +474,52 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
                     </p>
                   </div>
                 </div>
-                {member.isCreator && (
+                {member.isCreator ? (
                   <Badge
                     variant="outline"
                     className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 flex-shrink-0"
                   >
                     Creator
                   </Badge>
+                ) : (
+                  canRemoveMembers && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          aria-label={`Remove ${member.email}`}
+                          title="Remove from team"
+                          disabled={removingMemberId !== null}
+                        >
+                          {removingMemberId === member.participantId ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UserMinus className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove {member.email}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            They leave the team now and can join again with the join code while the
+                            event is open.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleRemoveMember(member)}
+                            className="bg-destructive hover:bg-destructive/90 text-white"
+                          >
+                            Remove member
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )
                 )}
               </div>
             ))}
@@ -577,41 +608,43 @@ export function TeamDetailPanel({ teamId }: TeamDetailPanelProps) {
         </div>
       </Card>
 
-      {/* SUBMISSION PANEL */}
-      <Dialog open={showSubmit} onOpenChange={setShowSubmit}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Submit Proposal</DialogTitle>
-          </DialogHeader>
+      {/* Submission dialog */}
+      {SUBMISSIONS_ENABLED && (
+        <Dialog open={showSubmit} onOpenChange={setShowSubmit}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Submit Proposal</DialogTitle>
+            </DialogHeader>
 
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Describe your proposal..."
-              value={submissionText}
-              onChange={(e) => setSubmissionText(e.target.value)}
-              rows={8}
-            />
-          </div>
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Describe your proposal..."
+                value={submissionText}
+                onChange={(e) => setSubmissionText(e.target.value)}
+                rows={8}
+              />
+            </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setShowSubmit(false)}>
-              Cancel
-            </Button>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => setShowSubmit(false)}>
+                Cancel
+              </Button>
 
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={
-                isResubmission
-                  ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
-                  : 'bg-teal-600 hover:bg-teal-700 text-white'
-              }
-            >
-              {isSubmitting ? 'Submitting...' : isResubmission ? 'Resubmit' : 'Submit'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={
+                  isResubmission
+                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                    : 'bg-teal-600 hover:bg-teal-700 text-white'
+                }
+              >
+                {isSubmitting ? 'Submitting...' : isResubmission ? 'Resubmit' : 'Submit'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Actions Card - only when not locked */}
       {!isLocked && (

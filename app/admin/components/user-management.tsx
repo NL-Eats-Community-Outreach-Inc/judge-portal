@@ -43,14 +43,10 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'admin' | 'judge' | 'participant';
-  createdAt: string;
-  updatedAt: string;
-}
+import { apiFetch, messageOf } from '@/lib/api/client';
+import type { OrgUser as User } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingState } from '@/components/ui/loading-state';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
@@ -62,19 +58,10 @@ export default function UserManagement() {
   // Use useCallback to ensure stable reference for real-time sync
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/users');
-      const data = await response.json();
-
-      if (response.ok) {
-        setUsers(data.users);
-      } else {
-        throw new Error(data.error);
-      }
+      const data = await apiFetch<{ users: User[] }>('/api/admin/users');
+      setUsers(data.users);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Error', {
-        description: 'Failed to load users',
-      });
+      toast.error('Error', { description: messageOf(error, 'Failed to load users') });
     } finally {
       setIsLoading(false);
     }
@@ -88,16 +75,10 @@ export default function UserManagement() {
     setDeletingUsers((prev) => new Set(prev).add(userId));
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete user');
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<{ action?: string; message?: string }>(
+        `/api/admin/users/${userId}`,
+        { method: 'DELETE' }
+      );
       setUsers((prev) => prev.filter((user) => user.id !== userId));
 
       if (data.action === 'removed_from_org') {
@@ -110,10 +91,7 @@ export default function UserManagement() {
         });
       }
     } catch (error) {
-      console.error('Error deleting user:', error);
-      toast.error('Error', {
-        description: error instanceof Error ? error.message : 'Failed to delete user',
-      });
+      toast.error(messageOf(error, 'Failed to delete user'));
     } finally {
       setDeletingUsers((prev) => {
         const next = new Set(prev);
@@ -214,11 +192,7 @@ export default function UserManagement() {
   // Render user table — showActions controls whether the Actions column is rendered
   const renderUserTable = (roleUsers: User[], showActions = false) => {
     if (roleUsers.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No users in this role</p>
-        </div>
-      );
+      return <EmptyState title="No users in this role" className="py-8" />;
     }
 
     return (
@@ -244,7 +218,12 @@ export default function UserManagement() {
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={deletingUsers.has(user.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingUsers.has(user.id)}
+                          aria-label={`Remove ${user.email}`}
+                        >
                           {deletingUsers.has(user.id) ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
@@ -281,8 +260,8 @@ export default function UserManagement() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <CardContent>
+          <LoadingState />
         </CardContent>
       </Card>
     );
@@ -342,11 +321,11 @@ export default function UserManagement() {
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p>No users found</p>
-              <p className="text-sm">Users will appear here after they sign up</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No users found"
+              description="Users will appear here after they sign up"
+            />
           ) : (
             <div className="space-y-4">
               {/* Administrators Section */}

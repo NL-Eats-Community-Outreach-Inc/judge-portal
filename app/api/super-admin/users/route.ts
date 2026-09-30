@@ -3,7 +3,7 @@ import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users, organizations, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { handleRouteError } from '@/lib/utils/api-errors';
 
 export async function GET() {
   try {
@@ -49,10 +49,6 @@ export async function GET() {
 
     return NextResponse.json({ users: usersWithMemberships });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('required')) {
-      return sendApiError(403, 'FORBIDDEN', 'Unauthorized');
-    }
-    console.error('Error fetching users:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error fetching users');
   }
 }

@@ -1,191 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
-import { sql, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
+import { csvRow, csvAttachment } from '@/lib/utils/csv';
+import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
+import { computeTeamTotals, rankTeamTotals, scoreForMode, formatAwardType } from '@/lib/results';
+import type { ScoreMode } from '@/lib/types';
+
+const SCORE_MODES: readonly ScoreMode[] = ['total', 'average', 'weighted'];
+const AWARD_TYPE_FILTERS = ['all', 'technical', 'business', 'both'] as const;
+
+const SCORE_MODE_LABEL: Record<ScoreMode, string> = {
+  total: 'Total Score',
+  average: 'Average Score',
+  weighted: 'Weighted Score',
+};
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
-
+    const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
-    const scoreMode = searchParams.get('scoreMode') || 'total';
+    const scoreModeParam = searchParams.get('scoreMode') || 'total';
     const awardTypeFilter = searchParams.get('awardTypeFilter') || 'all';
 
     if (!eventId) {
       return sendApiError(400, 'BAD_REQUEST', 'Event ID is required');
     }
 
-    await requireEventInOrg(eventId, orgId);
+    if (!(SCORE_MODES as readonly string[]).includes(scoreModeParam)) {
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid score mode');
+    }
+    const scoreMode = scoreModeParam as ScoreMode;
 
-    // Get event information for filename
-    let eventName = 'event';
-    if (eventId) {
-      const eventResult = await db
-        .select({ name: events.name })
-        .from(events)
-        .where(eq(events.id, eventId))
-        .limit(1);
-      eventName = eventResult[0]?.name || 'event';
+    if (!(AWARD_TYPE_FILTERS as readonly string[]).includes(awardTypeFilter)) {
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid award type filter');
     }
 
-    // Use the EXACT same SQL calculation logic as the main results API
-    // This ensures 100% consistency between frontend display and CSV export
-    const baseTeamTotalsQuery = sql`
-      WITH team_weights AS (
-        SELECT 
-          teams.id as team_id,
-          teams.award_type,
-          SUM(criteria.weight) as total_weight_for_team
-        FROM teams
-        LEFT JOIN criteria ON criteria.event_id = teams.event_id
-        WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
-          AND (
-            (teams.award_type = 'technical' AND criteria.category = 'technical') OR
-            (teams.award_type = 'business' AND criteria.category = 'business') OR
-            (teams.award_type = 'both')
-          )
-        GROUP BY teams.id, teams.award_type
-      ),
-      judge_totals AS (
-        SELECT 
-          teams.id as "teamId",
-          teams.name as "teamName",
-          teams.presentation_order as "presentationOrder",
-          teams.award_type as "awardType",
-          scores.judge_id as "judgeId",
-          users.email as "judgeEmail",
-          SUM(scores.score::numeric) as judge_total,
-          SUM(
-            scores.score::numeric * 
-            (criteria.weight::numeric / COALESCE(tw.total_weight_for_team::numeric, 100.0))
-          ) as judge_weighted_total,
-          COUNT(scores.score) as criteria_scored
-        FROM teams
-        LEFT JOIN scores ON scores.team_id = teams.id
-        LEFT JOIN users ON scores.judge_id = users.id
-        LEFT JOIN criteria ON scores.criterion_id = criteria.id
-        LEFT JOIN team_weights tw ON tw.team_id = teams.id
-        LEFT JOIN event_judges ej ON ej.judge_id = users.id AND ej.event_id = teams.event_id
-        WHERE ${eventId ? sql`teams.event_id = ${eventId}` : sql`1=1`}
-          AND (
-            (teams.award_type = 'technical' AND criteria.category = 'technical') OR
-            (teams.award_type = 'business' AND criteria.category = 'business') OR
-            (teams.award_type = 'both')
-          )
-          AND ej.judge_id IS NOT NULL
-        GROUP BY teams.id, teams.name, teams.presentation_order, teams.award_type, scores.judge_id, users.email
-      ),
-      team_calculations AS (
-        SELECT 
-          "teamId",
-          "teamName",
-          "presentationOrder",
-          "awardType",
-          COALESCE(SUM(judge_total), 0) as total_score,
-          COALESCE(AVG(judge_total), 0) as average_score,
-          COALESCE(AVG(judge_weighted_total), 0) as weighted_score,
-          COUNT("judgeId") as judge_count,
-          SUM(criteria_scored) as total_scores
-        FROM judge_totals
-        WHERE judge_total IS NOT NULL
-        GROUP BY "teamId", "teamName", "presentationOrder", "awardType"
-      )
-      SELECT 
-        "teamId",
-        "teamName", 
-        "presentationOrder",
-        "awardType",
-        ROUND(total_score::numeric, 2) as "totalScore",
-        ROUND(average_score::numeric, 2) as "averageScore", 
-        ROUND(weighted_score::numeric, 2) as "weightedScore",
-        total_scores as "totalScores",
-        judge_count as "judgeCount"
-      FROM team_calculations
-      ORDER BY total_score DESC
-    `;
+    await requireEventInOrg(eventId, orgId);
 
-    const teamTotalsResult = await db.execute(baseTeamTotalsQuery);
-    let teamTotals = teamTotalsResult as Array<Record<string, unknown>>;
+    const [eventResult] = await db
+      .select({ name: events.name })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1);
+    const eventName = eventResult?.name || 'event';
 
-    // Apply award type filter if not 'all'
+    // Same rows and math as the results dashboard, so the file matches the screen
+    const [allScores, allCriteria] = await Promise.all([
+      loadCountedScores(eventId),
+      loadEventCriteria(eventId),
+    ]);
+
+    let teamTotals = computeTeamTotals(allScores, allCriteria);
     if (awardTypeFilter !== 'all') {
       teamTotals = teamTotals.filter((team) => team.awardType === awardTypeFilter);
     }
+    const ranked = rankTeamTotals(teamTotals, scoreMode);
 
-    // Sort by score mode in JavaScript after getting results (same data, different sort)
-    teamTotals.sort((a, b) => {
-      switch (scoreMode) {
-        case 'total':
-          return Number(b.totalScore) - Number(a.totalScore);
-        case 'average':
-          return Number(b.averageScore) - Number(a.averageScore);
-        case 'weighted':
-          return Number(b.weightedScore) - Number(a.weightedScore);
-        default:
-          return Number(b.totalScore) - Number(a.totalScore);
-      }
-    });
+    // `Tied` marks rows whose score in the exported mode equals a neighbour's
+    const lines = [
+      `Rank,Tied,Team Name,Award Type,Presentation Order,${SCORE_MODE_LABEL[scoreMode]},Number of Scores,Judge Count`,
+      ...ranked.map((team) =>
+        csvRow([
+          team.rank,
+          team.tied ? 'yes' : '',
+          team.teamName,
+          formatAwardType(team.awardType),
+          team.presentationOrder,
+          scoreForMode(team, scoreMode),
+          team.totalScores,
+          team.judgeCount,
+        ])
+      ),
+    ];
+    const csvContent = lines.join('\n') + '\n';
 
-    // Create CSV content based on score mode
-    const scoreModeName =
-      scoreMode === 'total'
-        ? 'Total Score'
-        : scoreMode === 'average'
-          ? 'Average Score'
-          : 'Weighted Score';
-
-    let csvContent = `Rank,Team Name,Award Type,Presentation Order,${scoreModeName},Number of Scores,Judge Count\n`;
-
-    teamTotals.forEach((team, index) => {
-      const finalScore =
-        scoreMode === 'total'
-          ? Number(team.totalScore)
-          : scoreMode === 'average'
-            ? Number(team.averageScore)
-            : Number(team.weightedScore);
-
-      // Format award type for better readability - use "General" instead of "Both"
-      const formatAwardType = (type: string) => {
-        if (type === 'both') return 'General';
-        return type.charAt(0).toUpperCase() + type.slice(1);
-      };
-      const awardType = formatAwardType(String(team.awardType));
-
-      const row = [
-        index + 1,
-        `"${team.teamName}"`,
-        awardType,
-        Number(team.presentationOrder),
-        finalScore,
-        Number(team.totalScores),
-        Number(team.judgeCount),
-      ].join(',');
-      csvContent += row + '\n';
-    });
-
-    // Set response headers for CSV download with proper event name
     const headers = new Headers();
     headers.set('Content-Type', 'text/csv');
-
-    // Sanitize event name for filename (remove special characters)
-    const sanitizedEventName = eventName.replace(/[^a-zA-Z0-9-_]/g, '-');
-    headers.set(
-      'Content-Disposition',
-      `attachment; filename="judging-results-${sanitizedEventName}-${scoreMode}-${new Date().toISOString().split('T')[0]}.csv"`
-    );
+    headers.set('Content-Disposition', csvAttachment('judging-results', eventName, scoreMode));
 
     return new NextResponse(csvContent, { headers });
   } catch (error) {
-    console.error('Error exporting results:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error exporting results');
   }
 }

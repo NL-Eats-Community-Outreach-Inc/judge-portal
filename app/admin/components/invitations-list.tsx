@@ -31,6 +31,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { apiFetch, messageOf } from '@/lib/api/client';
+import type { InvitationListItem as Invitation } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -38,17 +41,6 @@ function formatDate(dateString: string) {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-interface Invitation {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
-  expiresAt: string;
-  acceptedAt?: string;
-  createdAt: string;
-  inviteLink: string;
 }
 
 interface InvitationsListProps {
@@ -72,16 +64,10 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
       setIsLoading(true);
     }
     try {
-      const response = await fetch('/api/admin/invitations');
-      const data = await response.json();
-
-      if (response.ok) {
-        setInvitations(data.invitations);
-      } else {
-        toast.error('Failed to load invitations');
-      }
-    } catch {
-      toast.error('Failed to load invitations');
+      const data = await apiFetch<{ invitations: Invitation[] }>('/api/admin/invitations');
+      setInvitations(data.invitations);
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to load invitations'));
     } finally {
       if (showRefreshing) {
         setIsRefreshing(false);
@@ -111,39 +97,25 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
 
   const handleRevoke = async (id: string, email: string) => {
     try {
-      const response = await fetch(`/api/admin/invitations/${id}`, {
-        method: 'PATCH',
+      await apiFetch(`/api/admin/invitations/${id}`, { method: 'PATCH' });
+      toast.success('Invitation revoked', {
+        description: `${email}'s invitation has been revoked`,
       });
-
-      if (response.ok) {
-        toast.success('Invitation revoked', {
-          description: `${email}'s invitation has been revoked`,
-        });
-        fetchInvitations(true); // Use refreshing state to keep table visible
-      } else {
-        toast.error('Failed to revoke invitation');
-      }
-    } catch {
-      toast.error('Failed to revoke invitation');
+      fetchInvitations(true); // Use refreshing state to keep table visible
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to revoke invitation'));
     }
   };
 
   const handleDelete = async (id: string, email: string) => {
     try {
-      const response = await fetch(`/api/admin/invitations/${id}`, {
-        method: 'DELETE',
+      await apiFetch(`/api/admin/invitations/${id}`, { method: 'DELETE' });
+      toast.success('Invitation deleted', {
+        description: `${email}'s invitation has been removed`,
       });
-
-      if (response.ok) {
-        toast.success('Invitation deleted', {
-          description: `${email}'s invitation has been removed`,
-        });
-        fetchInvitations(true);
-      } else {
-        toast.error('Failed to delete invitation');
-      }
-    } catch {
-      toast.error('Failed to delete invitation');
+      fetchInvitations(true);
+    } catch (error) {
+      toast.error(messageOf(error, 'Failed to delete invitation'));
     }
   };
 
@@ -267,13 +239,12 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
             </Table>
           </div>
         ) : invitations.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Mail className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p>No invitations sent yet</p>
-            <p className="text-sm">
-              Use the &quot;Invite Users&quot; button above to send invitations
-            </p>
-          </div>
+          <EmptyState
+            icon={Mail}
+            title="No invitations yet"
+            description='Use the "Invite Users" button above to create invitation links'
+            className="py-8"
+          />
         ) : (
           <div className="rounded-md border">
             <Table>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromSession } from '@/lib/auth/server';
+import { authServer } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
 import {
@@ -12,18 +12,14 @@ import {
 } from '@/lib/db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
-import { sendApiError } from '@/lib/utils/api-errors';
+import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const user = await getUserFromSession();
-
-    if (!user || user.role !== 'admin') {
-      return sendApiError(401, 'UNAUTHORIZED', 'Unauthorized');
-    }
+    const user = await authServer.requireAdmin();
 
     const orgId = await getAdminOrgId(user.id);
     const { userId } = await params;
@@ -132,7 +128,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting user:', error);
-    return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
+    return handleRouteError(error, 'Error deleting user');
   }
 }
