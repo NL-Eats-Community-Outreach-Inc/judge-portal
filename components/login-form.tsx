@@ -18,6 +18,7 @@ const ROLE_HOME: Record<string, string> = {
   admin: '/admin',
   judge: '/judge',
   participant: '/participant',
+  learner: '/learner'
 };
 
 /**

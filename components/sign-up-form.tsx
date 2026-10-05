@@ -17,9 +17,9 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch, messageOf } from '@/lib/api/client';
 
-type UserRole = 'judge' | 'participant';
+type UserRole = 'judge' | 'participant' | 'learner';
 
-const ROLE_HOME: Record<UserRole, string> = { judge: '/judge', participant: '/participant' };
+const ROLE_HOME: Record<UserRole, string> = { judge: '/judge', participant: '/participant', learner: '/learner'};
 
 /**
  * Participants who arrived through an event deep link (`?next=/participant/...`)

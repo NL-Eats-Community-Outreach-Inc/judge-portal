@@ -16,7 +16,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'open', 'active', 'completed']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant', 'super_admin']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant', 'super_admin', 'learner']);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
 export const invitationRoleEnum = pgEnum('invitation_role', ['judge', 'participant', 'admin']);
