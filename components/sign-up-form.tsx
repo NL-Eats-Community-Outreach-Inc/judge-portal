@@ -19,7 +19,11 @@ import { apiFetch, messageOf } from '@/lib/api/client';
 
 type UserRole = 'judge' | 'participant' | 'learner';
 
-const ROLE_HOME: Record<UserRole, string> = { judge: '/judge', participant: '/participant', learner: '/learner'};
+const ROLE_HOME: Record<UserRole, string> = {
+  judge: '/judge',
+  participant: '/participant',
+  learner: '/learner',
+};
 
 /**
  * Participants who arrived through an event deep link (`?next=/participant/...`)

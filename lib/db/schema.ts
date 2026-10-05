@@ -16,10 +16,21 @@ import {
 import { sql } from 'drizzle-orm';
 
 export const eventStatusEnum = pgEnum('event_status', ['setup', 'open', 'active', 'completed']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'judge', 'participant', 'super_admin', 'learner']);
+export const userRoleEnum = pgEnum('user_role', [
+  'admin',
+  'judge',
+  'participant',
+  'super_admin',
+  'learner',
+]);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
-export const invitationRoleEnum = pgEnum('invitation_role', ['judge', 'participant', 'admin']);
+export const invitationRoleEnum = pgEnum('invitation_role', [
+  'judge',
+  'participant',
+  'admin',
+  'learner',
+]);
 export const invitationStatusEnum = pgEnum('invitation_status', [
   'pending',
   'accepted',
@@ -69,6 +80,77 @@ export const events = pgTable(
   },
   (table) => ({
     organizationIdx: index('idx_events_organization').on(table.organizationId),
+  })
+);
+
+export const courses = pgTable('courses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  description: text('description'),
+
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+    mode: 'string',
+  })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull(),
+
+  updatedAt: timestamp('updated_at', {
+    withTimezone: true,
+    mode: 'string',
+  })
+    .default(sql`timezone('utc'::text, now())`)
+    .notNull()
+    .$onUpdate(() => sql`timezone('utc'::text, now())`),
+});
+
+export const modules = pgTable(
+  'modules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    courseId: uuid('course_id')
+      .references(() => courses.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    title: text('title').notNull(),
+    description: text('description'),
+    order: integer('order').notNull(),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    courseIdx: index('idx_modules_course').on(table.courseId),
+  })
+);
+
+export const lessons = pgTable(
+  'lessons',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    moduleId: uuid('module_id')
+      .references(() => modules.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    title: text('title').notNull(),
+    description: text('description'),
+    order: integer('order').notNull(),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    moduleIdx: index('idx_lessons_module').on(table.moduleId),
   })
 );
 
