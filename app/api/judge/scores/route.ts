@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
         criterionId: scores.criterionId,
         score: scores.score,
         comment: scores.comment,
+        conflictOfInterest: scores.conflictOfInterest,
       })
       .from(scores)
       .where(
@@ -86,7 +87,14 @@ export async function POST(request: NextRequest) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid JSON in request body');
     }
 
-    const { teamId, criterionId, score, comment, eventId: bodyEventId } = body || {};
+    const {
+      teamId,
+      criterionId,
+      score,
+      comment,
+      eventId: bodyEventId,
+      conflictOfInterest,
+    } = body || {};
 
     if (!teamId || !criterionId) {
       return sendApiError(400, 'BAD_REQUEST', 'Missing required fields');
@@ -144,6 +152,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof conflictOfInterest !== 'boolean') {
+      return sendApiError(
+        400,
+        'INVALID_CONFLICT_OF_INTEREST',
+        'Conflict of interest must be Yes or No'
+      );
+    }
+
     const result = await db
       .insert(scores)
       .values({
@@ -153,6 +169,7 @@ export async function POST(request: NextRequest) {
         criterionId,
         score,
         comment: comment || null,
+        conflictOfInterest,
       })
       .onConflictDoUpdate({
         target: [scores.judgeId, scores.teamId, scores.criterionId],
@@ -160,6 +177,7 @@ export async function POST(request: NextRequest) {
           eventId: resolvedEventId,
           score,
           comment: comment || null,
+          conflictOfInterest,
           updatedAt: new Date().toISOString(),
         },
       })
@@ -168,5 +186,59 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, score: result[0] });
   } catch (error) {
     return handleRouteError(error, 'Error saving score');
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await authServer.requireJudge();
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid JSON in request body');
+    }
+
+    const { teamId, eventId: bodyEventId, conflictOfInterest } = body || {};
+
+    if (!teamId) {
+      return sendApiError(400, 'BAD_REQUEST', 'Team ID is required');
+    }
+
+    if (typeof conflictOfInterest !== 'boolean') {
+      return sendApiError(
+        400,
+        'INVALID_CONFLICT_OF_INTEREST',
+        'Conflict of interest must be Yes or No'
+      );
+    }
+
+    const resolved = await resolveJudgeEvent(user.id, bodyEventId || null);
+
+    if (!resolved.ok) {
+      return resolved.response;
+    }
+
+    await db
+      .update(scores)
+      .set({
+        conflictOfInterest,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(scores.judgeId, user.id),
+          eq(scores.teamId, teamId),
+          eq(scores.eventId, resolved.eventId)
+        )
+      );
+
+    return NextResponse.json({
+      success: true,
+      conflictOfInterest,
+    });
+  } catch (error) {
+    return handleRouteError(error, 'Error updating conflict of interest');
   }
 }
