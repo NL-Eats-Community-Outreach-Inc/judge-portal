@@ -128,14 +128,11 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
   const saveScore = useCallback(
     async (criterionId: string, score: number | null, comment: string) => {
       // Don't save if score is null and comment is empty
-      if (score === null && !comment) {
-        return;
-      }
-
-      // Don't save if score is null but comment exists (database constraint)
-      // Set a persistent validation warning instead of a temporary error
-      if (score === null && comment) {
-        setSaveStatus((prev) => ({ ...prev, [criterionId]: 'validation-warning' }));
+      if (score === null || !comment.trim()) {
+        setSaveStatus((prev) => ({
+          ...prev,
+          [criterionId]: 'validation-warning',
+        }));
         return;
       }
 
@@ -710,7 +707,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
 
                   {/* Comment input */}
                   <div className="space-y-2">
-                    <Label htmlFor={`comment-${criterion.id}`}>Comments (optional)</Label>
+                    <Label htmlFor={`comment-${criterion.id}`}>Comments (required)</Label>
                     <Textarea
                       id={`comment-${criterion.id}`}
                       placeholder="Add your comments about this criterion..."
