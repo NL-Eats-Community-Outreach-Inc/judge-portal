@@ -205,6 +205,7 @@ export const scores = pgTable(
       .default(sql`timezone('utc'::text, now())`)
       .notNull()
       .$onUpdate(() => sql`timezone('utc'::text, now())`),
+    conflictOfInterest: boolean('conflict_of_interest').notNull().default(false),
   },
   (table) => ({
     uniqueJudgeTeamCriterion: unique().on(table.judgeId, table.teamId, table.criterionId),
