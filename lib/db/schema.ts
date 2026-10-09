@@ -138,6 +138,8 @@ export const lessons = pgTable(
       .references(() => modules.id, { onDelete: 'cascade' })
       .notNull(),
 
+    sanityDocumentId: uuid('sanityDocumentId').notNull(),
+
     title: text('title').notNull(),
     description: text('description'),
     order: integer('order').notNull(),
@@ -151,6 +153,41 @@ export const lessons = pgTable(
   },
   (table) => ({
     moduleIdx: index('idx_lessons_module').on(table.moduleId),
+  })
+);
+
+export const learnerProgress = pgTable(
+  'learner_progress',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    lessonId: uuid('lesson_id')
+      .references(() => lessons.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    completed: boolean('completed').notNull().default(false),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    uniqueUserLesson: unique().on(table.userId, table.lessonId),
   })
 );
 

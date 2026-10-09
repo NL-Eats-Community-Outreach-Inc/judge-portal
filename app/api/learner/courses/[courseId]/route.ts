@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq, inArray } from 'drizzle-orm';
+import { authServer } from '@/lib/auth';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import {
   courses as coursesTable,
@@ -10,6 +11,12 @@ import {
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   try {
+    const user = await authServer.getUser();
+
+    if (!user) {
+      return sendApiError(401, 'BAD_REQUEST', 'Unauthorized');
+    }
+
     const { courseId } = await params;
 
     const [course] = await db

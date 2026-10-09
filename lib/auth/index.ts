@@ -4,7 +4,7 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'super_admin' | 'admin' | 'judge' | 'participant';
+export type UserRole = 'super_admin' | 'admin' | 'judge' | 'participant' | 'learner';
 
 // Export invitation utilities
 export * from './invitation';

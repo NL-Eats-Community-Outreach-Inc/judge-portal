@@ -15,12 +15,7 @@ export async function GET() {
     const courses = await db.select().from(coursesTable);
 
     return NextResponse.json(courses);
-
   } catch (error) {
     return handleRouteError(error, 'caught error no user');
   }
-}
-
-export async function POST() {
-  //TODO
 }
