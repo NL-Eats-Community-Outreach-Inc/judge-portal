@@ -1,11 +1,11 @@
-import { Settings, Gavel, Users, Shield, type LucideIcon } from 'lucide-react';
+import { Settings, Gavel, Users, Shield, BookOpen, type LucideIcon } from 'lucide-react';
 
 /**
  * Role identity, expressed once. Every role area keeps its own accent (admin
  * blue, judge green, participant teal, super admin violet) but the class
  * strings live here, so headers, tabs and badges all read from one place.
  */
-export type AppRole = 'admin' | 'judge' | 'participant' | 'super_admin';
+export type AppRole = 'admin' | 'judge' | 'participant' | 'super_admin' | 'learner';
 
 export interface RoleTheme {
   /** Label shown in the header and role badge. */
@@ -64,6 +64,19 @@ export const ROLE_THEME: Record<AppRole, RoleTheme> = {
   super_admin: {
     label: 'Super Admin',
     icon: Shield,
+    accentText: 'text-violet-700 dark:text-violet-300',
+    accentBg:
+      'bg-gradient-to-r from-violet-600 to-purple-700 dark:from-violet-500 dark:to-purple-600 text-white',
+    pageGradient:
+      'bg-gradient-to-br from-violet-50/30 via-background to-purple-50/20 dark:from-violet-950/20 dark:via-background dark:to-purple-950/10',
+    activeTab:
+      'data-[state=active]:from-violet-50 data-[state=active]:via-purple-50 data-[state=active]:to-violet-100 dark:data-[state=active]:from-violet-950/40 dark:data-[state=active]:via-purple-950/40 dark:data-[state=active]:to-violet-900/40 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:border-violet-200/50 dark:data-[state=active]:border-violet-700/30',
+    badge:
+      'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-800',
+  },
+  learner: {
+    label: 'learner',
+    icon: BookOpen,
     accentText: 'text-violet-700 dark:text-violet-300',
     accentBg:
       'bg-gradient-to-r from-violet-600 to-purple-700 dark:from-violet-500 dark:to-purple-600 text-white',
