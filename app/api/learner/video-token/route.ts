@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { authServer } from '@/lib/auth';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { lessons as lessonsTable } from '@/lib/db/schema';
-import { sanityClient } from '@/lib/sanity/client';
+import { sanityServerClient } from '@/lib/sanity/server-client';
 
 const mux = new Mux({
   tokenId: process.env.MUX_TOKEN_ID,
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       return sendApiError(404, 'NOT_FOUND', 'Lesson content not configured');
     }
 
-    const sanityLesson = await sanityClient.fetch(
+    const sanityLesson = await sanityServerClient.fetch(
       `
         *[_type == "lesson" && _id == $sanityDocumentId][0]{
           "playbackId": videoContent.asset->playbackId

@@ -60,11 +60,29 @@ describe('GET /api/learner/courses', () => {
     expect(await expectJson(response)).toEqual(courses);
   });
 
+  it('returns 401 when unauthenticated', async () => {
+    signOut(auth);
+
+    await expectApiError(await get(), 401, 'BAD_REQUEST');
+
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
   it('returns an empty array when there are no courses', async () => {
     mockSelectSequence(dbMock.select, []);
 
     const response = await get();
 
     expect(await expectJson(response)).toEqual([]);
+  });
+
+  it('handles database errors', async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await get();
+
+    await expectApiError(response, 500, 'INTERNAL_SERVER_ERROR');
   });
 });

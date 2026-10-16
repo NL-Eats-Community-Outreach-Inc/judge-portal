@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from '@/app/api/learner/video-token/route';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { sanityClient } from '@/lib/sanity/client';
+import { sanityServerClient } from '@/lib/sanity/server-client';
 import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
 import {
   signInAs,
@@ -35,15 +35,15 @@ vi.mock('@/lib/db', async () => {
   return { db: buildDbMock() };
 });
 
-vi.mock('@/lib/sanity/client', () => ({
-  sanityClient: {
+vi.mock('@/lib/sanity/server-client', () => ({
+  sanityServerClient: {
     fetch: vi.fn(),
   },
 }));
 
 const auth = authServer as unknown as AuthServerMock;
 const dbMock = db as unknown as DbMock;
-const sanityFetch = sanityClient.fetch as unknown as ReturnType<typeof vi.fn>;
+const sanityFetch = sanityServerClient.fetch as unknown as ReturnType<typeof vi.fn>;
 
 const get = (query = '?lessonId=lesson-1') =>
   GET(new Request(`http://localhost/api/learner/video-token${query}`));
@@ -115,5 +115,40 @@ describe('GET /api/learner/video-token', () => {
     });
 
     expect(signPlaybackId).toHaveBeenCalledWith('mux-playback-123', { type: 'video' });
+  });
+  it('handles database errors', async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+    expect(sanityFetch).not.toHaveBeenCalled();
+    expect(signPlaybackId).not.toHaveBeenCalled();
+  });
+
+  it('handles Sanity fetch errors', async () => {
+    mockSelectSequence(dbMock.select, [lesson]);
+    sanityFetch.mockRejectedValue(new Error('Sanity unavailable'));
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+    expect(signPlaybackId).not.toHaveBeenCalled();
+  });
+
+  it('handles token signing errors', async () => {
+    mockSelectSequence(dbMock.select, [lesson]);
+
+    sanityFetch.mockResolvedValue({
+      playbackId: 'mux-playback-123',
+    });
+
+    signPlaybackId.mockRejectedValue(new Error('Mux signing failed'));
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
   });
 });

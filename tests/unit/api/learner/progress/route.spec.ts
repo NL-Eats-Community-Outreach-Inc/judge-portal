@@ -91,6 +91,14 @@ describe('POST /api/learner/progress', () => {
     expect(dbMock.insert).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when lessonId is empty', async () => {
+    const response = await post({ lessonId: '' });
+
+    await expectApiError(response, 400, 'BAD_REQUEST');
+
+    expect(dbMock.insert).not.toHaveBeenCalled();
+  });
+
   it('saves completed progress for the signed-in learner', async () => {
     const savedProgress = progress[0];
 
@@ -122,5 +130,38 @@ describe('POST /api/learner/progress', () => {
       completed: true,
     });
     expect(conflictConfig.target).toHaveLength(2);
+  });
+
+  it('handles database errors', async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+  });
+
+  it('handles database errors when saving progress', async () => {
+    dbMock.insert.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await post({ lessonId: 'lesson-1' });
+
+    expect(response.status).toBe(500);
+  });
+
+  it('handles malformed JSON', async () => {
+    const request = new Request('http://localhost/api/learner/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{invalid json',
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    expect(dbMock.insert).not.toHaveBeenCalled();
   });
 });

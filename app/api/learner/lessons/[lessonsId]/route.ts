@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, and, gt, asc } from 'drizzle-orm';
 import { authServer } from '@/lib/auth';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
-import { lessons as lessonsTable } from '@/lib/db/schema';
-import { sanityClient } from '@/lib/sanity/client';
+import { lessons as lessonsTable, modules as modulesTable } from '@/lib/db/schema';
+import { sanityServerClient } from '@/lib/sanity/server-client';
 
 export async function GET(
   request: Request,
@@ -33,11 +33,30 @@ export async function GET(
       return sendApiError(404, 'NOT_FOUND', 'Lesson content not configured');
     }
 
-    const sanityLesson = await sanityClient.fetch(
+    const [module] = await db
+      .select()
+      .from(modulesTable)
+      .where(eq(modulesTable.id, lesson.moduleId))
+      .limit(1);
+
+    const [nextLesson] = await db
+      .select({
+        id: lessonsTable.id,
+        title: lessonsTable.title,
+        order: lessonsTable.order,
+        moduleId: lessonsTable.moduleId,
+      })
+      .from(lessonsTable)
+      .where(and(eq(lessonsTable.moduleId, lesson.moduleId), gt(lessonsTable.order, lesson.order)))
+      .orderBy(asc(lessonsTable.order))
+      .limit(1);
+
+    const sanityLesson = await sanityServerClient.fetch(
       `
         *[_type == "lesson" && _id == $sanityDocumentId][0]{
           _id,
           title,
+          lessonFormat,
           content,
           videoContent{
             _type,
@@ -63,6 +82,11 @@ export async function GET(
     return NextResponse.json({
       lesson,
       content: sanityLesson,
+      navigation: {
+        courseId: module?.courseId ?? null,
+        nextLessonId: nextLesson?.id ?? null,
+        nextLessonTitle: nextLesson?.title ?? null,
+      },
     });
   } catch (error) {
     return handleRouteError(error, 'Error fetching learner lesson');

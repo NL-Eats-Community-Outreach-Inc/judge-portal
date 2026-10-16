@@ -93,4 +93,25 @@ describe('GET /api/learner/courses/[courseId]', () => {
       lessons: [],
     });
   });
+
+  it('returns modules with an empty lesson array when there are no lessons', async () => {
+    mockSelectSequence(dbMock.select, [course], modules, []);
+
+    const response = await get();
+
+    expect(await expectJson(response)).toEqual({
+      course,
+      modules,
+      lessons: [],
+    });
+  });
+  it('handles database errors', async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+  });
 });
