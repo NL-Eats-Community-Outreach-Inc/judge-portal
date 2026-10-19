@@ -4,7 +4,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export type InvitationRole = 'admin' | 'judge' | 'participant';
+export type InvitationRole = 'admin' | 'judge' | 'participant' | 'learner';
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 /**
@@ -162,6 +162,7 @@ const ROLE_HOME: Record<InvitationRole, string> = {
   admin: '/admin',
   judge: '/judge',
   participant: '/participant',
+  learner: '/learner',
 };
 
 /** Where a user lands after accepting an invitation for `role`. */

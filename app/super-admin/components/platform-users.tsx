@@ -343,6 +343,7 @@ export default function PlatformUsers() {
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="judge">Judge</SelectItem>
                             <SelectItem value="participant">Participant</SelectItem>
+                            <SelectItem value="learner">Learner</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
