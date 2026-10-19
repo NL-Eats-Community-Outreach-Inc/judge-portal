@@ -86,13 +86,7 @@ export async function POST(request: NextRequest) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid JSON in request body');
     }
 
-    const {
-      teamId,
-      criterionId,
-      score,
-      comment,
-      eventId: bodyEventId,
-    } = body || {};
+    const { teamId, criterionId, score, comment, eventId: bodyEventId } = body || {};
 
     if (!teamId || !criterionId) {
       return sendApiError(400, 'BAD_REQUEST', 'Missing required fields');
