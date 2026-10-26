@@ -18,9 +18,7 @@ export function generateInvitationToken(): string {
  * Calculate expiration date based on days from now
  */
 export function calculateExpirationDate(daysFromNow: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + daysFromNow);
-  return date.toISOString();
+  return new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
 }
 
 /**

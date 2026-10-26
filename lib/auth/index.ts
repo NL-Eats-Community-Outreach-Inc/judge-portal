@@ -70,4 +70,8 @@ export const authServer = {
   async requireParticipant() {
     return await this.requireRole('participant');
   },
+
+  async requireLearner() {
+    return await this.requireRole('learner');
+  },
 };

@@ -29,7 +29,7 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-type Role = 'admin' | 'judge' | 'participant' | 'super_admin';
+type Role = 'admin' | 'judge' | 'participant' | 'super_admin' | 'learner';
 
 export async function rest<T = unknown>(
   path: string,

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
 
     // Validate role
-    const validRoles = ['admin', 'judge', 'participant'];
+    const validRoles = ['admin', 'judge', 'participant', 'learner'];
     if (!validRoles.includes(role)) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
     }

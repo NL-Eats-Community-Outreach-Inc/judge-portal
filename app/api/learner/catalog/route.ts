@@ -11,10 +11,10 @@ import {
 
 export async function GET() {
   try {
-    const user = await authServer.getUser();
+    const user = await authServer.requireLearner();
 
     if (!user) {
-      return sendApiError(401, 'BAD_REQUEST', 'Unauthorized');
+      return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
 
     // Query 1: all courses.

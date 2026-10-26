@@ -4,7 +4,7 @@ import { users, organizationMembers } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createClient } from '@/lib/supabase/server';
 
-type Role = 'super_admin' | 'admin' | 'judge' | 'participant';
+type Role = 'super_admin' | 'admin' | 'judge' | 'participant' | 'learner';
 
 /**
  * OAuth / magic-link code exchange. Creates the profile row when the trigger

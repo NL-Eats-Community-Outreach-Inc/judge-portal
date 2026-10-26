@@ -1,5 +1,22 @@
 'use client';
 
+/**
+ * Learner Lesson Page — Lesson Viewer
+ *
+ * Loads lesson content, displays text and/or video, and tracks completion.
+ *
+ * This component:
+ * 1. Defines the lesson data types and initializes viewer state.
+ * 2. Loads lesson details, navigation, video credentials, and saved progress.
+ * 3. Handles lesson completion and saves progress through the API.
+ * 4. Displays loading and error states.
+ * 5. Renders the lesson heading and content based on its format.
+ * 6. Provides completion controls and navigation to other lessons.
+ *
+ * Uses Sanity Portable Text for lesson material and signed Mux tokens
+ * for video playback.
+ */
+
 import { useEffect, useState } from 'react';
 import MuxPlayer from '@mux/mux-player-react';
 import { PortableText } from '@portabletext/react';
@@ -17,12 +34,17 @@ import {
   PlayCircle,
 } from 'lucide-react';
 
+// 1. Define the route parameters, lesson response, and saved progress types.
+
+// Next.js dynamic route params for `/learner/lessons/[lessonId]`.
 type LessonPageProps = {
   params: Promise<{
-    lessonId: string;
+    courseSlug: string;
+    lessonSlug: string;
   }>;
 };
 
+// Saved completion record for the current learner and lesson.
 type LearnerProgress = {
   id: string;
   userId: string;
@@ -32,12 +54,14 @@ type LearnerProgress = {
   updatedAt: string;
 };
 
+// Combined response containing database metadata, Sanity content, and navigation.
 type Lesson = {
   lesson: {
     id: string;
     title: string;
     description: string | null;
     sanityDocumentId: string | null;
+    slug: string;
   };
   content: {
     _id: string;
@@ -50,10 +74,12 @@ type Lesson = {
     courseId: string | null;
     nextLessonId: string | null;
     nextLessonTitle: string | null;
+    nextLessonSlug: string | null;
   };
 };
 
 export default function LessonPage({ params }: LessonPageProps) {
+  // 2. Initialize navigation and state for lesson content, video, and progress.
   const router = useRouter();
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -61,16 +87,18 @@ export default function LessonPage({ params }: LessonPageProps) {
     token: string;
     playbackId: string;
   } | null>(null);
-  const [courseId, setCourseId] = useState<string | null>(null);
+  const [courseSlug, setCourseSlug] = useState<string | null>(null);
   const [nextLesson, setNextLesson] = useState<{
     id: string;
     title: string;
+    slug: string;
   } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
+  // 3. Load the lesson, optional video credentials, and saved completion state.
   useEffect(() => {
     let cancelled = false;
 
@@ -79,15 +107,18 @@ export default function LessonPage({ params }: LessonPageProps) {
         setError(null);
         setLesson(null);
         setVideo(null);
-        setCourseId(null);
         setNextLesson(null);
 
-        const { lessonId: currentLessonId } = await params;
+        // Resolve the lesson ID from the dynamic route parameters.
+        const { courseSlug, lessonSlug } = await params;
+        setCourseSlug(courseSlug);
 
         if (cancelled) return;
 
-        // Fetch only the requested lesson and its navigation data.
-        const lessonResponse = await fetch(`/api/learner/lessons/${currentLessonId}`);
+        // Fetch the lesson and its navigation information.
+        const lessonResponse = await fetch(
+          `/api/learner/lessons/${lessonSlug}?courseSlug=${courseSlug}`
+        );
         const lessonData: Lesson & { error_message?: string } = await lessonResponse.json();
 
         if (!lessonResponse.ok) {
@@ -96,28 +127,24 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         if (cancelled) return;
 
-        // Navigation now comes directly from the lesson API.
-        setCourseId(lessonData.navigation?.courseId ?? null);
-
-        if (lessonData.navigation?.nextLessonId) {
+        if (lessonData.navigation?.nextLessonId && lessonData.navigation?.nextLessonSlug) {
           setNextLesson({
             id: lessonData.navigation.nextLessonId,
             title: lessonData.navigation.nextLessonTitle ?? 'Next lesson',
+            slug: lessonData.navigation.nextLessonSlug,
           });
         }
 
         setLesson(lessonData);
 
-        // Load the video only when this lesson needs one.
-
+        // Request video credentials only for video and combined lessons.
         const format = lessonData.content.lessonFormat;
 
-        // These requests don't depend on each other.
         const videoPromise =
           format === 'video' || format === 'both'
             ? (async () => {
                 const response = await fetch(
-                  `/api/learner/video-token?lessonId=${currentLessonId}`
+                  `/api/learner/video-token?lessonId=${lessonData.lesson.id}`
                 );
                 const data = await response.json();
 
@@ -129,6 +156,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               })()
             : Promise.resolve(null);
 
+        // Fetch saved progress while any required video credentials load.
         const progressPromise = apiFetch<{
           data: LearnerProgress[];
         }>('/api/learner/progress');
@@ -141,6 +169,7 @@ export default function LessonPage({ params }: LessonPageProps) {
           setVideo(videoData);
         }
 
+        // Restore the completion state for the current lesson.
         const lessonProgress = progressResponse.data.find(
           (item) => item.lessonId === lessonData.lesson.id
         );
@@ -161,6 +190,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     };
   }, [params]);
 
+  // 4. Save lesson completion and update the UI after a successful response.
   const handleLessonComplete = async () => {
     if (!lesson || completing || completed) return;
 
@@ -183,6 +213,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     }
   };
 
+  // 5. Display an error state if the lesson could not be loaded.
   if (error && !lesson) {
     return (
       <main className="mx-auto max-w-5xl space-y-4 p-6 md:p-10">
@@ -204,6 +235,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     );
   }
 
+  // 6. Show a loading state while the lesson request is pending.
   if (!lesson) {
     return (
       <main className="mx-auto max-w-5xl p-6 md:p-10">
@@ -212,6 +244,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     );
   }
 
+  // Determine which content sections should appear for this lesson format.
   const format = lesson.content.lessonFormat;
   const needsVideo = format === 'video' || format === 'both';
   const needsText = format === 'text' || format === 'both';
@@ -376,7 +409,7 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         {nextLesson && (
           <Link
-            href={`/learner/lessons/${nextLesson.id}`}
+            href={`/learner/courses/${courseSlug}/lessons/${nextLesson.slug}`}
             className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
           >
             <span className="text-left">
@@ -389,9 +422,9 @@ export default function LessonPage({ params }: LessonPageProps) {
           </Link>
         )}
 
-        {!nextLesson && courseId && (
+        {!nextLesson && courseSlug && (
           <Link
-            href={`/learner/courses/${courseId}`}
+            href={`/learner/courses/${courseSlug}`}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-3 text-sm font-medium transition hover:bg-muted"
           >
             Back to course

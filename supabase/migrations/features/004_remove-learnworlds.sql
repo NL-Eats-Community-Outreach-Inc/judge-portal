@@ -27,7 +27,6 @@ DROP TABLE IF EXISTS public.learner_item_events;
 DROP TABLE IF EXISTS public.ml_training_examples;
 DROP TABLE IF EXISTS public.model_registry;
 DROP TABLE IF EXISTS public.learning_items;
-DROP TABLE IF EXISTS public.learner_progress;
 DROP TABLE IF EXISTS public.learnworlds_raw_payloads;
 DROP TABLE IF EXISTS public.learnworlds_sync_runs;
 DROP TABLE IF EXISTS public.mentor_profiles;

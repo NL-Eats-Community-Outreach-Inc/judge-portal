@@ -65,7 +65,7 @@ describe('GET /api/learner/video-token', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await get(), 401, 'BAD_REQUEST');
+    await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
   it('returns 400 when lessonId is missing', async () => {

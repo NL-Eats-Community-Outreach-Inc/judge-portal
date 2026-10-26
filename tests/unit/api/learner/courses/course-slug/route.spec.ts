@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET } from '@/app/api/learner/courses/[courseId]/route';
+import { GET } from '@/app/api/learner/courses/[courseSlug]/route';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { mockRequest, mockParams } from '@/tests/unit/test-utils/mock-request';
@@ -26,13 +26,14 @@ vi.mock('@/lib/db', async () => {
 const auth = authServer as unknown as AuthServerMock;
 const dbMock = db as unknown as DbMock;
 
-const params = mockParams({ courseId: 'course-1' });
+const params = mockParams({ courseSlug: 'introduction-to-programming' });
 
-const get = () => GET(mockRequest('/api/learner/courses/course-1'), params);
+const get = () => GET(mockRequest('/api/learner/courses/introduction-to-programming'), params);
 
 const course = {
   id: 'course-1',
   title: 'Introduction to Programming',
+  slug: 'introduction-to-programming',
 };
 
 const modules = [
@@ -57,11 +58,11 @@ beforeEach(() => {
   signInAs(auth, fakeUser('learner'));
 });
 
-describe('GET /api/learner/courses/[courseId]', () => {
+describe('GET /api/learner/courses/[courseSlug]', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await get(), 401, 'BAD_REQUEST');
+    await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
   it('returns 404 when the course does not exist', async () => {

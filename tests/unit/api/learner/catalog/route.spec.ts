@@ -35,12 +35,14 @@ const course1 = {
   id: 'course-1',
   title: 'Introduction to Programming',
   description: 'Learn programming basics',
+  slug: 'introduction-to-programming',
 };
 
 const course2 = {
   id: 'course-2',
   title: 'Advanced Programming',
   describe: 'Explore advanced topics',
+  slug: 'advanced-programming',
 };
 
 const module1 = {
@@ -91,7 +93,7 @@ describe('GET /api/learner/catalog', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await get(), 401, 'BAD_REQUEST');
+    await expectApiError(await get(), 401, 'UNAUTHORIZED');
 
     expect(dbMock.select).not.toHaveBeenCalled();
   });

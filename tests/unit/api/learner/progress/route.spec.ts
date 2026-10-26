@@ -57,7 +57,7 @@ describe('GET /api/learner/progress', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await get(), 401, 'BAD_REQUEST');
+    await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
   it('returns the signed-in learner progress', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET } from '@/app/api/learner/lessons/[lessonsId]/route';
+import { GET } from '@/app/api/learner/lessons/[lessonSlug]/route';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sanityServerClient } from '@/lib/sanity/server-client';
@@ -34,15 +34,17 @@ const auth = authServer as unknown as AuthServerMock;
 const dbMock = db as unknown as DbMock;
 const sanityFetch = sanityServerClient.fetch as unknown as ReturnType<typeof vi.fn>;
 
-const params = mockParams({ lessonsId: 'lesson-1' });
+const params = mockParams({ lessonSlug: 'welcome' });
 
-const get = () => GET(mockRequest('/api/learner/lessons/lesson-1'), params);
+const get = (courseSlug = 'introduction-to-innovation') =>
+  GET(mockRequest(`/api/learner/lessons/welcome?courseSlug=${courseSlug}`), params);
 
 const lesson = {
   id: 'lesson-1',
   moduleId: 'module-1',
   title: 'Your First Program',
   description: 'Learn the basics.',
+  slug: 'welcome',
   sanityDocumentId: 'sanity-lesson-1',
 };
 
@@ -53,6 +55,21 @@ const sanityContent = {
   videoContent: null,
 };
 
+const module = {
+  id: 'module-1',
+  courseId: 'course-1',
+};
+
+const nextLesson = {
+  id: 'lesson-2',
+  title: 'Variables',
+  slug: 'variables',
+  order: 2,
+  moduleId: 'module-1',
+};
+
+const joinedLesson = { lesson };
+
 beforeEach(() => {
   vi.clearAllMocks();
   resetDbMock(dbMock);
@@ -60,53 +77,45 @@ beforeEach(() => {
   signInAs(auth, fakeUser('learner'));
 });
 
-describe('GET /api/learner/lessons/[lessonsId]', () => {
+describe('GET /api/learner/lessons/[lessonSlug]', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await get(), 401, 'BAD_REQUEST');
+    await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
-  it('returns 404 when the lesson does not exist', async () => {
+  it('returns 400 when courseSlug is missing', async () => {
+    const response = await GET(mockRequest('/api/learner/lessons/welcome'), params);
+
+    await expectApiError(response, 400, 'BAD_REQUEST');
+    expect(sanityFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the lesson does not exist in the requested course', async () => {
     mockSelectSequence(dbMock.select, []);
 
     await expectApiError(await get(), 404, 'NOT_FOUND');
-
     expect(sanityFetch).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the lesson has no Sanity document ID', async () => {
-    mockSelectSequence(dbMock.select, [{ ...lesson, sanityDocumentId: null }]);
+    mockSelectSequence(dbMock.select, [{ lesson: { ...lesson, sanityDocumentId: null } }]);
 
     await expectApiError(await get(), 404, 'NOT_FOUND');
-
     expect(sanityFetch).not.toHaveBeenCalled();
   });
 
   it('returns 404 when Sanity content does not exist', async () => {
-    mockSelectSequence(dbMock.select, [lesson], [{ id: 'module-1', courseId: 'course-1' }], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
 
     sanityFetch.mockResolvedValue(null);
 
     await expectApiError(await get(), 404, 'NOT_FOUND');
-
     expect(sanityFetch).toHaveBeenCalledOnce();
   });
 
   it('returns the lesson, Sanity content, and navigation', async () => {
-    const module = {
-      id: 'module-1',
-      courseId: 'course-1',
-    };
-
-    const nextLesson = {
-      id: 'lesson-2',
-      title: 'Variables',
-      order: 2,
-      moduleId: 'module-1',
-    };
-
-    mockSelectSequence(dbMock.select, [lesson], [module], [nextLesson]);
+    mockSelectSequence(dbMock.select, [joinedLesson], [module], [nextLesson]);
 
     sanityFetch.mockResolvedValue(sanityContent);
 
@@ -119,6 +128,7 @@ describe('GET /api/learner/lessons/[lessonsId]', () => {
         courseId: 'course-1',
         nextLessonId: 'lesson-2',
         nextLessonTitle: 'Variables',
+        nextLessonSlug: 'variables',
       },
     });
 
@@ -129,12 +139,7 @@ describe('GET /api/learner/lessons/[lessonsId]', () => {
   });
 
   it('returns null next-lesson fields when there is no next lesson', async () => {
-    const module = {
-      id: 'module-1',
-      courseId: 'course-1',
-    };
-
-    mockSelectSequence(dbMock.select, [lesson], [module], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
 
     sanityFetch.mockResolvedValue(sanityContent);
 
@@ -147,12 +152,13 @@ describe('GET /api/learner/lessons/[lessonsId]', () => {
         courseId: 'course-1',
         nextLessonId: null,
         nextLessonTitle: null,
+        nextLessonSlug: null,
       },
     });
   });
 
   it('returns a null courseId when the module is missing', async () => {
-    mockSelectSequence(dbMock.select, [lesson], [], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [], []);
 
     sanityFetch.mockResolvedValue(sanityContent);
 
@@ -165,6 +171,7 @@ describe('GET /api/learner/lessons/[lessonsId]', () => {
         courseId: null,
         nextLessonId: null,
         nextLessonTitle: null,
+        nextLessonSlug: null,
       },
     });
   });
@@ -180,7 +187,7 @@ describe('GET /api/learner/lessons/[lessonsId]', () => {
   });
 
   it('handles Sanity fetch errors', async () => {
-    mockSelectSequence(dbMock.select, [lesson], [{ id: 'module-1', courseId: 'course-1' }], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
 
     sanityFetch.mockRejectedValue(new Error('Sanity unavailable'));
 

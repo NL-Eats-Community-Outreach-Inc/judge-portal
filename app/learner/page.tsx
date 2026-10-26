@@ -14,6 +14,8 @@ import {
   Circle,
 } from 'lucide-react';
 
+// 1. Define the data types used by the dashboard.
+// Lesson metadata used to count lessons and match progress records to a course.
 type Lesson = {
   id: string;
   moduleId: string;
@@ -22,8 +24,10 @@ type Lesson = {
   description: string | null;
   order: number | null;
   createdAt: string;
+  slug: string;
 };
 
+// 2. Define module metadata used for course structure and counts.
 type Module = {
   id: string;
   courseId: string;
@@ -31,22 +35,27 @@ type Module = {
   description: string | null;
   order: number | null;
   createdAt: string;
+  slug: string;
 };
 
+// 3. Define the core course fields.
 type Course = {
   id: string;
   title: string;
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  slug: string;
 };
 
+// 4. Define the catalogue response shape.
 type CourseDetail = {
   course: Course;
   modules: Module[];
   lessons: Lesson[];
 };
 
+// 5. Define saved lesson progress; only completed records count below.
 type LessonProgress = {
   id: string;
   userId: string;
@@ -54,14 +63,32 @@ type LessonProgress = {
   completed: boolean;
 };
 
+// 6. Define the status categories used to group courses.
 type CourseStatus = 'in-progress' | 'not-started' | 'completed';
 
+// 7. Define the derived course data used by the UI.
 type CourseWithProgress = {
   detail: CourseDetail;
   completedLessons: number;
   totalLessons: number;
   status: CourseStatus;
 };
+
+/**
+ * Learner Dashboard — Student View
+ *
+ * Displays the learner's courses, completion progress, and catalogue search.
+ *
+ * This component:
+ * 1. Loads course data and saved lesson progress from the learner APIs.
+ * 2. Derives each course's completion count and progress status.
+ * 3. Filters courses using the search field.
+ * 4. Groups courses into in-progress, not-started, and completed sections.
+ * 5. Renders course cards with progress indicators and course statistics.
+ * 6. Handles loading, error, empty-catalogue, and no-search-results states.
+ *
+ * Course data and progress are fetched when the component mounts.
+ */
 
 export default function LearnerPage() {
   const [courses, setCourses] = useState<CourseDetail[]>([]);
@@ -70,15 +97,18 @@ export default function LearnerPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  // 1. Load course data and progress when the dashboard mounts.
+  // The cancellation flag prevents state updates after unmount.
   useEffect(() => {
     let cancelled = false;
 
+    // 2. Keep both requests and their error handling in one loader.
     async function loadCourses() {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch the catalogue and progress at the same time.
+        // 3. Fetch the course catalogue and progress concurrently.
         const [coursesResponse, progressResponse] = await Promise.all([
           fetch('/api/learner/catalog'),
           fetch('/api/learner/progress'),
@@ -89,6 +119,7 @@ export default function LearnerPage() {
           progressResponse.json(),
         ]);
 
+        // 4. Treat either failed request as a dashboard load failure.
         if (!coursesResponse.ok) {
           throw new Error(coursesData.error_message || 'Failed to load courses');
         }
@@ -97,6 +128,7 @@ export default function LearnerPage() {
           throw new Error(progressData.error_message || 'Failed to load lesson progress');
         }
 
+        // 5. Validate both API response shapes before updating state.
         if (!Array.isArray(coursesData)) {
           throw new Error('Unexpected courses API response format');
         }
@@ -129,11 +161,13 @@ export default function LearnerPage() {
     };
   }, []);
 
+  // 6. Build a Set of completed lesson IDs for efficient lookups.
   const completedLessonIds = useMemo(
     () => new Set(progress.filter((item) => item.completed).map((item) => item.lessonId)),
     [progress]
   );
 
+  // 7. Derive lesson counts and a display status for each course.
   const coursesWithProgress = useMemo<CourseWithProgress[]>(() => {
     return courses.map((detail) => {
       const totalLessons = detail.lessons.length;
@@ -141,6 +175,7 @@ export default function LearnerPage() {
         completedLessonIds.has(lesson.id)
       ).length;
 
+      // 8. Determine the course status without marking empty courses completed.
       let status: CourseStatus = 'not-started';
 
       if (totalLessons > 0 && completedLessons === totalLessons) {
@@ -158,6 +193,7 @@ export default function LearnerPage() {
     });
   }, [courses, completedLessonIds]);
 
+  // 9. Filter by course title or description; ignore case and surrounding whitespace.
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -173,10 +209,12 @@ export default function LearnerPage() {
     });
   }, [coursesWithProgress, search]);
 
+  // 10. Group the filtered courses by progress status.
   const inProgressCourses = filteredCourses.filter((item) => item.status === 'in-progress');
   const notStartedCourses = filteredCourses.filter((item) => item.status === 'not-started');
   const completedCourses = filteredCourses.filter((item) => item.status === 'completed');
 
+  // 11. Return the module and lesson counts shown on a course card.
   function getCourseStats(courseDetail: CourseDetail) {
     return {
       modules: courseDetail.modules.length,
@@ -184,6 +222,10 @@ export default function LearnerPage() {
     };
   }
 
+  /**
+   * Render a course card with status, progress, and module/lesson counts.
+   * Reuse this helper across the dashboard's status sections.
+   */
   function renderCourseCard(item: CourseWithProgress) {
     const { detail, completedLessons, totalLessons, status } = item;
     const stats = getCourseStats(detail);
@@ -193,7 +235,7 @@ export default function LearnerPage() {
     return (
       <Link
         key={detail.course.id}
-        href={`/learner/courses/${detail.course.id}`}
+        href={`/learner/courses/${detail.course.slug}`}
         className={`group flex min-h-64 min-w-0 flex-col overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           isCompleted
             ? 'border-border/70 bg-muted/60 hover:border-muted-foreground/40'
@@ -302,6 +344,10 @@ export default function LearnerPage() {
     );
   }
 
+  /**
+   * Render a group of courses with the same progress status.
+   * Omit empty groups so the dashboard does not show headings without cards.
+   */
   function renderSection({
     title,
     description,
@@ -345,6 +391,7 @@ export default function LearnerPage() {
     );
   }
 
+  // 12. Render loading and error states before the main dashboard.
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
@@ -353,6 +400,7 @@ export default function LearnerPage() {
     );
   }
 
+  // 13. Display an accessible error state if loading fails.
   if (error) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
@@ -364,6 +412,7 @@ export default function LearnerPage() {
     );
   }
 
+  // 14. Render the dashboard header, search, and grouped course sections.
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
@@ -402,6 +451,7 @@ export default function LearnerPage() {
           </div>
         </div>
 
+        {/* An empty catalogue differs from a non-empty catalogue with no search matches. */}
         {courses.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
@@ -418,6 +468,7 @@ export default function LearnerPage() {
           </div>
         ) : (
           <div className="space-y-10">
+            {/* Group cards by progress state to help learners resume or discover work. */}
             {renderSection({
               title: 'In progress',
               description: 'Pick up where you left off',

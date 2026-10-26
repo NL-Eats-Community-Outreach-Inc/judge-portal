@@ -102,6 +102,7 @@ export const courses = pgTable('courses', {
     .default(sql`timezone('utc'::text, now())`)
     .notNull()
     .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  slug: text('slug').notNull().unique(),
 });
 
 export const modules = pgTable(
@@ -123,6 +124,7 @@ export const modules = pgTable(
     })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
+    slug: text('slug').notNull(),
   },
   (table) => ({
     courseIdx: index('idx_modules_course').on(table.courseId),
@@ -150,6 +152,7 @@ export const lessons = pgTable(
     })
       .default(sql`timezone('utc'::text, now())`)
       .notNull(),
+    slug: text('slug').notNull(),
   },
   (table) => ({
     moduleIdx: index('idx_lessons_module').on(table.moduleId),

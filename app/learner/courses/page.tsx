@@ -1,8 +1,25 @@
 'use client';
 
+/**
+ * Learner Course Catalogue — All Courses
+ *
+ * Displays available courses and allows learners to search the catalogue.
+ *
+ * This component:
+ * 1. Defines the course, module, and lesson data types.
+ * 2. Loads course data from the learner catalogue API.
+ * 3. Filters courses by title or description.
+ * 4. Displays loading, error, and empty-result states.
+ * 5. Renders course cards with module and lesson counts.
+ *
+ * Uses client-side search so results update without additional API requests.
+ */
+
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, GraduationCap, Layers3, PlayCircle, Search } from 'lucide-react';
+
+// 1. Define the course catalogue data types.
 
 type Course = {
   id: string;
@@ -10,6 +27,7 @@ type Course = {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  slug: string;
 };
 
 type Module = {
@@ -19,6 +37,7 @@ type Module = {
   description: string | null;
   order: number | null;
   createdAt: string;
+  slug: string;
 };
 
 type Lesson = {
@@ -29,6 +48,7 @@ type Lesson = {
   description: string | null;
   order: number | null;
   createdAt: string;
+  slug: string;
 };
 
 type CourseDetail = {
@@ -38,11 +58,13 @@ type CourseDetail = {
 };
 
 export default function AllCoursesPage() {
+  // 2. Initialize catalogue data and UI state.
   const [courses, setCourses] = useState<CourseDetail[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 3. Fetch the course catalogue when the page mounts.
   useEffect(() => {
     let cancelled = false;
 
@@ -51,9 +73,11 @@ export default function AllCoursesPage() {
         setLoading(true);
         setError(null);
 
+        // Request the catalogue from the learner API.
         const response = await fetch('/api/learner/catalog');
         const data: unknown = await response.json();
 
+        // Handle HTTP errors and extract a useful API error message when available.
         if (!response.ok) {
           const message =
             typeof data === 'object' &&
@@ -66,6 +90,7 @@ export default function AllCoursesPage() {
           throw new Error(message);
         }
 
+        // Validate the response before storing it as course data.
         if (!Array.isArray(data)) {
           throw new Error('Unexpected courses API response format');
         }
@@ -93,6 +118,7 @@ export default function AllCoursesPage() {
     };
   }, []);
 
+  // 4. Filter courses by title or description without additional API requests.
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -103,6 +129,7 @@ export default function AllCoursesPage() {
     );
   }, [courses, search]);
 
+  // 5. Render the catalogue heading and search field.
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-8 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
@@ -144,6 +171,7 @@ export default function AllCoursesPage() {
           </div>
         </div>
 
+        {/* 6. Show skeleton cards while the catalogue request is pending. */}
         {loading ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -173,11 +201,12 @@ export default function AllCoursesPage() {
             </p>
           </div>
         ) : (
+          /* 7. Display matching courses as clickable cards. */
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredCourses.map(({ course, modules, lessons }, index) => (
               <Link
                 key={course.id}
-                href={`/learner/courses/${course.id}`}
+                href={`/learner/courses/${course.slug}`}
                 className="group flex min-h-64 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition duration-200 hover:-translate-y-1 hover:border-violet-500/50 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               >
                 <div

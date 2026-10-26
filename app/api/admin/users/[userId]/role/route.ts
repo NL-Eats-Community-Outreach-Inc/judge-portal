@@ -48,7 +48,7 @@ export async function PUT(
     const adminOrgId = await getAdminOrgId(user.id);
     const { role } = await request.json();
 
-    if (!role || !['admin', 'judge', 'participant'].includes(role)) {
+    if (!role || !['admin', 'judge', 'participant', 'learner'].includes(role)) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
     }
 

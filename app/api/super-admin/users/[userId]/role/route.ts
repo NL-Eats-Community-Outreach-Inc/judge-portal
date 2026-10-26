@@ -13,7 +13,7 @@ import {
 import { eq, and, sql, asc } from 'drizzle-orm';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
-const VALID_ROLES = ['admin', 'judge', 'participant'] as const;
+const VALID_ROLES = ['admin', 'judge', 'participant', 'learner'] as const;
 
 export async function PUT(request: Request, { params }: { params: Promise<{ userId: string }> }) {
   try {
