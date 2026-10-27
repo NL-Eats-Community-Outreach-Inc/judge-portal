@@ -27,7 +27,7 @@ type Course = {
     title: string;
     slug: string;
   };
-  modules: { id: string; title: string }[];
+  modules: { id: string; title: string; slug: string }[];
   lessons: {
     id: string;
     slug: string;
@@ -38,7 +38,12 @@ type Course = {
 };
 
 type LessonResponse = {
-  lesson: { id: string; title: string; slug: string };
+  lesson: {
+    id: string;
+    title: string;
+    slug: string;
+    moduleId: string;
+  };
   content: {
     title: string;
     lessonFormat: 'text' | 'video' | 'both';
@@ -144,9 +149,11 @@ test.describe('Learner full journey', () => {
           }
 
           const result = await page.evaluate(
-            async ({ lessonSlug, courseSlug }) => {
+            async ({ lessonSlug, courseSlug, moduleSlug }) => {
+              const query = new URLSearchParams({ courseSlug, moduleSlug });
+
               const response = await fetch(
-                `/api/learner/lessons/${encodeURIComponent(lessonSlug)}?courseSlug=${encodeURIComponent(courseSlug)}`
+                `/api/learner/lessons/${encodeURIComponent(lessonSlug)}?${query.toString()}`
               );
 
               return response.ok ? response.json() : null;
@@ -154,6 +161,7 @@ test.describe('Learner full journey', () => {
             {
               lessonSlug: candidate.slug,
               courseSlug: item.course.slug,
+              moduleSlug: item.modules.find((module) => module.id === candidate.moduleId)!.slug,
             }
           );
 
@@ -220,14 +228,16 @@ test.describe('Learner full journey', () => {
         for (const moduleLesson of moduleLessons) {
           await expect(
             page.locator(
-              `a[href="/learner/courses/${course.course.slug}/lessons/${moduleLesson.slug}"]`
+              `a[href="/learner/courses/${course.course.slug}/module/${module.slug}/lessons/${moduleLesson.slug}"]`
             )
           ).toBeVisible();
         }
       }
 
       await page
-        .locator(`a[href="/learner/courses/${course.course.slug}/lessons/${lesson.lesson.slug}"]`)
+        .locator(
+          `a[href="/learner/courses/${course.course.slug}/module/${course.modules.find((module) => module.id === lesson.lesson.moduleId)!.slug}/lessons/${lesson.lesson.slug}"]`
+        )
         .click();
 
       await expect(page.getByRole('heading', { name: lesson.content.title })).toBeVisible();

@@ -26,10 +26,12 @@ export async function GET(
     // and the course slug from the query string.
     const { lessonSlug } = await params;
     const { searchParams } = new URL(request.url);
-    const courseSlug = searchParams.get('courseSlug');
 
-    if (!courseSlug) {
-      return sendApiError(400, 'BAD_REQUEST', 'Missing courseSlug parameter');
+    const courseSlug = searchParams.get('courseSlug');
+    const moduleSlug = searchParams.get('moduleSlug');
+
+    if (!courseSlug || !moduleSlug) {
+      return sendApiError(400, 'BAD_REQUEST', 'Missing courseSlug or moduleSlug parameter');
     }
 
     // 3. Find the lesson ONLY within the requested course.
@@ -40,7 +42,13 @@ export async function GET(
       .from(lessonsTable)
       .innerJoin(modulesTable, eq(lessonsTable.moduleId, modulesTable.id))
       .innerJoin(coursesTable, eq(modulesTable.courseId, coursesTable.id))
-      .where(and(eq(coursesTable.slug, courseSlug), eq(lessonsTable.slug, lessonSlug)))
+      .where(
+        and(
+          eq(coursesTable.slug, courseSlug),
+          eq(modulesTable.slug, moduleSlug),
+          eq(lessonsTable.slug, lessonSlug)
+        )
+      )
       .limit(1);
 
     const lesson = result?.lesson;
@@ -113,6 +121,7 @@ export async function GET(
         nextLessonId: nextLesson?.id ?? null,
         nextLessonTitle: nextLesson?.title ?? null,
         nextLessonSlug: nextLesson?.slug ?? null,
+        nextModuleSlug: module?.slug ?? null,
       },
     });
   } catch (error) {

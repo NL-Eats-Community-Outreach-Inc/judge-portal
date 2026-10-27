@@ -430,7 +430,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                             return lesson.sanityDocumentId ? (
                               <Link
                                 key={lesson.id}
-                                href={`/learner/courses/${courseData.course.slug}/lessons/${lesson.slug}`}
+                                href={`/learner/courses/${courseData.course.slug}/module/${module.slug}/lessons/${lesson.slug}`}
                                 className="flex items-center gap-3 rounded-lg p-3 transition hover:bg-background hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 {lessonContent}

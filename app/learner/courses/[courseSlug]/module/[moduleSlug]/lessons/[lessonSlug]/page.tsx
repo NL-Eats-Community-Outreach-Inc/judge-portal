@@ -40,6 +40,7 @@ import {
 type LessonPageProps = {
   params: Promise<{
     courseSlug: string;
+    moduleSlug: string;
     lessonSlug: string;
   }>;
 };
@@ -75,6 +76,7 @@ type Lesson = {
     nextLessonId: string | null;
     nextLessonTitle: string | null;
     nextLessonSlug: string | null;
+    nextModuleSlug: string | null;
   };
 };
 
@@ -92,6 +94,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     id: string;
     title: string;
     slug: string;
+    moduleSlug: string;
   } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -110,15 +113,21 @@ export default function LessonPage({ params }: LessonPageProps) {
         setNextLesson(null);
 
         // Resolve the lesson ID from the dynamic route parameters.
-        const { courseSlug, lessonSlug } = await params;
+        const { courseSlug, moduleSlug, lessonSlug } = await params;
+
         setCourseSlug(courseSlug);
 
         if (cancelled) return;
 
-        // Fetch the lesson and its navigation information.
+        const query = new URLSearchParams({
+          courseSlug,
+          moduleSlug,
+        });
+
         const lessonResponse = await fetch(
-          `/api/learner/lessons/${lessonSlug}?courseSlug=${courseSlug}`
+          `/api/learner/lessons/${encodeURIComponent(lessonSlug)}?${query.toString()}`
         );
+
         const lessonData: Lesson & { error_message?: string } = await lessonResponse.json();
 
         if (!lessonResponse.ok) {
@@ -127,11 +136,16 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         if (cancelled) return;
 
-        if (lessonData.navigation?.nextLessonId && lessonData.navigation?.nextLessonSlug) {
+        if (
+          lessonData.navigation?.nextLessonId &&
+          lessonData.navigation?.nextLessonSlug &&
+          lessonData.navigation?.nextModuleSlug
+        ) {
           setNextLesson({
             id: lessonData.navigation.nextLessonId,
             title: lessonData.navigation.nextLessonTitle ?? 'Next lesson',
             slug: lessonData.navigation.nextLessonSlug,
+            moduleSlug: lessonData.navigation.nextModuleSlug,
           });
         }
 
@@ -409,7 +423,7 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         {nextLesson && (
           <Link
-            href={`/learner/courses/${courseSlug}/lessons/${nextLesson.slug}`}
+            href={`/learner/courses/${courseSlug}/module/${nextLesson.moduleSlug}/lessons/${nextLesson.slug}`}
             className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
           >
             <span className="text-left">

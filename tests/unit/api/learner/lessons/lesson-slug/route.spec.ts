@@ -36,8 +36,11 @@ const sanityFetch = sanityServerClient.fetch as unknown as ReturnType<typeof vi.
 
 const params = mockParams({ lessonSlug: 'welcome' });
 
-const get = (courseSlug = 'introduction-to-innovation') =>
-  GET(mockRequest(`/api/learner/lessons/welcome?courseSlug=${courseSlug}`), params);
+const get = (courseSlug = 'introduction-to-innovation', moduleSlug = 'getting-started') =>
+  GET(
+    mockRequest(`/api/learner/lessons/welcome?courseSlug=${courseSlug}&moduleSlug=${moduleSlug}`),
+    params
+  );
 
 const lesson = {
   id: 'lesson-1',
@@ -58,6 +61,7 @@ const sanityContent = {
 const module = {
   id: 'module-1',
   courseId: 'course-1',
+  slug: 'getting-started',
 };
 
 const nextLesson = {
@@ -114,6 +118,26 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(sanityFetch).toHaveBeenCalledOnce();
   });
 
+  it('returns 400 when courseSlug is missing', async () => {
+    const response = await GET(
+      mockRequest('/api/learner/lessons/welcome?moduleSlug=getting-started'),
+      params
+    );
+
+    await expectApiError(response, 400, 'BAD_REQUEST');
+    expect(sanityFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when moduleSlug is missing', async () => {
+    const response = await GET(
+      mockRequest('/api/learner/lessons/welcome?courseSlug=introduction-to-innovation'),
+      params
+    );
+
+    await expectApiError(response, 400, 'BAD_REQUEST');
+    expect(sanityFetch).not.toHaveBeenCalled();
+  });
+
   it('returns the lesson, Sanity content, and navigation', async () => {
     mockSelectSequence(dbMock.select, [joinedLesson], [module], [nextLesson]);
 
@@ -129,6 +153,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
         nextLessonId: 'lesson-2',
         nextLessonTitle: 'Variables',
         nextLessonSlug: 'variables',
+        nextModuleSlug: 'getting-started',
       },
     });
 
@@ -153,6 +178,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
         nextLessonId: null,
         nextLessonTitle: null,
         nextLessonSlug: null,
+        nextModuleSlug: 'getting-started',
       },
     });
   });
@@ -172,6 +198,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
         nextLessonId: null,
         nextLessonTitle: null,
         nextLessonSlug: null,
+        nextModuleSlug: null,
       },
     });
   });
