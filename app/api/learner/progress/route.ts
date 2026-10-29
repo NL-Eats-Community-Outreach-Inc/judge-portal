@@ -30,7 +30,10 @@ export async function GET() {
 
     // 2.
     const progress = await db
-      .select()
+      .select({
+        lessonId: learnerProgressTable.lessonId,
+        completed: learnerProgressTable.completed,
+      })
       .from(learnerProgressTable)
       .where(eq(learnerProgressTable.userId, user.id));
 
