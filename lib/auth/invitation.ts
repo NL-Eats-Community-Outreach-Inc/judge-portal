@@ -4,7 +4,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import type { Invitation } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export type InvitationRole = 'admin' | 'judge' | 'participant';
+export type InvitationRole = 'admin' | 'judge' | 'participant' | 'learner';
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
 
 /**
@@ -18,9 +18,7 @@ export function generateInvitationToken(): string {
  * Calculate expiration date based on days from now
  */
 export function calculateExpirationDate(daysFromNow: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + daysFromNow);
-  return date.toISOString();
+  return new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
 }
 
 /**
@@ -162,6 +160,7 @@ const ROLE_HOME: Record<InvitationRole, string> = {
   admin: '/admin',
   judge: '/judge',
   participant: '/participant',
+  learner: '/learner',
 };
 
 /** Where a user lands after accepting an invitation for `role`. */

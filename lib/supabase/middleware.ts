@@ -119,15 +119,19 @@ export async function updateSession(request: NextRequest) {
     // Root path - redirect based on role
     if (pathname === '/') {
       const url = request.nextUrl.clone();
+
       if (role === 'super_admin') {
         url.pathname = '/super-admin';
       } else if (role === 'admin') {
         url.pathname = '/admin';
       } else if (role === 'participant') {
         url.pathname = '/participant';
+      } else if (role === 'learner') {
+        url.pathname = '/learner';
       } else {
         url.pathname = '/judge';
       }
+
       return NextResponse.redirect(url);
     }
 
@@ -136,7 +140,13 @@ export async function updateSession(request: NextRequest) {
       if (role !== 'super_admin') {
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'admin' ? '/admin' : role === 'participant' ? '/participant' : '/judge';
+          role === 'admin'
+            ? '/admin'
+            : role === 'participant'
+              ? '/participant'
+              : role === 'learner'
+                ? '/learner'
+                : '/judge';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -151,7 +161,9 @@ export async function updateSession(request: NextRequest) {
             ? '/super-admin'
             : role === 'participant'
               ? '/participant'
-              : '/judge';
+              : role === 'learner'
+                ? '/learner'
+                : '/judge';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -168,7 +180,9 @@ export async function updateSession(request: NextRequest) {
               ? '/admin'
               : role === 'participant'
                 ? '/participant'
-                : '/';
+                : role === 'learner'
+                  ? '/learner'
+                  : '/';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -179,9 +193,35 @@ export async function updateSession(request: NextRequest) {
       if (role !== 'participant') {
         const url = request.nextUrl.clone();
         url.pathname =
-          role === 'super_admin' ? '/super-admin' : role === 'admin' ? '/admin' : '/judge';
+          role === 'super_admin'
+            ? '/super-admin'
+            : role === 'admin'
+              ? '/admin'
+              : role === 'learner'
+                ? '/learner'
+                : '/judge';
         return NextResponse.redirect(url);
       }
+      return supabaseResponse;
+    }
+
+    // Learner routes - only learners can access
+    if (pathname.startsWith('/learner')) {
+      if (role !== 'learner') {
+        const url = request.nextUrl.clone();
+
+        url.pathname =
+          role === 'super_admin'
+            ? '/super-admin'
+            : role === 'admin'
+              ? '/admin'
+              : role === 'participant'
+                ? '/participant'
+                : '/judge';
+
+        return NextResponse.redirect(url);
+      }
+
       return supabaseResponse;
     }
 

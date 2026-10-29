@@ -56,6 +56,14 @@ const ROLE_CONFIG: Record<
     afterReg: 'You can browse and register for events once your account is created',
     icon: GraduationCap,
   },
+  learner: {
+    title: "You've Been Invited as a Learner!",
+    label: 'Learner Account',
+    description: "You've been invited to access learning courses and lessons.",
+    afterReg:
+      'You can access your courses and track your lesson progress once your account is created.',
+    icon: GraduationCap,
+  },
 };
 
 export default function InviteLandingPage() {

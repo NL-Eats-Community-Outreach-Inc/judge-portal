@@ -37,7 +37,7 @@ interface InviteJudgesDialogProps {
 export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
   const [open, setOpen] = useState(false);
   const [emails, setEmails] = useState('');
-  const [role, setRole] = useState<'admin' | 'judge' | 'participant'>('judge');
+  const [role, setRole] = useState<'admin' | 'judge' | 'participant' | 'learner'>('judge');
   const [customMessage, setCustomMessage] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('7');
   const [isLoading, setIsLoading] = useState(false);
@@ -296,7 +296,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
               <Label htmlFor="role">Role</Label>
               <Select
                 value={role}
-                onValueChange={(v) => setRole(v as 'admin' | 'judge' | 'participant')}
+                onValueChange={(v) => setRole(v as 'admin' | 'judge' | 'participant' | 'learner')}
                 disabled={isLoading}
               >
                 <SelectTrigger id="role">
@@ -306,6 +306,7 @@ export function InviteJudgesDialog({ onInvitesSent }: InviteJudgesDialogProps) {
                   <SelectItem value="judge">Judge</SelectItem>
                   <SelectItem value="participant">Participant</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="learner">Learner</SelectItem>
                 </SelectContent>
               </Select>
               {role === 'admin' && (

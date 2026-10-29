@@ -17,9 +17,13 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch, messageOf } from '@/lib/api/client';
 
-type UserRole = 'judge' | 'participant';
+type UserRole = 'judge' | 'participant' | 'learner';
 
-const ROLE_HOME: Record<UserRole, string> = { judge: '/judge', participant: '/participant' };
+const ROLE_HOME: Record<UserRole, string> = {
+  judge: '/judge',
+  participant: '/participant',
+  learner: '/learner',
+};
 
 /**
  * Participants who arrived through an event deep link (`?next=/participant/...`)
@@ -133,10 +137,13 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   }, []);
 
   const handleRoleChange = (value: string) => {
+    console.log('Role selected:', value);
+
     setRole(value as UserRole);
     setCurrentStep(0);
     setDirection('forward');
     setError(null);
+
     if (value !== 'judge') {
       setSelectedOrgIds([]);
     }
@@ -290,10 +297,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (data.user) {
         const roleFromMetadata = data.user.user_metadata?.role as UserRole | undefined;
 
-        if (
-          !roleFromMetadata ||
-          (roleFromMetadata !== 'judge' && roleFromMetadata !== 'participant')
-        ) {
+        if (!roleFromMetadata || !['judge', 'participant', 'learner'].includes(roleFromMetadata)) {
           console.error('Invalid or missing role in user metadata:', roleFromMetadata);
           throw new Error('Invalid role configuration. Please try signing up again.');
         }
@@ -408,6 +412,17 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                             <p className="font-medium">Participant</p>
                             <p className="text-xs text-muted-foreground">
                               Join events and create teams
+                            </p>
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                        <RadioGroupItem value="learner" id="role-learner" />
+                        <Label htmlFor="role-learner" className="flex-1 cursor-pointer">
+                          <div>
+                            <p className="font-medium">Student</p>
+                            <p className="text-xs text-muted-foreground">
+                              Join courses and lessons
                             </p>
                           </div>
                         </Label>

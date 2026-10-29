@@ -11,7 +11,7 @@ import type { User as AuthUser } from '@supabase/supabase-js';
 const PAGE_SIZE = 1000;
 
 /** The roles a synced profile can get; `super_admin` is never one of them. */
-const SYNCABLE_ROLES = ['admin', 'judge', 'participant'] as const;
+const SYNCABLE_ROLES = ['admin', 'judge', 'participant', 'learner'] as const;
 type SyncableRole = (typeof SYNCABLE_ROLES)[number];
 
 function isSyncableRole(value: unknown): value is SyncableRole {
