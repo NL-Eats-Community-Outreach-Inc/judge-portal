@@ -236,14 +236,14 @@ export default function LearnerPage() {
       <Link
         key={detail.course.id}
         href={`/learner/courses/${detail.course.slug}`}
-        className={`group flex min-h-64 min-w-0 flex-col overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        className={`group grid aspect-square min-w-0 grid-rows-[1fr_1fr] overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           isCompleted
             ? 'border-border/70 bg-muted/60 hover:border-muted-foreground/40'
             : 'border-border bg-card hover:border-primary/40'
         }`}
       >
         <div
-          className={`relative flex h-28 items-center justify-between overflow-hidden p-5 ${
+          className={`relative flex min-h-0 items-center justify-between overflow-hidden p-5 sm:p-6 ${
             isCompleted
               ? 'bg-gradient-to-br from-gray-500/20 via-slate-500/10 to-muted'
               : status === 'in-progress'
@@ -278,7 +278,7 @@ export default function LearnerPage() {
           </span>
         </div>
 
-        <div className="flex flex-1 flex-col p-5">
+        <div className="flex min-h-0 flex-col overflow-hidden p-5 sm:p-6">
           <h3
             className={`text-lg font-semibold leading-snug ${
               isCompleted ? 'text-muted-foreground' : 'group-hover:text-primary'
@@ -383,7 +383,7 @@ export default function LearnerPage() {
             {emptyMessage}
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {items.map(renderCourseCard)}
           </div>
         )}
@@ -414,7 +414,7 @@ export default function LearnerPage() {
 
   // 14. Render the dashboard header, search, and grouped course sections.
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+    <main className="w-full min-w-0 space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium text-violet-600 dark:text-violet-300">
           <GraduationCap className="h-5 w-5" />

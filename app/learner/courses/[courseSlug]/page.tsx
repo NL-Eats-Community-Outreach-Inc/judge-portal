@@ -190,7 +190,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
   // 6. Handle loading and error states before rendering course details.
   if (loading) {
     return (
-      <main className="mx-auto max-w-5xl p-6 md:p-10">
+      <main className="mx-auto w-full max-w-[1800px] p-6 md:p-10">
         <p className="text-muted-foreground">Loading course...</p>
       </main>
     );
@@ -198,7 +198,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
   if (error || !courseData) {
     return (
-      <main className="mx-auto max-w-5xl space-y-4 p-6 md:p-10">
+      <main className="mx-auto w-full max-w-[1800px] space-y-4 p-6 md:p-10">
         <Link
           href="/learner"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -217,7 +217,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 p-6 md:p-10">
+    <main className="mx-auto w-full max-w-[1800px] space-y-8 px-6 py-6 md:px-10 lg:px-12">
       {/* Return to the course catalogue without relying on browser history. */}
       {/* Back navigation */}
       <Link
@@ -231,7 +231,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
       {/* Summary area with course title, description, and completion information. */}
       {/* Course heading */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-6 md:p-9">
+        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-8 md:p-12">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm">
             <GraduationCap className="h-6 w-6 text-primary" />
           </div>
