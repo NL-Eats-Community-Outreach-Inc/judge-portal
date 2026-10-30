@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       email: invitation.email,
       password,
       email_confirm: true,
-      user_metadata: { invite_pending: true, role: invitation.role },
+      user_metadata: { invite_pending: true, role: invitation.roles },
     });
 
     let authUserId = created.data.user?.id;
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       const updated = await supabase.auth.admin.updateUserById(orphan.id, {
         password,
         email_confirm: true,
-        user_metadata: { ...orphan.user_metadata, invite_pending: true, role: invitation.role },
+        user_metadata: { ...orphan.user_metadata, invite_pending: true, role: invitation.roles },
       });
       if (updated.error) {
         console.error('Invitation accept: password update failed', updated.error);

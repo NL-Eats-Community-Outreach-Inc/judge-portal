@@ -127,6 +127,8 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
         return <Badge>Judge</Badge>;
       case 'participant':
         return <Badge variant="secondary">Participant</Badge>;
+      case 'learner':
+        return <Badge variant="outline">Learner</Badge>;
       default:
         return <Badge variant="outline">{role}</Badge>;
     }
@@ -205,7 +207,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Roles</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Sent</TableHead>
@@ -251,7 +253,7 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Roles</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Sent</TableHead>
@@ -262,7 +264,13 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
                 {currentInvitations.map((invitation) => (
                   <TableRow key={invitation.id}>
                     <TableCell className="font-medium">{invitation.email}</TableCell>
-                    <TableCell>{getRoleBadge(invitation.role)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {invitation.roles.map((role) => (
+                          <span key={role}>{getRoleBadge(role)}</span>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell>{getStatusBadge(invitation.status)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(invitation.expiresAt)}

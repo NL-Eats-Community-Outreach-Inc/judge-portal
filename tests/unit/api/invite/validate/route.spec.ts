@@ -31,7 +31,7 @@ function invitation(overrides: Partial<Invitation> = {}): Invitation {
     id: 'inv-1',
     token: 'tok-1',
     email: 'invitee@example.com',
-    role: 'admin',
+    roles: ['admin'],
     status: 'pending',
     customMessage: 'Welcome',
     expiresAt: EXPIRES_AT,

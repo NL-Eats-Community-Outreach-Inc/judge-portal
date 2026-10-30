@@ -110,5 +110,5 @@ export type OrgUser = Pick<User, 'id' | 'email' | 'createdAt' | 'updatedAt'> & {
 /** Invitation as the admin list shows it (link added by the API). */
 export type InvitationListItem = Pick<
   typeof invitations.$inferSelect,
-  'id' | 'email' | 'role' | 'status' | 'expiresAt' | 'createdAt'
+  'id' | 'email' | 'roles' | 'status' | 'expiresAt' | 'createdAt'
 > & { acceptedAt?: string | null; inviteLink: string };

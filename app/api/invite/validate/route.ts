@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       success: true,
       invitation: {
         email: invitation.email,
-        role: invitation.role,
+        role: invitation.roles,
         customMessage: invitation.customMessage,
         organizationName,
       },
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
           // CRITICAL: Add flag to prevent automatic user creation by trigger
           // The verify endpoint will create the user after OTP is confirmed
           invite_pending: true,
-          role: invitation.role,
+          role: invitation.roles,
         },
       },
     });
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       success: true,
       invitation: {
         email: invitation.email,
-        role: invitation.role,
+        role: invitation.roles,
         customMessage: invitation.customMessage,
       },
     });
