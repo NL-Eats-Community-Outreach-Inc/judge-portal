@@ -11,43 +11,47 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeSwitcher } from '@/components/theme-switcher';
-import { LogOut, User, Menu, Settings, ChevronLeft } from 'lucide-react';
+import {
+  LogOut,
+  User,
+  Menu,
+  Settings,
+  ChevronLeft,
+  ArrowLeftRight,
+  Check,
+  Loader2,
+} from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { ROLE_THEME, type AppRole } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 export interface AppHeaderProps {
   role: AppRole;
-  /** Main heading; a string or custom content. */
   title: ReactNode;
   subtitle?: ReactNode;
-  /** Rendered after the title (status badges, counts). */
   titleAddon?: ReactNode;
-  /** Signed-in email. Fetched from the session when omitted. */
   email?: string | null;
-  /** Opens the settings dialog (admin, super admin) … */
   onOpenSettings?: () => void;
-  /** … or navigates to a settings page (judge, participant). */
   settingsHref?: string;
-  /** Shows the mobile menu button for layouts with a sidebar. */
   onMobileMenuToggle?: () => void;
-  /** Contextual back link, shown before the title. */
   backNav?: { label: string; href: string };
-  /** Extra controls placed before the theme switcher. */
   actions?: ReactNode;
-  /** Sticks to the top with a blurred background (dashboards). */
   sticky?: boolean;
   className?: string;
 }
+
+const ROLE_HOME: Record<AppRole, string> = {
+  admin: '/admin',
+  judge: '/judge',
+  participant: '/participant',
+  super_admin: '/super-admin',
+  learner: '/learner',
+};
 
 function truncate(value: string, maxLength: number) {
   return value.length > maxLength ? value.substring(0, maxLength - 3) + '...' : value;
 }
 
-/**
- * The one header for every role area. Role identity comes from `ROLE_THEME`;
- * everything else (title, back link, settings entry, mobile menu) is a prop.
- */
 export function AppHeader({
   role,
   title,
@@ -63,23 +67,60 @@ export function AppHeader({
   className,
 }: AppHeaderProps) {
   const router = useRouter();
-  const theme = ROLE_THEME[role];
-  const RoleIcon = theme.icon;
+  const [activeRole, setActiveRole] = useState<AppRole>(role);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [sessionEmail, setSessionEmail] = useState<string | null | undefined>(email);
+  const [switchingRole, setSwitchingRole] = useState<AppRole | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  const theme = ROLE_THEME[activeRole];
+  const RoleIcon = theme.icon;
+
+  useEffect(() => {
+    setActiveRole(role);
+  }, [role]);
 
   useEffect(() => {
     if (email !== undefined) {
       setSessionEmail(email);
-      return;
+    } else {
+      let cancelled = false;
+
+      authClient.getUser().then((user) => {
+        if (!cancelled) setSessionEmail(user?.email ?? null);
+      });
+
+      return () => {
+        cancelled = true;
+      };
     }
+  }, [email]);
+
+  useEffect(() => {
     let cancelled = false;
-    authClient.getUser().then((user) => {
-      if (!cancelled) setSessionEmail(user?.email ?? null);
-    });
+
+    async function fetchRoles() {
+      try {
+        const response = await fetch('/api/user-roles');
+        if (!response.ok) return;
+
+        const data: { roles: AppRole[]; activeRole: AppRole } = await response.json();
+
+        if (!cancelled) {
+          setRoles(data.roles);
+          setActiveRole(data.activeRole);
+        }
+      } catch {
+        // Keep the current portal usable if role discovery fails.
+      }
+    }
+
+    void fetchRoles();
+
     return () => {
       cancelled = true;
     };
-  }, [email]);
+  }, []);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -90,6 +131,39 @@ export function AppHeader({
     if (onOpenSettings) onOpenSettings();
     else if (settingsHref) router.push(settingsHref);
   };
+
+  const switchRole = async (nextRole: AppRole) => {
+    if (nextRole === activeRole || switchingRole !== null) return;
+
+    setSwitchingRole(nextRole);
+    setRoleError(null);
+
+    try {
+      const response = await fetch('/api/user-roles/active', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: nextRole }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setRoleError(data?.message ?? data?.error ?? 'Could not switch roles.');
+        return;
+      }
+
+      setActiveRole(data.activeRole as AppRole);
+
+      // Move to the destination portal, then refresh server-rendered data.
+      router.push(ROLE_HOME[nextRole]);
+      router.refresh();
+    } catch {
+      setRoleError('A network error occurred while switching roles.');
+    } finally {
+      setSwitchingRole(null);
+    }
+  };
+
   const hasSettings = Boolean(onOpenSettings || settingsHref);
   const displayEmail = sessionEmail ?? '';
   const username = displayEmail.split('@')[0];
@@ -159,6 +233,7 @@ export function AppHeader({
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
           {actions}
           <ThemeSwitcher />
+
           {sessionEmail === undefined ? (
             <div className="h-9 w-32 bg-muted animate-pulse rounded-md" aria-hidden="true" />
           ) : (
@@ -182,18 +257,56 @@ export function AppHeader({
                   </Badge>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+
+              <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuItem className="sm:hidden" disabled>
                   <User className="h-4 w-4 mr-2" />
                   {truncate(displayEmail, 20)}
                 </DropdownMenuItem>
+
+                {roles.length > 1 && (
+                  <>
+                    <DropdownMenuItem disabled>
+                      <ArrowLeftRight className="h-4 w-4 mr-2" />
+                      Switch role
+                    </DropdownMenuItem>
+
+                    {roles.map((availableRole) => {
+                      const option = ROLE_THEME[availableRole];
+                      const OptionIcon = option.icon;
+                      const isActive = availableRole === activeRole;
+                      const isSwitching = switchingRole === availableRole;
+
+                      return (
+                        <DropdownMenuItem
+                          key={availableRole}
+                          disabled={switchingRole !== null || isActive}
+                          onSelect={() => void switchRole(availableRole)}
+                        >
+                          <OptionIcon className="h-4 w-4 mr-2" />
+                          <span>{option.label}</span>
+                          {isSwitching && <Loader2 className="h-4 w-4 ml-auto animate-spin" />}
+                          {isActive && <Check className="h-4 w-4 ml-auto" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </>
+                )}
+
+                {roleError && (
+                  <DropdownMenuItem disabled>
+                    <span className="text-destructive text-xs whitespace-normal">{roleError}</span>
+                  </DropdownMenuItem>
+                )}
+
                 {hasSettings && (
-                  <DropdownMenuItem onClick={openSettings}>
+                  <DropdownMenuItem onSelect={openSettings}>
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={handleSignOut}>
+
+                <DropdownMenuItem onSelect={() => void handleSignOut()}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign out
                 </DropdownMenuItem>

@@ -6,15 +6,14 @@
  * Loads lesson content, displays text and/or video, and tracks completion.
  *
  * This component:
- * 1. Defines the lesson data types and initializes viewer state.
- * 2. Loads lesson details, navigation, video credentials, and saved progress.
- * 3. Handles lesson completion and saves progress through the API.
- * 4. Displays loading and error states.
- * 5. Renders the lesson heading and content based on its format.
- * 6. Provides completion controls and navigation to other lessons.
+ * 1. Defines the route parameters and data structures used by the lesson viewer.
+ * 2. Initializes navigation, lesson, course, and progress state.
+ * 3. Loads lesson details, course navigation, and saved learner progress.
+ * 4. Handles lesson completion and saves progress through the API.
+ * 5. Displays loading and error states while preparing the lesson view.
+ * 6. Renders the lesson content, course navigation, completion controls, and next-lesson links.
  *
- * Uses Sanity Portable Text for lesson material and signed Mux tokens
- * for video playback.
+ * Uses Sanity Portable Text for lesson material and LessonVideoPlayer for on-demand Mux playback.
  */
 
 import { useEffect, useState } from 'react';
@@ -36,7 +35,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-// 1. Define the route parameters, lesson response, and saved progress types.
+// 1. Define the route parameters and response structures used throughout the lesson viewer.
 
 // Next.js dynamic route params for `/learner/lessons/[lessonId]`.
 type LessonPageProps = {
@@ -97,7 +96,7 @@ type CourseNavigatorData = {
 };
 
 export default function LessonPage({ params }: LessonPageProps) {
-  // 2. Initialize navigation and state for lesson content, video, and progress.
+  // 2. Initialize routing and state for the lesson, course outline, navigation, and learner progress.
   const router = useRouter();
   const pathname = usePathname();
 
@@ -117,7 +116,7 @@ export default function LessonPage({ params }: LessonPageProps) {
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
-  // 3. Load lesson data without making it wait for the course outline or progress.
+  // 3. Load the lesson while retrieving course navigation and saved progress independently.
   useEffect(() => {
     let cancelled = false;
 
@@ -135,7 +134,7 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         setCourseSlug(courseSlug);
 
-        // Start these in the background. Neither request blocks the lesson fetch.
+        // Retrieve the course outline in the background so it does not delay the lesson content.
         void (async () => {
           try {
             const response = await fetch(`/api/learner/courses/${encodeURIComponent(courseSlug)}`);
@@ -158,7 +157,7 @@ export default function LessonPage({ params }: LessonPageProps) {
           }
         })();
 
-        // Fetch progress once and reuse it for both the sidebar and current lesson.
+        // Retrieve progress once and reuse the records for the sidebar and current lesson status.
         void (async () => {
           try {
             const response = await fetch('/api/learner/progress');
@@ -196,7 +195,7 @@ export default function LessonPage({ params }: LessonPageProps) {
           });
         }
 
-        // Render the lesson immediately. Video credentials are fetched only when Play is clicked.
+        // Store the lesson response immediately; video playback credentials are requested only when Play is selected.
         setLesson(lessonData);
       } catch (err) {
         if (cancelled) return;
@@ -212,14 +211,13 @@ export default function LessonPage({ params }: LessonPageProps) {
     };
   }, [params]);
 
-  // Reconcile completion whenever either the current lesson or saved progress arrives.
   useEffect(() => {
     if (!lesson) return;
     const record = progressRecords.find((item) => item.lessonId === lesson.lesson.id);
     setCompleted(record?.completed === true);
   }, [lesson, progressRecords]);
 
-  // 4. Save lesson completion and update the UI after a successful response.
+  // 4. Save the learner's lesson completion and update the completion state after the API succeeds.
   const handleLessonComplete = async () => {
     if (!lesson || completing || completed) return;
 
@@ -242,7 +240,7 @@ export default function LessonPage({ params }: LessonPageProps) {
     }
   };
 
-  // 5. Display an error state if the lesson could not be loaded.
+  // 5. Handle lesson loading failures and preserve the page layout while lesson data is unavailable.
   if (error && !lesson) {
     return (
       <main className="mx-auto max-w-5xl space-y-4 p-6 md:p-10">
@@ -264,7 +262,6 @@ export default function LessonPage({ params }: LessonPageProps) {
     );
   }
 
-  // Keep the page geometry stable while lesson data loads.
   if (!lesson) {
     return (
       <main className="w-full min-w-0 p-0">
@@ -313,14 +310,16 @@ export default function LessonPage({ params }: LessonPageProps) {
     );
   }
 
-  // Determine which content sections should appear for this lesson format.
+  // Determine whether the lesson should display video, text, or both content formats.
   const format = lesson.content.lessonFormat;
   const needsVideo = format === 'video' || format === 'both';
   const needsText = format === 'text' || format === 'both';
 
+  // 6. Render the course outline, lesson content, completion controls, and lesson navigation.
   return (
     <main className="w-full min-w-0 p-0">
       <div className="grid min-w-0 grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)]">
+        {/* Course sidebar with expandable modules and lesson completion indicators. */}
         <aside className="border-b border-border bg-card lg:sticky lg:top-[73px] lg:h-[calc(100dvh-73px)] lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="border-b border-border p-5">
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
@@ -432,7 +431,7 @@ export default function LessonPage({ params }: LessonPageProps) {
 
         <div className="min-w-0 lg:h-[calc(100dvh-73px)] lg:overflow-y-auto">
           <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8 xl:p-10">
-            {/* Navigation */}
+            {/* Return to the previous page. */}
             <button
               type="button"
               onClick={() => router.back()}
@@ -442,7 +441,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               Back
             </button>
 
-            {/* Lesson heading */}
+            {/* Display the lesson title, description, and content format. */}
             <section className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <GraduationCap className="h-5 w-5" />
@@ -479,7 +478,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               </div>
             </section>
 
-            {/* Video loads only when the learner clicks Play */}
+            {/* Display the video player only for video-based lessons; playback initializes on demand. */}
             {needsVideo && (
               <section className="overflow-hidden rounded-2xl border border-border bg-black shadow-sm">
                 <LessonVideoPlayer
@@ -489,7 +488,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               </section>
             )}
 
-            {/* Text content appears below the video */}
+            {/* Display Sanity Portable Text when the lesson includes written material. */}
             {needsText && (
               <article className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-10">
                 <div className="mb-6 flex items-center gap-3 border-b border-border pb-5">
@@ -511,7 +510,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               </article>
             )}
 
-            {/* Completion status and action */}
+            {/* Show the learner's completion status and provide the completion action. */}
             <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -563,7 +562,7 @@ export default function LessonPage({ params }: LessonPageProps) {
               )}
             </section>
 
-            {/* Lesson navigation */}
+            {/* Provide links to the course catalogue, next lesson, or course overview. */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
               <Link
                 href="/learner/courses"
