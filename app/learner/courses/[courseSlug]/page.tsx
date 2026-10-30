@@ -6,14 +6,17 @@
  * Displays a course's details, modules, lessons, and learner progress.
  *
  * This component:
- * 1. Resolves the course ID from the dynamic route.
- * 2. Fetches course details and learner progress.
- * 3. Sorts modules and lessons into their intended order.
- * 4. Calculates overall and per-module completion statistics.
- * 5. Allows learners to expand modules and open available lessons.
- * 6. Displays loading, error, and empty-content states.
+ * 1. Defines the course, module, lesson, and progress data structures.
+ * 2. Resolves the course slug and initializes page state.
+ * 3. Loads course details and learner progress, with independent failure handling.
+ * 4. Sorts course content and derives course-wide completion statistics.
+ * 5. Toggles the expanded state of individual modules.
+ * 6. Handles loading and course-fetch error states.
+ * 7. Calculates lesson completion statistics for each module.
+ * 8. Displays expanded module contents and empty-content states.
+ * 9. Renders lesson status and links only to lessons with available content.
  *
- * Course content can still load when the separate progress request fails.
+ * Course content remains available if the separate progress request fails.
  */
 
 import Link from 'next/link';
@@ -30,7 +33,7 @@ import {
   Layers3,
 } from 'lucide-react';
 
-// 1. Define the data structures returned by the course and progress APIs.
+// 1. Define the data structures used for course content and learner progress.
 type Lesson = {
   id: string;
   moduleId: string;
@@ -73,17 +76,17 @@ type LearnerProgress = {
 };
 
 export default function CoursePage({ params }: { params: Promise<{ courseSlug: string }> }) {
-  // 2. Resolve the course ID from the dynamic route segment.
+  // 2. Resolve the course slug from the dynamic route and initialize page state.
   const { courseSlug } = use(params);
 
-  // Store course data, completion records, expanded modules, and request state.
+  // Track course data, completion records, expanded modules, and request status.
   const [courseData, setCourseData] = useState<CourseDetail | null>(null);
   const [progress, setProgress] = useState<LearnerProgress[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 3. Fetch course details and progress whenever the course ID changes.
+  // 3. Fetch course details and learner progress whenever the course slug changes.
   useEffect(() => {
     let cancelled = false;
 
@@ -92,7 +95,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         setLoading(true);
         setError(null);
 
-        // These requests are independent, so run them concurrently.
+        // Request course content and progress concurrently because they are independent.
         const [courseResponse, progressResponse] = await Promise.all([
           fetch(`/api/learner/courses/${courseSlug}`),
           fetch('/api/learner/progress'),
@@ -106,10 +109,10 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
         if (cancelled) return;
 
-        // Course content is primary, so load it even if progress is unavailable.
+        // Store the course as soon as it is available; progress is not required to display it.
         setCourseData(courseResult as CourseDetail);
 
-        // Progress is supplementary; a failed request should not block the course.
+        // Accept either supported progress response shape without blocking course content.
         if (progressResponse.ok) {
           const progressResult = await progressResponse.json();
 
@@ -124,7 +127,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
           console.error('Failed to fetch learner progress:', progressResponse.status);
         }
 
-        // Expand the first module by default so its lessons are immediately visible.
+        // Open the first module by default so its lessons are visible on initial load.
         const modules: Module[] = courseResult.modules ?? [];
 
         if (!cancelled && modules.length > 0) {
@@ -142,20 +145,20 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
     loadCourse();
 
-    // Prevent this request from updating state after the effect is cleaned up.
+    // Ignore late results if the effect is cleaned up or the route changes.
     return () => {
       cancelled = true;
     };
   }, [courseSlug]);
 
-  // 4. Build a Set of completed lesson IDs for efficient completion checks.
+  // 4. Derive completed lesson IDs, sorted content, and course-wide progress statistics.
   const completedLessonIds = useMemo(
     () => new Set(progress.filter((item) => item.completed).map((item) => item.lessonId)),
     [progress]
   );
 
-  // Sort copies of the module and lesson arrays without mutating course data.
-  // Items without an explicit order are placed after ordered items.
+  // Sort copies of the module and lesson arrays without mutating the fetched course data.
+  // Items without an explicit order are placed after items with an order value.
   const sortedModules = useMemo(
     () =>
       [...(courseData?.modules ?? [])].sort(
@@ -172,14 +175,14 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
     [courseData]
   );
 
-  // Calculate course-wide completion statistics from the completed lesson IDs.
+  // Calculate the course completion count and percentage from completed lesson IDs.
   const completedCount = sortedLessons.filter((lesson) => completedLessonIds.has(lesson.id)).length;
   const totalLessons = sortedLessons.length;
 
   const completionPercentage =
     totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  // 5. Toggle one module without changing the state of other modules.
+  // 5. Toggle a module while preserving the expanded state of all other modules.
   function toggleModule(moduleId: string) {
     setOpenModules((current) => ({
       ...current,
@@ -187,7 +190,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
     }));
   }
 
-  // 6. Handle loading and error states before rendering course details.
+  // 6. Render loading and error states before attempting to display course content.
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-[1800px] p-6 md:p-10">
@@ -219,7 +222,6 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
   return (
     <main className="mx-auto w-full max-w-[1800px] space-y-8 px-6 py-6 md:px-10 lg:px-12">
       {/* Return to the course catalogue without relying on browser history. */}
-      {/* Back navigation */}
       <Link
         href="/learner"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
@@ -228,8 +230,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         All courses
       </Link>
 
-      {/* Summary area with course title, description, and completion information. */}
-      {/* Course heading */}
+      {/* Present the course title, description, and overall completion summary. */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-8 md:p-12">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm">
@@ -247,7 +248,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
           </p>
         </div>
 
-        {/* Progress summary */}
+        {/* Show module count, lesson count, and course completion percentage. */}
         <div className="grid gap-5 border-t border-border p-6 sm:grid-cols-3">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-primary/10 p-3">
@@ -308,7 +309,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         </div>
       </section>
 
-      {/* Module list */}
+      {/* List modules with expandable lesson content. */}
       <section className="space-y-4">
         <div>
           <h2 className="text-2xl font-semibold">Course content</h2>
@@ -326,7 +327,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         ) : (
           <div className="space-y-3">
             {sortedModules.map((module, index) => {
-              // 7. Calculate this module's state and completion percentage.
+              // 7. Derive this module's expanded state and lesson completion statistics.
               const isOpen = !!openModules[module.id];
 
               const moduleLessons = sortedLessons.filter((lesson) => lesson.moduleId === module.id);
@@ -384,7 +385,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                     )}
                   </button>
 
-                  {/* 8. Show lesson links only when the module is expanded. */}
+                  {/* 8. Show the module's lessons only while the module is expanded. */}
                   {isOpen && (
                     <div className="border-t border-border bg-muted/20 p-3 sm:p-4">
                       {moduleLessons.length === 0 ? (
@@ -394,7 +395,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                       ) : (
                         <div className="space-y-1">
                           {moduleLessons.map((lesson, lessonIndex) => {
-                            // 9. Reuse the lesson content for available and unavailable lessons.
+                            // 9. Build the lesson row and reflect whether its content is complete.
                             const isCompleted = completedLessonIds.has(lesson.id);
 
                             const lessonContent = (
@@ -426,7 +427,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                               </>
                             );
 
-                            // Only lessons with linked content can be opened.
+                            // Link lessons with a Sanity document; render unavailable lessons as non-interactive rows.
                             return lesson.sanityDocumentId ? (
                               <Link
                                 key={lesson.id}
