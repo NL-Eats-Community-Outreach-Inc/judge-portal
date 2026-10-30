@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     const invitesWithLinks = orgInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
-      role: invite.role,
+      roles: invite.roles,
       status: invite.status,
       expiresAt: invite.expiresAt,
       createdAt: invite.createdAt,

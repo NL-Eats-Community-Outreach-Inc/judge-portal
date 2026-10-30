@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       redirectUrl,
-      user: { id: data.user.id, email: data.user.email, role: invitation.role },
+      user: { id: data.user.id, email: data.user.email, role: invitation.roles },
     });
   } catch (error) {
     return handleRouteError(error, 'Invitation verification error');

@@ -28,7 +28,7 @@ function invitation(overrides: Partial<Invitation> = {}): Invitation {
     id: 'inv-1',
     token: 'tok',
     email: 'Judge@Example.com',
-    role: 'judge',
+    roles: ['judge'],
     status: 'pending',
     customMessage: null,
     expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
@@ -143,7 +143,7 @@ describe('finalizeInvitationAcceptance', () => {
     mockAccept();
 
     const result = await finalizeInvitationAcceptance(
-      invitation({ role: 'admin', email: 'admin@example.com' }),
+      invitation({ roles: ['admin'], email: 'admin@example.com' }),
       'auth-2'
     );
 
@@ -196,7 +196,7 @@ describe('acceptInvitationForExistingUser', () => {
   });
 
   it('refuses role changes and non-judge invites without touching the database', async () => {
-    const asAdmin = await acceptInvitationForExistingUser(invitation({ role: 'admin' }), {
+    const asAdmin = await acceptInvitationForExistingUser(invitation({ roles: ['admin'] }), {
       id: 'user-1',
       role: 'judge',
     });

@@ -378,7 +378,7 @@ export const invitations = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     token: text('token').notNull().unique(),
     email: text('email').notNull(),
-    role: invitationRoleEnum('role').notNull(),
+    roles: invitationRoleEnum('roles').array().notNull(),
     status: invitationStatusEnum('status').default('pending').notNull(),
     customMessage: text('custom_message'),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),

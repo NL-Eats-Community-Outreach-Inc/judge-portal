@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { organizations, users, invitations } from '@/lib/db/schema';
+import { organizations, users, userRoles, invitations } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import {
   generateInvitationToken,
@@ -15,7 +15,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     await authServer.requireSuperAdmin();
     const { orgId } = await params;
 
-    // Verify org exists
     const [org] = await db
       .select({ id: organizations.id })
       .from(organizations)
@@ -34,7 +33,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(and(eq(users.organizationId, orgId), eq(users.role, 'admin')))
+      .innerJoin(userRoles, eq(userRoles.userId, users.id))
+      .where(and(eq(users.organizationId, orgId), eq(userRoles.role, 'admin')))
       .orderBy(users.createdAt);
 
     return NextResponse.json({ admins });
@@ -48,7 +48,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     const user = await authServer.requireSuperAdmin();
     const { orgId } = await params;
 
-    // Verify org exists
     const [org] = await db
       .select({ id: organizations.id, name: organizations.name })
       .from(organizations)
@@ -67,7 +66,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
+    const invalidEmails = emails.filter(
+      (email: unknown) => typeof email !== 'string' || !emailRegex.test(email)
+    );
+
     if (invalidEmails.length > 0) {
       return sendApiError(
         400,
@@ -76,19 +78,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       );
     }
 
-    // Check for existing users and pending invitations
     const existingInvites: string[] = [];
     const alreadyRegistered: { email: string; role: string }[] = [];
 
-    for (const email of emails) {
-      // Check existing pending invitation
+    for (const email of emails as string[]) {
       const existing = await getExistingInvitation(email, orgId);
+
       if (existing) {
         existingInvites.push(email);
         continue;
       }
 
-      // Check if user already exists
       const [existingUser] = await db
         .select({ email: users.email, role: users.role })
         .from(users)
@@ -96,14 +96,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
         .limit(1);
 
       if (existingUser) {
-        alreadyRegistered.push({ email: existingUser.email, role: existingUser.role! });
-        continue;
+        alreadyRegistered.push({
+          email: existingUser.email,
+          role: existingUser.role!,
+        });
       }
     }
 
-    const newEmails = emails.filter(
-      (email: string) =>
-        !existingInvites.includes(email) && !alreadyRegistered.find((u) => u.email === email)
+    const newEmails = (emails as string[]).filter(
+      (email) =>
+        !existingInvites.includes(email) &&
+        !alreadyRegistered.some(
+          (registered) => registered.email.toLowerCase() === email.toLowerCase()
+        )
     );
 
     if (newEmails.length === 0) {
@@ -114,12 +119,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
       });
     }
 
-    // Insert invitations directly so the organization is stored on each row
     const expiresAt = calculateExpirationDate(expiresInDays);
-    const invitationData = newEmails.map((email: string) => ({
+
+    const invitationData = newEmails.map((email) => ({
       token: generateInvitationToken(),
       email,
-      role: 'admin' as const,
+      roles: ['admin'] as ('admin' | 'judge' | 'participant' | 'learner')[],
       customMessage: customMessage || null,
       expiresAt,
       createdBy: user.id,
@@ -129,10 +134,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     const createdInvitations = await db.insert(invitations).values(invitationData).returning();
 
     const origin = new URL(request.url).origin;
+
     const invitesWithLinks = createdInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
-      role: invite.role,
+      roles: invite.roles,
       status: invite.status,
       expiresAt: invite.expiresAt,
       inviteLink: `${origin}/invite/${invite.token}`,
