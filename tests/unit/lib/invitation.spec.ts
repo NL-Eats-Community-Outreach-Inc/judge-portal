@@ -114,13 +114,16 @@ describe('finalizeInvitationAcceptance', () => {
     const result = await finalizeInvitationAcceptance(invitation(), 'auth-1');
 
     expect(result).toEqual({ redirectUrl: '/judge' });
-    expect(insert.chain.values).toHaveBeenNthCalledWith(1, {
-      id: 'auth-1',
-      email: 'Judge@Example.com',
-      role: 'judge',
-      organizationId: null,
-    });
-    expect(insert.chain.values).toHaveBeenNthCalledWith(2, {
+    expect(insert.chain.values).toHaveBeenNthCalledWith(2, [
+      {
+        userId: 'auth-1',
+        role: 'judge',
+        grantedBy: 'admin-1',
+        grantedSource: 'invitation',
+      },
+    ]);
+
+    expect(insert.chain.values).toHaveBeenNthCalledWith(3, {
       organizationId: 'org-1',
       userId: 'auth-1',
     });
@@ -148,7 +151,7 @@ describe('finalizeInvitationAcceptance', () => {
     );
 
     expect(result).toEqual({ redirectUrl: '/admin' });
-    expect(insert.chain.values).toHaveBeenCalledTimes(1);
+    expect(insert.chain.values).toHaveBeenCalledTimes(2);
     expect(insert.chain.values).toHaveBeenCalledWith({
       id: 'auth-2',
       email: 'admin@example.com',
@@ -163,7 +166,7 @@ describe('acceptInvitationForExistingUser', () => {
 
   it('adds a judge to a new organization and accepts the invitation', async () => {
     // membership lookup (none), then acceptInvitation's re-read
-    mockSelectSequence(vi.mocked(db.select), [], [invitation()]);
+    mockSelectSequence(vi.mocked(db.select), [{ organizationId: null }], [invitation()]);
     const insert = buildAssertableMutationMock([]);
     vi.mocked(db.insert).mockReturnValue(insert.insertMock);
     const update = buildAssertableMutationMock([]);
@@ -182,34 +185,45 @@ describe('acceptInvitationForExistingUser', () => {
     expect(update.chain.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'accepted' }));
   });
 
-  it('refuses when the judge is already a member', async () => {
-    vi.mocked(db.select).mockReturnValue(buildSelectMock([{ id: 'm-1' }]));
+  it('accepts an invitation when the judge is already a member without duplicating membership', async () => {
+    mockSelectSequence(vi.mocked(db.select), [{ organizationId: 'org-1' }], [invitation()]);
+
+    const { chain } = buildAssertableMutationMock();
+    vi.mocked(db.insert).mockReturnValue(chain as never);
 
     const result = await acceptInvitationForExistingUser(invitation(), {
       id: 'user-1',
       role: 'judge',
     });
 
-    expect(result.accepted).toBe(false);
-    expect(result.message).toMatch(/already a member/);
-    expect(db.insert).not.toHaveBeenCalled();
+    expect(result.accepted).toBe(true);
+    expect(db.insert).toHaveBeenCalled();
+    expect(chain.onConflictDoNothing).toHaveBeenCalled();
   });
 
-  it('refuses role changes and non-judge invites without touching the database', async () => {
-    const asAdmin = await acceptInvitationForExistingUser(invitation({ roles: ['admin'] }), {
-      id: 'user-1',
-      role: 'judge',
-    });
-    expect(asAdmin).toMatchObject({ accepted: false, redirectUrl: '/judge' });
+  it('adds invited roles to an existing user without changing their active role', async () => {
+    mockSelectSequence(vi.mocked(db.select), [{ organizationId: null }], [invitation()]);
 
-    const participant = await acceptInvitationForExistingUser(invitation(), {
+    const { chain } = buildAssertableMutationMock();
+    vi.mocked(db.insert).mockReturnValue(chain as never);
+
+    const result = await acceptInvitationForExistingUser(invitation(), {
       id: 'user-2',
       role: 'participant',
     });
-    expect(participant).toMatchObject({ accepted: false, redirectUrl: '/participant' });
 
-    expect(db.select).not.toHaveBeenCalled();
-    expect(db.insert).not.toHaveBeenCalled();
-    expect(db.update).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      accepted: true,
+      redirectUrl: '/participant',
+    });
+
+    expect(chain.values).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: 'user-2',
+          role: 'judge',
+        }),
+      ])
+    );
   });
 });

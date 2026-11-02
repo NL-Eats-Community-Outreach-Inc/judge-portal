@@ -175,7 +175,7 @@ describe('POST /api/invite/accept', () => {
         email: 'Invitee@Example.com',
         password: 'secret-pass',
         email_confirm: true,
-        user_metadata: { invite_pending: true, role: 'judge' },
+        user_metadata: { invite_pending: true, roles: ['judge'] },
       });
       expect(finalizeInvitationAcceptance).toHaveBeenCalledWith(invitation(), 'auth-1');
     });
