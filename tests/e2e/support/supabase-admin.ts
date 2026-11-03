@@ -5,7 +5,7 @@
  * configured project is the test project (the suite deletes every `QA-`
  * event and writes accounts, so it must never run against production).
  */
-const TEST_PROJECT_REF = 'lqqmxxbxvsnoivebdywb';
+const TEST_PROJECT_REF = 'oscjwbahqbuutkbqhirx';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 

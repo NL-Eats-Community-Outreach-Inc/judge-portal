@@ -312,7 +312,7 @@ test.describe('Admin teams', () => {
 
   test('H7: twenty reorder calls in a row on a large event never collide', async ({ adminApi }) => {
     // 25 creates and 20 reorders of 25 rows are about two minutes against the remote database
-    test.setTimeout(300_000);
+    test.setTimeout(420_000);
     const stressName = qaName('Reorder');
     const stressEventId = (await createEvent(adminApi, stressName)).id;
     try {
