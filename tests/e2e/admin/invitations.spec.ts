@@ -208,8 +208,9 @@ test.describe('Admin invitations', () => {
       };
       expect(results.find((r) => r.id === authId)).toMatchObject({
         action: 'created',
-        role: 'judge',
-        organizationId: orgId,
+        roles: ['judge'],
+        activeRole: 'judge',
+        organizationId: null,
       });
       // a member now: Judge Assignments lists them
       expect((await orgJudges(adminApi, eventId)).map((j) => j.email)).toContain(SYNCED.email);
