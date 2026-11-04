@@ -6,10 +6,13 @@
 
 -- Step 1: Create invitation role enum
 DO $$ BEGIN
-  CREATE TYPE invitation_role AS ENUM ('judge', 'participant');
+  CREATE TYPE invitation_role AS ENUM ('judge', 'participant', 'admin', 'learner');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+
+ALTER TYPE invitation_role ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE invitation_role ADD VALUE IF NOT EXISTS 'learner';
 
 -- Step 2: Create invitation status enum
 DO $$ BEGIN
@@ -30,7 +33,7 @@ CREATE TABLE IF NOT EXISTS invitations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   token TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL,
-  role invitation_role NOT NULL,
+  roles invitation_role[] NOT NULL,
   status invitation_status DEFAULT 'pending' NOT NULL,
   custom_message TEXT,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -39,6 +42,32 @@ CREATE TABLE IF NOT EXISTS invitations (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Step 4a: Convert existing single invitation role to role array
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'invitations'
+      AND column_name = 'role'
+  ) THEN
+
+    ALTER TABLE public.invitations
+      ADD COLUMN IF NOT EXISTS roles public.invitation_role[];
+
+    UPDATE public.invitations
+    SET roles = ARRAY[role]::invitation_role[]
+    WHERE roles IS NULL;
+
+    ALTER TABLE public.invitations
+      ALTER COLUMN roles SET NOT NULL;
+
+    ALTER TABLE public.invitations
+      DROP COLUMN role;
+
+  END IF;
+END $$;
 
 -- Step 5: Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);

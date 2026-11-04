@@ -9,11 +9,7 @@ import {
   type AuthServerMock,
   expectApiError,
 } from '@/tests/unit/test-utils/route-harness';
-import {
-  resetDbMock,
-  mockSelectSequence,
-  type DbMock,
-} from '@/tests/unit/test-utils/mock-db';
+import { resetDbMock, mockSelectSequence, type DbMock } from '@/tests/unit/test-utils/mock-db';
 
 vi.mock('@/lib/auth', async () => {
   const { buildAuthServerMock } = await import('@/tests/unit/test-utils/route-harness');
