@@ -1,21 +1,5 @@
 'use client';
 
-/**
- * Learner Course Overview — Course ID Page
- *
- * Displays a course's details, modules, lessons, and learner progress.
- *
- * This component:
- * 1. Resolves the course ID from the dynamic route.
- * 2. Fetches course details and learner progress.
- * 3. Sorts modules and lessons into their intended order.
- * 4. Calculates overall and per-module completion statistics.
- * 5. Allows learners to expand modules and open available lessons.
- * 6. Displays loading, error, and empty-content states.
- *
- * Course content can still load when the separate progress request fails.
- */
-
 import Link from 'next/link';
 import { use, useEffect, useMemo, useState } from 'react';
 import {
@@ -30,7 +14,6 @@ import {
   Layers3,
 } from 'lucide-react';
 
-// 1. Define the data structures returned by the course and progress APIs.
 type Lesson = {
   id: string;
   moduleId: string;
@@ -73,17 +56,14 @@ type LearnerProgress = {
 };
 
 export default function CoursePage({ params }: { params: Promise<{ courseSlug: string }> }) {
-  // 2. Resolve the course ID from the dynamic route segment.
   const { courseSlug } = use(params);
 
-  // Store course data, completion records, expanded modules, and request state.
   const [courseData, setCourseData] = useState<CourseDetail | null>(null);
   const [progress, setProgress] = useState<LearnerProgress[]>([]);
   const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 3. Fetch course details and progress whenever the course ID changes.
   useEffect(() => {
     let cancelled = false;
 
@@ -92,7 +72,6 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         setLoading(true);
         setError(null);
 
-        // These requests are independent, so run them concurrently.
         const [courseResponse, progressResponse] = await Promise.all([
           fetch(`/api/learner/courses/${courseSlug}`),
           fetch('/api/learner/progress'),
@@ -106,13 +85,10 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
         if (cancelled) return;
 
-        // Course content is primary, so load it even if progress is unavailable.
         setCourseData(courseResult as CourseDetail);
 
-        // Progress is supplementary; a failed request should not block the course.
         if (progressResponse.ok) {
           const progressResult = await progressResponse.json();
-
           const records = Array.isArray(progressResult) ? progressResult : progressResult.data;
 
           if (!cancelled && Array.isArray(records)) {
@@ -124,7 +100,6 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
           console.error('Failed to fetch learner progress:', progressResponse.status);
         }
 
-        // Expand the first module by default so its lessons are immediately visible.
         const modules: Module[] = courseResult.modules ?? [];
 
         if (!cancelled && modules.length > 0) {
@@ -142,20 +117,16 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
     loadCourse();
 
-    // Prevent this request from updating state after the effect is cleaned up.
     return () => {
       cancelled = true;
     };
   }, [courseSlug]);
 
-  // 4. Build a Set of completed lesson IDs for efficient completion checks.
   const completedLessonIds = useMemo(
     () => new Set(progress.filter((item) => item.completed).map((item) => item.lessonId)),
     [progress]
   );
 
-  // Sort copies of the module and lesson arrays without mutating course data.
-  // Items without an explicit order are placed after ordered items.
   const sortedModules = useMemo(
     () =>
       [...(courseData?.modules ?? [])].sort(
@@ -172,14 +143,13 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
     [courseData]
   );
 
-  // Calculate course-wide completion statistics from the completed lesson IDs.
   const completedCount = sortedLessons.filter((lesson) => completedLessonIds.has(lesson.id)).length;
+
   const totalLessons = sortedLessons.length;
 
   const completionPercentage =
     totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  // 5. Toggle one module without changing the state of other modules.
   function toggleModule(moduleId: string) {
     setOpenModules((current) => ({
       ...current,
@@ -187,21 +157,20 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
     }));
   }
 
-  // 6. Handle loading and error states before rendering course details.
   if (loading) {
     return (
-      <main className="mx-auto max-w-5xl p-6 md:p-10">
-        <p className="text-muted-foreground">Loading course...</p>
+      <main className="mx-auto max-w-5xl p-5 sm:p-6 md:p-10">
+        <p className="text-sm text-muted-foreground">Loading course...</p>
       </main>
     );
   }
 
   if (error || !courseData) {
     return (
-      <main className="mx-auto max-w-5xl space-y-4 p-6 md:p-10">
+      <main className="mx-auto max-w-5xl space-y-4 p-5 sm:p-6 md:p-10">
         <Link
           href="/learner"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to My Learning
@@ -217,8 +186,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 p-6 md:p-10">
-      {/* Return to the course catalogue without relying on browser history. */}
+    <main className="mx-auto max-w-5xl space-y-6 p-4 pb-8 sm:space-y-8 sm:p-6 md:p-10">
       {/* Back navigation */}
       <Link
         href="/learner"
@@ -228,64 +196,67 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         All courses
       </Link>
 
-      {/* Summary area with course title, description, and completion information. */}
-      {/* Course heading */}
+      {/* Course overview */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-6 md:p-9">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm">
-            <GraduationCap className="h-6 w-6 text-primary" />
+        {/* Course heading */}
+        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-5 sm:p-6 md:p-9">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm sm:h-12 sm:w-12">
+            <GraduationCap className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
           </div>
 
-          <p className="mt-5 text-sm font-medium text-primary">COURSE OVERVIEW</p>
+          <p className="mt-4 text-xs font-semibold tracking-wide text-primary sm:mt-5 sm:text-sm">
+            COURSE OVERVIEW
+          </p>
 
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             {courseData.course.title}
           </h1>
 
-          <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:mt-3 sm:text-base">
             {courseData.course.description || 'Explore the modules and lessons in this course.'}
           </p>
         </div>
 
-        {/* Progress summary */}
-        <div className="grid gap-5 border-t border-border p-6 sm:grid-cols-3">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-3">
-              <Layers3 className="h-5 w-5 text-primary" />
+        {/* Course statistics */}
+        <div className="grid grid-cols-3 gap-2 border-t border-border p-4 sm:gap-5 sm:p-6">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 sm:h-11 sm:w-11">
+              <Layers3 className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <p className="text-2xl font-semibold">{sortedModules.length}</p>
-              <p className="text-sm text-muted-foreground">
+            <div className="min-w-0">
+              <p className="text-xl font-semibold sm:text-2xl">{sortedModules.length}</p>
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 {sortedModules.length === 1 ? 'Module' : 'Modules'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-3">
-              <BookOpen className="h-5 w-5 text-primary" />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 sm:h-11 sm:w-11">
+              <BookOpen className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <p className="text-2xl font-semibold">{totalLessons}</p>
-              <p className="text-sm text-muted-foreground">
+            <div className="min-w-0">
+              <p className="text-xl font-semibold sm:text-2xl">{totalLessons}</p>
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 {totalLessons === 1 ? 'Lesson' : 'Lessons'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-3">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 sm:h-11 sm:w-11">
+              <CheckCircle2 className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <p className="text-2xl font-semibold">{completionPercentage}%</p>
-              <p className="text-sm text-muted-foreground">Course completed</p>
+            <div className="min-w-0">
+              <p className="text-xl font-semibold sm:text-2xl">{completionPercentage}%</p>
+              <p className="text-xs text-muted-foreground sm:text-sm">Completed</p>
             </div>
           </div>
         </div>
 
-        <div className="px-6 pb-6">
-          <div className="mb-2 flex items-center justify-between text-sm">
+        {/* Overall progress */}
+        <div className="px-4 pb-5 sm:px-6 sm:pb-6">
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
             <span className="text-muted-foreground">Your progress</span>
             <span className="font-medium">
               {completedCount} of {totalLessons} lessons
@@ -308,15 +279,15 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         </div>
       </section>
 
-      {/* Module list */}
+      {/* Course modules and lessons */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-2xl font-semibold">Course content</h2>
+          <h2 className="text-xl font-semibold sm:text-2xl">Course content</h2>
           <p className="mt-1 text-sm text-muted-foreground">Select a module to view its lessons.</p>
         </div>
 
         {sortedModules.length === 0 ? (
-          <div className="rounded-xl border border-dashed p-10 text-center">
+          <div className="rounded-xl border border-dashed p-8 text-center sm:p-10">
             <Layers3 className="mx-auto mb-3 h-9 w-9 text-muted-foreground" />
             <h3 className="font-semibold">No modules yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -326,7 +297,6 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         ) : (
           <div className="space-y-3">
             {sortedModules.map((module, index) => {
-              // 7. Calculate this module's state and completion percentage.
               const isOpen = !!openModules[module.id];
 
               const moduleLessons = sortedLessons.filter((lesson) => lesson.moduleId === module.id);
@@ -345,30 +315,33 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                   key={module.id}
                   className="overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/30"
                 >
+                  {/* Module accordion header */}
                   <button
                     type="button"
                     onClick={() => toggleModule(module.id)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center gap-4 p-4 text-left transition hover:bg-muted/40 sm:p-5"
+                    className="flex w-full items-center gap-3 p-3.5 text-left transition hover:bg-muted/40 sm:gap-4 sm:p-5"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-semibold text-primary">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary sm:h-11 sm:w-11">
                       {String(index + 1).padStart(2, '0')}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold">{module.title}</h3>
+                      <h3 className="text-sm font-semibold sm:text-base">{module.title}</h3>
 
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                         {moduleLessons.length} {moduleLessons.length === 1 ? 'lesson' : 'lessons'}
                         {moduleLessons.length > 0 && ` · ${moduleCompleted} completed`}
                       </p>
 
                       {module.description && (
-                        <p className="mt-2 text-sm text-muted-foreground">{module.description}</p>
+                        <p className="mt-1.5 hidden text-sm text-muted-foreground sm:block">
+                          {module.description}
+                        </p>
                       )}
 
                       {moduleLessons.length > 0 && (
-                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-muted sm:h-1.5">
                           <div
                             className="h-full rounded-full bg-primary transition-all"
                             style={{ width: `${modulePercentage}%` }}
@@ -378,23 +351,22 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                     </div>
 
                     {isOpen ? (
-                      <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" />
                     ) : (
-                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" />
                     )}
                   </button>
 
-                  {/* 8. Show lesson links only when the module is expanded. */}
+                  {/* Module lessons */}
                   {isOpen && (
-                    <div className="border-t border-border bg-muted/20 p-3 sm:p-4">
+                    <div className="border-t border-border">
                       {moduleLessons.length === 0 ? (
-                        <p className="p-3 text-sm text-muted-foreground">
+                        <p className="p-4 text-sm text-muted-foreground">
                           No lessons in this module yet.
                         </p>
                       ) : (
-                        <div className="space-y-1">
+                        <div className="divide-y divide-border">
                           {moduleLessons.map((lesson, lessonIndex) => {
-                            // 9. Reuse the lesson content for available and unavailable lessons.
                             const isCompleted = completedLessonIds.has(lesson.id);
 
                             const lessonContent = (
@@ -408,43 +380,43 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium">
-                                    <span className="mr-2 text-muted-foreground">
+                                  <p className="text-sm font-medium">
+                                    <span className="mr-1.5 text-muted-foreground">
                                       {lessonIndex + 1}.
                                     </span>
                                     {lesson.title}
                                   </p>
 
                                   {lesson.description && (
-                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground sm:text-sm">
                                       {lesson.description}
                                     </p>
                                   )}
                                 </div>
 
-                                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                               </>
                             );
 
-                            // Only lessons with linked content can be opened.
                             return lesson.sanityDocumentId ? (
                               <Link
                                 key={lesson.id}
                                 href={`/learner/courses/${courseData.course.slug}/module/${module.slug}/lessons/${lesson.slug}`}
-                                className="flex items-center gap-3 rounded-lg p-3 transition hover:bg-background hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="group flex min-h-14 items-center gap-3 px-4 py-3 transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5"
                               >
                                 {lessonContent}
                               </Link>
                             ) : (
                               <div
                                 key={lesson.id}
-                                className="flex cursor-not-allowed items-center gap-3 rounded-lg p-3 opacity-50"
+                                className="flex min-h-14 cursor-not-allowed items-center gap-3 px-4 py-3 opacity-50 sm:px-5"
                                 title="Lesson content is not available yet"
                               >
                                 <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />
+
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-medium">
-                                    <span className="mr-2 text-muted-foreground">
+                                  <p className="text-sm font-medium">
+                                    <span className="mr-1.5 text-muted-foreground">
                                       {lessonIndex + 1}.
                                     </span>
                                     {lesson.title}
@@ -467,6 +439,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
         )}
       </section>
 
+      {/* Bottom navigation link */}
       <div className="flex justify-start border-t border-border pt-5">
         <Link
           href="/learner"
