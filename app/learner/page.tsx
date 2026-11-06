@@ -14,8 +14,12 @@ import {
   Circle,
 } from 'lucide-react';
 
+import { useLearnerSearch } from './components/search/learner-search-provider';
+
+import { LearnerSearchInput } from './components/search/learner-search-input';
+
 // 1. Define the data types used by the dashboard.
-// Lesson metadata used to count lessons and match progress records to a course.
+
 type Lesson = {
   id: string;
   moduleId: string;
@@ -27,7 +31,6 @@ type Lesson = {
   slug: string;
 };
 
-// 2. Define module metadata used for course structure and counts.
 type Module = {
   id: string;
   courseId: string;
@@ -38,7 +41,6 @@ type Module = {
   slug: string;
 };
 
-// 3. Define the core course fields.
 type Course = {
   id: string;
   title: string;
@@ -48,14 +50,12 @@ type Course = {
   slug: string;
 };
 
-// 4. Define the catalogue response shape.
 type CourseDetail = {
   course: Course;
   modules: Module[];
   lessons: Lesson[];
 };
 
-// 5. Define saved lesson progress; only completed records count below.
 type LessonProgress = {
   id: string;
   userId: string;
@@ -63,10 +63,8 @@ type LessonProgress = {
   completed: boolean;
 };
 
-// 6. Define the status categories used to group courses.
 type CourseStatus = 'in-progress' | 'not-started' | 'completed';
 
-// 7. Define the derived course data used by the UI.
 type CourseWithProgress = {
   detail: CourseDetail;
   completedLessons: number;
@@ -82,12 +80,11 @@ type CourseWithProgress = {
  * This component:
  * 1. Loads course data and saved lesson progress from the learner APIs.
  * 2. Derives each course's completion count and progress status.
- * 3. Filters courses using the search field.
- * 4. Groups courses into in-progress, not-started, and completed sections.
- * 5. Renders course cards with progress indicators and course statistics.
- * 6. Handles loading, error, empty-catalogue, and no-search-results states.
- *
- * Course data and progress are fetched when the component mounts.
+ * 3. Shares course data with the global learner search provider.
+ * 4. Filters courses using the shared search query.
+ * 5. Groups courses into in-progress, not-started, and completed sections.
+ * 6. Renders course cards with progress indicators and course statistics.
+ * 7. Handles loading, error, empty-catalogue, and no-search-results states.
  */
 
 export default function LearnerPage() {
@@ -95,20 +92,20 @@ export default function LearnerPage() {
   const [progress, setProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+
+  // Shared search state used by the dashboard and mobile search overlay.
+  const { query: search, setQuery: setSearch, setSearchCourses } = useLearnerSearch();
 
   // 1. Load course data and progress when the dashboard mounts.
-  // The cancellation flag prevents state updates after unmount.
   useEffect(() => {
     let cancelled = false;
 
-    // 2. Keep both requests and their error handling in one loader.
     async function loadCourses() {
       try {
         setLoading(true);
         setError(null);
 
-        // 3. Fetch the course catalogue and progress concurrently.
+        // Fetch the course catalogue and progress concurrently.
         const [coursesResponse, progressResponse] = await Promise.all([
           fetch('/api/learner/catalog'),
           fetch('/api/learner/progress'),
@@ -119,7 +116,7 @@ export default function LearnerPage() {
           progressResponse.json(),
         ]);
 
-        // 4. Treat either failed request as a dashboard load failure.
+        // Handle API errors.
         if (!coursesResponse.ok) {
           throw new Error(coursesData.error_message || 'Failed to load courses');
         }
@@ -128,7 +125,7 @@ export default function LearnerPage() {
           throw new Error(progressData.error_message || 'Failed to load lesson progress');
         }
 
-        // 5. Validate both API response shapes before updating state.
+        // Validate API response shapes.
         if (!Array.isArray(coursesData)) {
           throw new Error('Unexpected courses API response format');
         }
@@ -161,21 +158,21 @@ export default function LearnerPage() {
     };
   }, []);
 
-  // 6. Build a Set of completed lesson IDs for efficient lookups.
+  // 2. Build a Set of completed lesson IDs for efficient lookups.
   const completedLessonIds = useMemo(
     () => new Set(progress.filter((item) => item.completed).map((item) => item.lessonId)),
     [progress]
   );
 
-  // 7. Derive lesson counts and a display status for each course.
+  // 3. Derive lesson counts and a display status for each course.
   const coursesWithProgress = useMemo<CourseWithProgress[]>(() => {
     return courses.map((detail) => {
       const totalLessons = detail.lessons.length;
+
       const completedLessons = detail.lessons.filter((lesson) =>
         completedLessonIds.has(lesson.id)
       ).length;
 
-      // 8. Determine the course status without marking empty courses completed.
       let status: CourseStatus = 'not-started';
 
       if (totalLessons > 0 && completedLessons === totalLessons) {
@@ -193,7 +190,25 @@ export default function LearnerPage() {
     });
   }, [courses, completedLessonIds]);
 
-  // 9. Filter by course title or description; ignore case and surrounding whitespace.
+  // 4. Share the already-loaded course catalogue with mobile search.
+  // This avoids making another API request when the search overlay opens.
+  useEffect(() => {
+    setSearchCourses(
+      coursesWithProgress.map((item) => ({
+        id: item.detail.course.id,
+        title: item.detail.course.title,
+        description: item.detail.course.description,
+        href: `/learner/courses/${item.detail.course.slug}`,
+        modules: item.detail.modules.length,
+        lessons: item.detail.lessons.length,
+        completedLessons: item.completedLessons,
+        totalLessons: item.totalLessons,
+        status: item.status,
+      }))
+    );
+  }, [coursesWithProgress, setSearchCourses]);
+
+  // 5. Filter courses by title or description.
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -209,12 +224,14 @@ export default function LearnerPage() {
     });
   }, [coursesWithProgress, search]);
 
-  // 10. Group the filtered courses by progress status.
+  // 6. Group filtered courses by progress status.
   const inProgressCourses = filteredCourses.filter((item) => item.status === 'in-progress');
+
   const notStartedCourses = filteredCourses.filter((item) => item.status === 'not-started');
+
   const completedCourses = filteredCourses.filter((item) => item.status === 'completed');
 
-  // 11. Return the module and lesson counts shown on a course card.
+  // 7. Return the module and lesson counts shown on a course card.
   function getCourseStats(courseDetail: CourseDetail) {
     return {
       modules: courseDetail.modules.length,
@@ -224,12 +241,12 @@ export default function LearnerPage() {
 
   /**
    * Render a course card with status, progress, and module/lesson counts.
-   * Reuse this helper across the dashboard's status sections.
    */
   function renderCourseCard(item: CourseWithProgress) {
     const { detail, completedLessons, totalLessons, status } = item;
     const stats = getCourseStats(detail);
     const isCompleted = status === 'completed';
+
     const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
     return (
@@ -297,6 +314,7 @@ export default function LearnerPage() {
                 <span>
                   {completedLessons} of {totalLessons} lessons completed
                 </span>
+
                 <span>{percentage}%</span>
               </div>
 
@@ -346,14 +364,12 @@ export default function LearnerPage() {
 
   /**
    * Render a group of courses with the same progress status.
-   * Omit empty groups so the dashboard does not show headings without cards.
    */
   function renderSection({
     title,
     description,
     items,
     icon,
-    emptyMessage,
   }: {
     title: string;
     description: string;
@@ -372,26 +388,21 @@ export default function LearnerPage() {
 
           <div>
             <h2 className="text-xl font-semibold">{title}</h2>
+
             <p className="text-sm text-muted-foreground">
               {items.length} {items.length === 1 ? 'course' : 'courses'} · {description}
             </p>
           </div>
         </div>
 
-        {items.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
-            {emptyMessage}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {items.map(renderCourseCard)}
-          </div>
-        )}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {items.map(renderCourseCard)}
+        </div>
       </section>
     );
   }
 
-  // 12. Render loading and error states before the main dashboard.
+  // 8. Render loading and error states.
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
@@ -400,11 +411,11 @@ export default function LearnerPage() {
     );
   }
 
-  // 13. Display an accessible error state if loading fails.
   if (error) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
         <h1 className="text-2xl font-semibold">My Learning</h1>
+
         <p role="alert" className="mt-4 text-destructive">
           Error loading courses: {error}
         </p>
@@ -412,7 +423,7 @@ export default function LearnerPage() {
     );
   }
 
-  // 14. Render the dashboard header, search, and grouped course sections.
+  // 9. Render the dashboard.
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
@@ -432,30 +443,30 @@ export default function LearnerPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Your courses</h2>
+
             <p className="mt-1 text-sm text-muted-foreground">
               {courses.length} {courses.length === 1 ? 'course' : 'courses'} available
             </p>
           </div>
 
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <input
-              type="search"
+          {/* Desktop and tablet search. Mobile uses the bottom navigation. */}
+          <div className="hidden w-full sm:max-w-sm md:block">
+            <LearnerSearchInput
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={setSearch}
               placeholder="Search courses..."
-              aria-label="Search courses"
-              className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-4 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full"
             />
           </div>
         </div>
 
-        {/* An empty catalogue differs from a non-empty catalogue with no search matches. */}
+        {/* Empty catalogue and search-result states. */}
         {courses.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+
             <h3 className="font-semibold">No courses yet</h3>
+
             <p className="mt-1 text-sm text-muted-foreground">
               Your available courses will appear here.
             </p>
@@ -463,12 +474,13 @@ export default function LearnerPage() {
         ) : filteredCourses.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center">
             <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+
             <h3 className="font-semibold">No matching courses</h3>
+
             <p className="mt-1 text-sm text-muted-foreground">Try another search term.</p>
           </div>
         ) : (
           <div className="space-y-10">
-            {/* Group cards by progress state to help learners resume or discover work. */}
             {renderSection({
               title: 'In progress',
               description: 'Pick up where you left off',
