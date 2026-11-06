@@ -49,6 +49,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     Record<string, { score: number | null; comment: string }>
   >({});
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [conflictOfInterest, setConflictOfInterest] = useState<boolean | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [previousCompletionState, setPreviousCompletionState] = useState(false);
 
@@ -128,14 +129,11 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
   const saveScore = useCallback(
     async (criterionId: string, score: number | null, comment: string) => {
       // Don't save if score is null and comment is empty
-      if (score === null && !comment) {
-        return;
-      }
-
-      // Don't save if score is null but comment exists (database constraint)
-      // Set a persistent validation warning instead of a temporary error
-      if (score === null && comment) {
-        setSaveStatus((prev) => ({ ...prev, [criterionId]: 'validation-warning' }));
+      if (score === null || !comment.trim()) {
+        setSaveStatus((prev) => ({
+          ...prev,
+          [criterionId]: 'validation-warning',
+        }));
         return;
       }
 
@@ -150,7 +148,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
       try {
         const data = await apiFetch<{ score: { id: string } }>('/api/judge/scores', {
           method: 'POST',
-          body: { teamId: team.id, criterionId, score, comment, eventId },
+          body: { teamId: team.id, criterionId, score, comment, eventId, conflictOfInterest },
           // a save in flight when the judge leaves the page must outlive the navigation
           keepalive: true,
         });
@@ -177,7 +175,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
         toast.error(messageOf(error, 'Failed to save score'));
       }
     },
-    [team.id, lastSavedState, eventId]
+    [team.id, lastSavedState, eventId, conflictOfInterest]
   );
 
   // Unified save system - one debounced save per criterion handling both score and comment
@@ -228,6 +226,24 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     },
     [saveScore]
   );
+  
+  const handleConflictOfInterestChange = async (value: boolean) => {
+    setConflictOfInterest(value);
+
+    try {
+      await apiFetch('/api/judge/scores', {
+        method: 'PATCH',
+        body: {
+          teamId: team.id,
+          eventId,
+          conflictOfInterest: value,
+        },
+      });
+    } catch (error) {
+      setConflictOfInterest(null);
+      toast.error(messageOf(error, 'Failed to save conflict of interest'));
+    }
+  };
 
   const handleScoreChange = (criterionId: string, newScore: number) => {
     // Capture current comment before state update
@@ -710,7 +726,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
 
                   {/* Comment input */}
                   <div className="space-y-2">
-                    <Label htmlFor={`comment-${criterion.id}`}>Comments (optional)</Label>
+                    <Label htmlFor={`comment-${criterion.id}`}>Comments (required)</Label>
                     <Textarea
                       id={`comment-${criterion.id}`}
                       placeholder="Add your comments about this criterion..."
@@ -731,6 +747,52 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
             );
           })}
         </div>
+
+        {/* Conflict of Interest */}
+        <Card className="p-4 md:p-6">
+          <div className="space-y-3 md:space-y-4">
+            <div>
+              <h3 className="font-semibold text-foreground text-sm md:text-base">
+                Conflict of Interest (required)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Do you have a conflict of interest with this team?
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label id="conflict-of-interest-label">Conflict of Interest</Label>
+
+              <div
+                role="radiogroup"
+                aria-labelledby="conflict-of-interest-label"
+                className="flex items-center gap-4"
+              >
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="conflict-of-interest"
+                    value="yes"
+                    checked={conflictOfInterest === true}
+                    onChange={() => handleConflictOfInterestChange(true)}
+                  />
+                  <span className="text-sm text-foreground">Yes</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="conflict-of-interest"
+                    value="no"
+                    checked={conflictOfInterest === false}
+                    onChange={() => handleConflictOfInterestChange(false)}
+                  />
+                  <span className="text-sm text-foreground">No</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Progress indicator */}
         <Card className="p-3 md:p-4">
