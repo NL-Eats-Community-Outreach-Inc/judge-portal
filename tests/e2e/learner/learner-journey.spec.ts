@@ -250,30 +250,30 @@ test.describe('Learner full journey', () => {
 
       const player = page.locator('mux-player');
 
-      await expect(player).toBeVisible();
+      await expect(player).toHaveCount(0);
+
+      await page.getByRole('button', { name: 'Play lesson video' }).click();
+
+      await expect(player).toBeVisible({ timeout: 15_000 });
       await expect
-        .poll(() =>
-          player.evaluate((element) => {
-            return Boolean((element as HTMLElement & { playbackId?: string }).playbackId);
-          })
+        .poll(
+          () =>
+            player.evaluate((element) => {
+              return Boolean((element as HTMLElement & { playbackId?: string }).playbackId);
+            }),
+          { timeout: 15_000 }
         )
         .toBe(true);
 
-      const playButton = page
-        .getByRole('button', {
-          name: /^play$/i,
-        })
-        .first();
-
-      await expect(playButton).toBeVisible();
-      await playButton.click();
+      // MuxVideo uses autoPlay; wait for playback rather than clicking a
+      // control inside Mux Player (which may change across Mux versions).
       await expect
         .poll(
           () =>
             player.evaluate((element) => {
               return (element as HTMLElement & { currentTime: number }).currentTime;
             }),
-          { timeout: 15_000 }
+          { timeout: 30_000 }
         )
         .toBeGreaterThan(0);
 
@@ -327,7 +327,6 @@ test.describe('Learner full journey', () => {
         .delete(learnerProgress)
         .where(eq(learnerProgress.userId, '5e4eb0b4-cf23-46c4-80da-16ee17823e88'));
 
-      await context.close();
       await context.close();
     }
   });
