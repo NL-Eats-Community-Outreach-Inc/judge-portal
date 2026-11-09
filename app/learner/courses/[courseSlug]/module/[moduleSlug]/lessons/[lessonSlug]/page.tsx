@@ -383,9 +383,9 @@ export default function LessonPage({ params }: LessonPageProps) {
                           {moduleLessons.map((item) => {
                             const href = `/learner/courses/${courseData.course.slug}/module/${module.slug}/lessons/${item.slug}`;
                             const isCurrent = pathname === href;
-                            const isComplete = progressRecords.some(
-                              (record) => record.lessonId === item.id && record.completed
-                            );
+                            const isComplete =
+                              (isCurrent && completed) ||
+                              progressRecords.some((record) => record.lessonId === item.id && record.completed);
 
                             return (
                               <Link
