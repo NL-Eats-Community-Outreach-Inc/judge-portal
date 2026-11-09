@@ -133,10 +133,7 @@ export async function GET(
         },
       });
 
-      thumbnailUrl =
-        `https://image.mux.com/${playbackId}/thumbnail.jpg` +
-        `?time=5&width=1280&height=720&token=${encodeURIComponent(thumbnailToken)}`;
-    }
+    thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?token=${encodeURIComponent(thumbnailToken)}`;}
 
     // Return lesson content, navigation, and the signed thumbnail URL.
     return NextResponse.json({

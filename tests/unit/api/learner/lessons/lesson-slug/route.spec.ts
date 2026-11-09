@@ -230,7 +230,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     const body = await expectJson(response);
 
     expect(body.thumbnailUrl).toBe(
-      'https://image.mux.com/mux-playback-123/thumbnail.jpg?time=5&width=1280&height=720&token=signed-thumbnail-token'
+      'https://image.mux.com/mux-playback-123/thumbnail.jpg?token=signed-thumbnail-token'
     );
     expect(signPlaybackId).toHaveBeenCalledWith('mux-playback-123', {
       type: 'thumbnail',

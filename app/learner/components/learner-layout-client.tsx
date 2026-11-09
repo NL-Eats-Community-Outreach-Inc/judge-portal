@@ -59,7 +59,7 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
                 onClick={() => setIsSidebarOpen(true)}
                 aria-label="Open portal navigation"
                 title="Open portal navigation"
-                className="ml-3 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="ml-3 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
               >
                 <PanelLeftOpen className="h-5 w-5" />
               </button>
