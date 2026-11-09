@@ -385,7 +385,9 @@ export default function LessonPage({ params }: LessonPageProps) {
                             const isCurrent = pathname === href;
                             const isComplete =
                               (isCurrent && completed) ||
-                              progressRecords.some((record) => record.lessonId === item.id && record.completed);
+                              progressRecords.some(
+                                (record) => record.lessonId === item.id && record.completed
+                              );
 
                             return (
                               <Link
