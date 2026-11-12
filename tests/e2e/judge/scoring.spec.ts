@@ -35,11 +35,20 @@ function criterionCard(page: Page, name: string) {
     .locator('h3', { hasText: name })
     .locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
 }
-
-async function scoreCriterion(page: Page, name: string, value: number) {
+async function scoreCriterion(
+  page: Page,
+  name: string,
+  value: number,
+  comment = 'Automated test scoring comment'
+) {
   const card = criterionCard(page, name);
-  await card.getByRole('button', { name: String(value), exact: true }).click();
-  // the check icon appears once the debounced save (500 ms) has completed
+  await card.getByRole('textbox', { name: 'Comments (required)' }).fill(comment);
+  await card
+    .getByRole('button', {
+      name: String(value),
+      exact: true,
+    })
+    .click();
   await expect(card.locator('svg.text-green-500')).toBeVisible({ timeout: 10_000 });
 }
 
@@ -107,9 +116,19 @@ test.describe('Judge scoring @smoke', () => {
     browser,
     adminApi,
     judge1Api,
+    judge2Api,
   }) => {
     await setEventStatus(adminApi, eventId, 'active', eventName);
-
+    // Declare no conflict for both judges across all four teams.
+    const teamIds = [ids.alpha, ids.beta, ids.gamma, ids.delta];
+    for (const judgeApi of [judge1Api, judge2Api]) {
+      for (const teamId of teamIds) {
+        const response = await judgeApi.put(`/api/judge/conflicts/${teamId}`, {
+          data: { eventId, hasConflict: false },
+        });
+        expect(response.status()).toBe(200);
+      }
+    }
     const judge = await contextFor(browser, 'judge1');
     const page = await judge.newPage();
     await page.goto('/judge');
@@ -136,7 +155,8 @@ test.describe('Judge scoring @smoke', () => {
     // E3 judge 1's scores for Alpha
     await scoreCriterion(page, 'QA-Tech-Merit', 8);
     await scoreCriterion(page, 'QA-Innovation', 6);
-    await expect(page.getByText('Progress: 2 of 2 criteria scored')).toBeVisible();
+    await expect(page.getByText('All criteria scored!')).toBeVisible();
+    await expect(page.getByText("Your scores are saved. You're all set!")).toBeVisible();
     await expectSidebarStatus(page, 'QA-Alpha', 'completed');
 
     // Beta: business criteria only
@@ -165,8 +185,8 @@ test.describe('Judge scoring @smoke', () => {
     await scoreCriterion(page, 'QA-Innovation', 8);
     await scoreCriterion(page, 'QA-Biz-Viability', 6);
     await expectSidebarStatus(page, 'QA-Gamma', 'partial');
-    await scoreCriterion(page, 'QA-Presentation', 4);
-    await expect(page.getByText('Progress: 4 of 4 criteria scored')).toBeVisible();
+    await scoreCriterion(page, 'QA-Presentation', 4, 'Comment before score');
+    await expect(page.getByText('All criteria scored!')).toBeVisible();
     await expectSidebarStatus(page, 'QA-Gamma', 'completed');
     await expectSidebarStatus(page, 'QA-Delta', 'not-started');
 
@@ -284,18 +304,22 @@ test.describe('Judge scoring @smoke', () => {
     // (a) leave the page within the 500 ms debounce: a full navigation
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Tech-Merit' })).toBeVisible();
-    await criterionCard(page, 'QA-Tech-Merit')
-      .getByRole('button', { name: '7', exact: true })
-      .click();
+    const techCard = criterionCard(page, 'QA-Tech-Merit');
+    await techCard
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('E9 debounce persistence test');
+    await techCard.getByRole('button', { name: '7', exact: true }).click();
     await page.goto('/judge');
     await expect.poll(async () => (await deltaScores())[ids['QA-Tech-Merit']]).toBe(7);
 
     // (b) switch team within the debounce: the save reaches the old team, the new team starts fresh
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Innovation' })).toBeVisible();
-    await criterionCard(page, 'QA-Innovation')
-      .getByRole('button', { name: '5', exact: true })
-      .click();
+    const innovationCard = criterionCard(page, 'QA-Innovation');
+    await innovationCard
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('E9 team navigation persistence test');
+    await innovationCard.getByRole('button', { name: '5', exact: true }).click();
     await sidebarRow(page, 'QA-Alpha').click();
     await page.waitForURL(new RegExp(`/team/${ids.alpha}`));
     await expect.poll(async () => (await deltaScores())[ids['QA-Innovation']]).toBe(5);
@@ -303,7 +327,7 @@ test.describe('Judge scoring @smoke', () => {
     await expect(
       criterionCard(page, 'QA-Tech-Merit').getByRole('button', { name: '7', exact: true })
     ).toHaveClass(/ring-2/);
-    await expect(page.getByText('Progress: 2 of 2 criteria scored')).toBeVisible();
+    await expect(page.getByText('All criteria scored!')).toBeVisible();
     await judge.close();
   });
 
@@ -348,9 +372,11 @@ test.describe('Judge scoring @smoke', () => {
       fetch('/api/judge/teams').then((r) => [r.redirected, r.status] as const)
     );
     expect(probe).toEqual([false, 401]);
-    await criterionCard(page, 'QA-Biz-Viability')
-      .getByRole('button', { name: '8', exact: true })
-      .click();
+    const businessCard = criterionCard(page, 'QA-Biz-Viability');
+    await businessCard
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('Expired session test');
+    await businessCard.getByRole('button', { name: '8', exact: true }).click();
     await expect(page.getByText('Your session has expired')).toBeVisible({ timeout: 10_000 });
 
     // the next navigation lands on the login page
@@ -368,10 +394,14 @@ test.describe('Judge scoring @smoke', () => {
     const page = await judge.newPage();
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Tech-Merit' })).toBeVisible();
-
+    // Prepare a valid score entry, then remove the assignment before saving.
+    const card = criterionCard(page, 'QA-Tech-Merit');
+    await card
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('Assignment interruption test');
     // the admin unassigns judge 1 while the page is open (judge 2 stays)
     await assignJudges(adminApi, eventId, [judgeIds.judge2]);
-    const card = criterionCard(page, 'QA-Tech-Merit');
+
     await card.getByRole('button', { name: '7', exact: true }).click();
     // with no active assignment left the route answers 400 NO_ACTIVE_EVENT; the
     // page shows the error state and stays where it is
@@ -403,9 +433,12 @@ test.describe('Judge scoring @smoke', () => {
     const page = await judge.newPage();
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Innovation' })).toBeVisible();
-
-    await setEventStatus(adminApi, eventId, 'completed', eventName);
     const card = criterionCard(page, 'QA-Innovation');
+    await card
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('Completed event interruption test');
+    await setEventStatus(adminApi, eventId, 'completed', eventName);
+
     await card.getByRole('button', { name: '5', exact: true }).click();
     await expect(page.getByText('No active event')).toBeVisible({ timeout: 10_000 });
     await expect(card.locator('svg.text-red-500')).toBeVisible();
@@ -434,10 +467,13 @@ test.describe('Judge scoring @smoke', () => {
     const page = await judge.newPage();
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Biz-Viability' })).toBeVisible();
-
+    const card = criterionCard(page, 'QA-Biz-Viability');
+    await card
+      .getByRole('textbox', { name: 'Comments (required)' })
+      .fill('Network interruption test');
     // the venue Wi-Fi drops for one request
     await page.route('**/api/judge/scores', (route) => route.abort());
-    const card = criterionCard(page, 'QA-Biz-Viability');
+
     await card.getByRole('button', { name: '6', exact: true }).click();
     await expect(page.getByText('Could not reach the server')).toBeVisible({ timeout: 10_000 });
     await expect(card.locator('svg.text-red-500')).toBeVisible();
@@ -453,6 +489,41 @@ test.describe('Judge scoring @smoke', () => {
       await judge1Api.get(`/api/judge/scores?teamId=${ids.delta}&eventId=${eventId}`)
     ).json()) as { scores: Array<{ criterionId: string; score: number }> };
     expect(after.scores.find((s) => s.criterionId === ids['QA-Biz-Viability'])?.score).toBe(6);
+    await judge.close();
+  });
+
+  test('a judge can save a score with an empty comment', async ({ browser, judge1Api }) => {
+    const judge = await contextFor(browser, 'judge1');
+    const page = await judge.newPage();
+
+    await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
+    await expect(page.locator('h3', { hasText: 'QA-Presentation' })).toBeVisible();
+
+    // The comment field is labelled required, but an empty comment is accepted.
+    await scoreCriterion(page, 'QA-Presentation', 3, '');
+
+    // Verify that the score was persisted and the empty comment became null.
+    const response = await judge1Api.get(
+      `/api/judge/scores?teamId=${ids.delta}&eventId=${eventId}`
+    );
+
+    expect(response.status()).toBe(200);
+
+    const body = (await response.json()) as {
+      scores: Array<{
+        criterionId: string;
+        score: number;
+        comment: string | null;
+      }>;
+    };
+
+    expect(body.scores.find((score) => score.criterionId === ids['QA-Presentation'])).toMatchObject(
+      {
+        score: 3,
+        comment: null,
+      }
+    );
+
     await judge.close();
   });
 });
