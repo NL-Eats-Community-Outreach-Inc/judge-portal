@@ -50,6 +50,10 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
   >({});
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [conflictOfInterest, setConflictOfInterest] = useState<boolean | null>(null);
+  const [conflictLoading, setConflictLoading] = useState(true);
+  const [conflictLoadError, setConflictLoadError] = useState(false);
+  const [conflictLoadAttempt, setConflictLoadAttempt] = useState(0);
+  const [savingConflict, setSavingConflict] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [previousCompletionState, setPreviousCompletionState] = useState(false);
 
@@ -117,6 +121,43 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     [team.id, criteria, eventId]
   );
 
+  // Load the judge's existing conflict declaration independently of scores.
+  useEffect(() => {
+    let current = true;
+
+    const fetchConflictDeclaration = async () => {
+      setConflictLoading(true);
+      setConflictLoadError(false);
+
+      try {
+        const data = await apiFetch<{
+          hasConflict: boolean | null;
+          updatedAt: string | null;
+        }>(`/api/judge/conflicts/${team.id}?eventId=${eventId}`);
+
+        if (current) {
+          setConflictOfInterest(data.hasConflict);
+        }
+      } catch (error) {
+        if (current) {
+          setConflictLoadError(true);
+          toast.error(messageOf(error, 'Failed to load conflict declaration'));
+        }
+      } finally {
+        if (current) {
+          setConflictLoading(false);
+        }
+      }
+    };
+
+    setConflictOfInterest(null);
+    fetchConflictDeclaration();
+
+    return () => {
+      current = false;
+    };
+  }, [team.id, eventId, conflictLoadAttempt]);
+
   // Initialize scores from database
   useEffect(() => {
     let current = true;
@@ -128,8 +169,8 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
 
   const saveScore = useCallback(
     async (criterionId: string, score: number | null, comment: string) => {
-      // Don't save if score is null and comment is empty
-      if (score === null || !comment.trim()) {
+      // A score is required, but the comment may be empty
+      if (score === null) {
         setSaveStatus((prev) => ({
           ...prev,
           [criterionId]: 'validation-warning',
@@ -148,7 +189,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
       try {
         const data = await apiFetch<{ score: { id: string } }>('/api/judge/scores', {
           method: 'POST',
-          body: { teamId: team.id, criterionId, score, comment, eventId, conflictOfInterest },
+          body: { teamId: team.id, criterionId, score, comment, eventId },
           // a save in flight when the judge leaves the page must outlive the navigation
           keepalive: true,
         });
@@ -175,7 +216,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
         toast.error(messageOf(error, 'Failed to save score'));
       }
     },
-    [team.id, lastSavedState, eventId, conflictOfInterest]
+    [team.id, lastSavedState, eventId]
   );
 
   // Unified save system - one debounced save per criterion handling both score and comment
@@ -226,22 +267,31 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     },
     [saveScore]
   );
-  
+
   const handleConflictOfInterestChange = async (value: boolean) => {
-    setConflictOfInterest(value);
+    if (savingConflict) return;
+
+    setSavingConflict(true);
 
     try {
-      await apiFetch('/api/judge/scores', {
-        method: 'PATCH',
+      const data = await apiFetch<{
+        success: boolean;
+        hasConflict: boolean;
+        updatedAt: string;
+      }>(`/api/judge/conflicts/${team.id}`, {
+        method: 'PUT',
         body: {
-          teamId: team.id,
           eventId,
-          conflictOfInterest: value,
+          hasConflict: value,
         },
       });
+
+      setConflictOfInterest(data.hasConflict);
+      toast.success('Conflict declaration saved');
     } catch (error) {
-      setConflictOfInterest(null);
-      toast.error(messageOf(error, 'Failed to save conflict of interest'));
+      toast.error(messageOf(error, 'Failed to save conflict declaration'));
+    } finally {
+      setSavingConflict(false);
     }
   };
 
@@ -624,7 +674,12 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
     );
   };
 
-  if (loading) {
+  const scoredCriteriaCount = scores.filter((s) => s.id).length;
+  const allCriteriaScored = criteria.length > 0 && scoredCriteriaCount === criteria.length;
+  const progressPercentage =
+    criteria.length > 0 ? (scoredCriteriaCount / criteria.length) * 100 : 0;
+
+  if (loading || conflictLoading) {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
         <div className="space-y-4 md:space-y-6">
@@ -748,72 +803,153 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
           })}
         </div>
 
-        {/* Conflict of Interest */}
-        <Card className="p-4 md:p-6">
-          <div className="space-y-3 md:space-y-4">
-            <div>
-              <h3 className="font-semibold text-foreground text-sm md:text-base">
-                Conflict of Interest (required)
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Do you have a conflict of interest with this team?
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label id="conflict-of-interest-label">Conflict of Interest</Label>
-
-              <div
-                role="radiogroup"
-                aria-labelledby="conflict-of-interest-label"
-                className="flex items-center gap-4"
-              >
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="conflict-of-interest"
-                    value="yes"
-                    checked={conflictOfInterest === true}
-                    onChange={() => handleConflictOfInterestChange(true)}
-                  />
-                  <span className="text-sm text-foreground">Yes</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="conflict-of-interest"
-                    value="no"
-                    checked={conflictOfInterest === false}
-                    onChange={() => handleConflictOfInterestChange(false)}
-                  />
-                  <span className="text-sm text-foreground">No</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </Card>
-
         {/* Progress indicator */}
         <Card className="p-3 md:p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <p className="text-xs md:text-sm font-medium text-foreground">
-                Progress: {scores.filter((s) => s.id).length} of {criteria.length} criteria scored
-              </p>
-              <p className="text-xs text-muted-foreground">Your scores are saved automatically</p>
+              {allCriteriaScored ? (
+                <>
+                  <p className="flex items-center gap-2 text-xs md:text-sm font-semibold text-green-600 dark:text-green-400">
+                    <Check className="h-4 w-4" />
+                    All criteria scored!
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your scores are saved. You&apos;re all set!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs md:text-sm font-medium text-foreground">
+                    Progress: {scoredCriteriaCount} of {criteria.length} criteria scored
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your scores are saved automatically
+                  </p>
+                </>
+              )}
             </div>
+
             <div className="w-full sm:w-32 bg-muted rounded-full h-2">
               <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${(scores.filter((s) => s.id).length / criteria.length) * 100}%`,
-                }}
+                className={cn(
+                  'h-2 rounded-full transition-all duration-300',
+                  allCriteriaScored ? 'bg-green-500' : 'bg-primary'
+                )}
+                style={{ width: `${progressPercentage}%` }}
               />
             </div>
           </div>
         </Card>
       </div>
+
+      {/* Conflict of Interest Declaration Modal */}
+      {(conflictLoadError || conflictOfInterest === null) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="conflict-modal-title"
+          aria-describedby="conflict-modal-description"
+        >
+          <Card className="w-full max-w-lg border shadow-2xl">
+            <div className="space-y-5 p-6 sm:p-8">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 id="conflict-modal-title" className="text-xl font-semibold">
+                    Conflict of Interest Declaration
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {conflictLoadError
+                      ? 'Unable to load your declaration'
+                      : 'Required before proceeding'}
+                  </p>
+                </div>
+              </div>
+
+              {conflictLoadError ? (
+                <div className="space-y-3">
+                  <p id="conflict-modal-description" className="text-sm text-muted-foreground">
+                    We couldn&apos;t check whether you&apos;ve already submitted a declaration.
+                    Please try again before continuing.
+                  </p>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={() => setConflictLoadAttempt((attempt) => attempt + 1)}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold">Before you begin...</h3>
+                    <p
+                      id="conflict-modal-description"
+                      className="text-sm leading-relaxed text-muted-foreground"
+                    >
+                      Do you have a conflict of interest with this team?
+                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      This may include personal, professional, financial, or other relationships
+                      that could influence, or reasonably appear to influence, your evaluation.
+                    </p>
+                    <div className="rounded-lg bg-muted/50 p-3">
+                      <p className="text-sm">
+                        Your response will be recorded for event administrators. Regardless of your
+                        answer, you may continue to score this team.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Do you have a conflict of interest?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-14 gap-2"
+                        disabled={savingConflict}
+                        onClick={() => handleConflictOfInterestChange(true)}
+                      >
+                        {savingConflict ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-14 gap-2"
+                        disabled={savingConflict}
+                        onClick={() => handleConflictOfInterestChange(false)}
+                      >
+                        {savingConflict ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        No
+                      </Button>
+                    </div>
+                  </div>
+
+                  {savingConflict && (
+                    <p className="text-center text-sm text-muted-foreground">
+                      Saving your declaration...
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Confetti for full event completion */}
       <CompletionConfetti show={showConfetti} onComplete={() => setShowConfetti(false)} />

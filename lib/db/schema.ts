@@ -327,7 +327,6 @@ export const scores = pgTable(
       .default(sql`timezone('utc'::text, now())`)
       .notNull()
       .$onUpdate(() => sql`timezone('utc'::text, now())`),
-    conflictOfInterest: boolean('conflict_of_interest').notNull().default(false),
   },
   (table) => ({
     uniqueJudgeTeamCriterion: unique().on(table.judgeId, table.teamId, table.criterionId),
@@ -342,6 +341,43 @@ export const scores = pgTable(
       table.criterionId
     ),
     judgeEventIdx: index('idx_scores_judge_event').on(table.judgeId, table.eventId),
+  })
+);
+
+export const judgeTeamConflicts = pgTable(
+  'judge_team_conflicts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    eventId: uuid('event_id')
+      .references(() => events.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    judgeId: uuid('judge_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    teamId: uuid('team_id')
+      .references(() => teams.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    hasConflict: boolean('has_conflict').notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull()
+      .$onUpdate(() => sql`timezone('utc'::text, now())`),
+  },
+  (table) => ({
+    uniqueJudgeTeamConflict: unique().on(table.eventId, table.judgeId, table.teamId),
+
+    eventIdx: index('idx_judge_team_conflicts_event').on(table.eventId),
+    judgeIdx: index('idx_judge_team_conflicts_judge').on(table.judgeId),
+    teamIdx: index('idx_judge_team_conflicts_team').on(table.teamId),
   })
 );
 
@@ -526,3 +562,5 @@ export type Submission = typeof submissions.$inferSelect;
 export type NewSubmission = typeof submissions.$inferInsert;
 export type SubmissionAiScore = typeof submissionAiScores.$inferSelect;
 export type NewSubmissionAiScore = typeof submissionAiScores.$inferInsert;
+export type JudgeTeamConflict = typeof judgeTeamConflicts.$inferSelect;
+export type NewJudgeTeamConflict = typeof judgeTeamConflicts.$inferInsert;
