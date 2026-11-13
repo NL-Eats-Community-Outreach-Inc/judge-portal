@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import { computeTeamTotals, computeCriteriaAverages } from '@/lib/results';
 
 export async function GET(request: NextRequest) {
@@ -26,12 +27,17 @@ export async function GET(request: NextRequest) {
       return sendApiError(404, 'NOT_FOUND', 'Event not found');
     }
 
-    // Counted rows only (assigned judges, applicable criteria), so the stat
-    // cards never count a row that the rankings ignore
-    const [allScores, allCriteria] = await Promise.all([
+    // Keep score calculations unchanged and expose declarations as separate data.
+    const [allScores, allCriteria, conflictMap] = await Promise.all([
       loadCountedScores(eventId),
       loadEventCriteria(eventId),
+      loadEventConflicts(eventId),
     ]);
+
+    const conflictDeclarations = Array.from(conflictMap, ([key, hasConflict]) => {
+      const [teamId, judgeId] = key.split(':');
+      return { teamId, judgeId, hasConflict };
+    });
 
     return NextResponse.json({
       event: eventInfo,
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
       scores: allScores,
       teamTotals: computeTeamTotals(allScores, allCriteria),
       criteriaAverages: computeCriteriaAverages(allCriteria, allScores),
+      conflictDeclarations,
     });
   } catch (error) {
     return handleRouteError(error, 'Error fetching results');

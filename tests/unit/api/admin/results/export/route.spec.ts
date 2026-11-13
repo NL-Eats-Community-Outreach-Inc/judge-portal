@@ -5,6 +5,7 @@ import * as org from '@/lib/auth/org';
 import { db } from '@/lib/db';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
 import { mockRequest } from '@/tests/unit/test-utils/mock-request';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
 import {
   fakeUser,
@@ -32,6 +33,9 @@ vi.mock('@/lib/db', async () => {
 vi.mock('@/lib/db/results', () => ({
   loadCountedScores: vi.fn(),
   loadEventCriteria: vi.fn(),
+}));
+vi.mock('@/lib/db/conflicts', () => ({
+  loadEventConflicts: vi.fn(),
 }));
 
 const auth = authServer as unknown as AuthServerMock;
@@ -77,6 +81,7 @@ beforeEach(() => {
   mockSelectSequence(dbMock.select, [{ name: 'QA Preflight' }]);
   vi.mocked(loadCountedScores).mockResolvedValue(SCORES);
   vi.mocked(loadEventCriteria).mockResolvedValue(CRITERIA);
+  vi.mocked(loadEventConflicts).mockResolvedValue(new Map());
 });
 
 describe('GET /api/admin/results/export', () => {
@@ -111,9 +116,9 @@ describe('GET /api/admin/results/export', () => {
 
     const lines = (await response.text()).trimEnd().split('\n');
     expect(lines[0]).toBe(
-      'Rank,Tied,Team Name,Award Type,Presentation Order,Total Score,Number of Scores,Judge Count'
+      'Rank,Tied,Team Name,Award Type,Presentation Order,Total Score,Number of Scores,Judge Count,Declared Conflicts'
     );
-    expect(lines[1]).toBe('1,,"QA-Gamma ""Quoted"", Team",General,3,40,6,2');
+    expect(lines[1]).toBe('1,,"QA-Gamma ""Quoted"", Team",General,3,40,6,2,0');
     expect(parseLine(lines[1])).toEqual([
       '1',
       '',
@@ -123,9 +128,10 @@ describe('GET /api/admin/results/export', () => {
       '40',
       '6',
       '2',
+      '0',
     ]);
-    expect(lines[2]).toBe('2,,QA-Beta,Business,2,31,4,2');
-    expect(lines[3]).toBe('3,,QA-Alpha,Technical,1,30,4,2');
+    expect(lines[2]).toBe('2,,QA-Beta,Business,2,31,4,2,0');
+    expect(lines[3]).toBe('3,,QA-Alpha,Technical,1,30,4,2,0');
     expect(lines).toHaveLength(4);
   });
 
@@ -146,7 +152,7 @@ describe('GET /api/admin/results/export', () => {
       .trimEnd()
       .split('\n');
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toBe('1,,QA-Alpha,Technical,1,30,4,2');
+    expect(lines[1]).toBe('1,,QA-Alpha,Technical,1,30,4,2,0');
   });
 
   it('M5: marks tied rows with yes in the Tied column, in the exported mode only', async () => {
@@ -161,9 +167,9 @@ describe('GET /api/admin/results/export', () => {
     const event = [{ name: 'QA Preflight' }];
     const total = (await (await get()).text()).trimEnd().split('\n');
     expect(total.slice(1)).toEqual([
-      '1,,"QA-Gamma ""Quoted"", Team",General,3,40,6,2',
-      '2,yes,QA-Alpha,Technical,1,31,4,2',
-      '3,yes,QA-Beta,Business,2,31,4,2',
+      '1,,"QA-Gamma ""Quoted"", Team",General,3,40,6,2,0',
+      '2,yes,QA-Alpha,Technical,1,31,4,2,0',
+      '3,yes,QA-Beta,Business,2,31,4,2,0',
     ]);
     mockSelectSequence(dbMock.select, event);
     const average = (await (await get('?eventId=event-1&scoreMode=average')).text())
@@ -179,9 +185,9 @@ describe('GET /api/admin/results/export', () => {
       .trimEnd()
       .split('\n');
     expect(weighted.slice(1)).toEqual([
-      '1,,QA-Alpha,Technical,1,7.67,4,2',
-      '2,,QA-Beta,Business,2,7.38,4,2',
-      '3,,"QA-Gamma ""Quoted"", Team",General,3,5.7,6,2',
+      '1,,QA-Alpha,Technical,1,7.67,4,2,0',
+      '2,,QA-Beta,Business,2,7.38,4,2,0',
+      '3,,"QA-Gamma ""Quoted"", Team",General,3,5.7,6,2,0',
     ]);
   });
 });

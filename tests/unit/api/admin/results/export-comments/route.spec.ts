@@ -5,6 +5,7 @@ import * as org from '@/lib/auth/org';
 import { db } from '@/lib/db';
 import { loadCountedScores } from '@/lib/db/results';
 import { mockRequest } from '@/tests/unit/test-utils/mock-request';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
 import {
   fakeUser,
@@ -32,6 +33,9 @@ vi.mock('@/lib/db', async () => {
 vi.mock('@/lib/db/results', () => ({
   loadCountedScores: vi.fn(),
 }));
+vi.mock('@/lib/db/conflicts', () => ({
+  loadEventConflicts: vi.fn(),
+}));
 
 const auth = authServer as unknown as AuthServerMock;
 const orgMock = org as unknown as OrgMock;
@@ -45,8 +49,9 @@ beforeEach(() => {
   resetDbMock(dbMock);
   signInAs(auth, fakeUser('admin'));
   scopeToOrg(orgMock);
-  mockSelectSequence(dbMock.select, [{ name: 'QA-Preflight' }]);
+  mockSelectSequence(dbMock.select, [{ name: 'QA-Preflight' }], []);
   vi.mocked(loadCountedScores).mockResolvedValue(SCORES);
+  vi.mocked(loadEventConflicts).mockResolvedValue(new Map());
 });
 
 describe('GET /api/admin/results/export-comments', () => {
@@ -89,26 +94,28 @@ describe('GET /api/admin/results/export-comments', () => {
     );
 
     const lines = (await response.text()).trimEnd().split('\n');
-    expect(lines[0]).toBe('Presentation Order,Team,Award Type,Judge,Criterion,Score,Comment');
+    expect(lines[0]).toBe(
+      'Presentation Order,Team,Award Type,Judge,Conflict of Interest,Criterion,Score,Comment'
+    );
     expect(lines).toHaveLength(1 + SCORES.length);
     expect(lines.slice(1, 5)).toEqual([
-      '1,QA-Alpha,Technical,judge1@example.com,QA-Tech-Merit,8,',
-      '1,QA-Alpha,Technical,judge1@example.com,QA-Innovation,6,',
-      '1,QA-Alpha,Technical,judge2@example.com,QA-Tech-Merit,7,',
-      '1,QA-Alpha,Technical,judge2@example.com,QA-Innovation,9,',
+      '1,QA-Alpha,Technical,judge1@example.com,Not declared,QA-Tech-Merit,8,',
+      '1,QA-Alpha,Technical,judge1@example.com,Not declared,QA-Innovation,6,',
+      '1,QA-Alpha,Technical,judge2@example.com,Not declared,QA-Tech-Merit,7,',
+      '1,QA-Alpha,Technical,judge2@example.com,Not declared,QA-Innovation,9,',
     ]);
     expect(lines[9]).toBe(
-      '3,"QA-Gamma ""Quoted"", Team",General,judge1@example.com,QA-Tech-Merit,10,"Solid ""demo"", well argued"'
+      '3,"QA-Gamma ""Quoted"", Team",General,judge1@example.com,Not declared,QA-Tech-Merit,10,"Solid ""demo"", well argued"'
     );
     expect(lines[14]).toBe(
-      '3,"QA-Gamma ""Quoted"", Team",General,judge2@example.com,QA-Innovation,6,'
+      '3,"QA-Gamma ""Quoted"", Team",General,judge2@example.com,Not declared,QA-Innovation,6,'
     );
   });
 
   it('writes only the header when the event has no counted score', async () => {
     vi.mocked(loadCountedScores).mockResolvedValue([]);
     expect(await (await get()).text()).toBe(
-      'Presentation Order,Team,Award Type,Judge,Criterion,Score,Comment\n'
+      'Presentation Order,Team,Award Type,Judge,Conflict of Interest,Criterion,Score,Comment\n'
     );
   });
 });
