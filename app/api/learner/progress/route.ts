@@ -6,66 +6,76 @@ import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { learnerProgress as learnerProgressTable } from '@/lib/db/schema';
 
 /**
- * Learner Progress API
+ * GET /api/learner/progress
  *
- * Provides read and write access to the authenticated user's lesson progress.
+ * Retrieves the authenticated learner's lesson progress records.
  *
- * GET endpoint:
- * 1. Authenticates the learner.
- * 2. Retrieves that learner's progress records.
+ * This endpoint:
+ * 1. Checks that the requesting user is authenticated.
+ * 2. Retrieves progress records belonging to that user.
  * 3. Returns the progress records as JSON.
  *
- * POST endpoint:
- * 4. Authenticates the requesting user.
- * 5. Reads and validates the lesson ID from the request body.
- * 6. Inserts or updates the lesson's completed progress record.
- * 7. Returns a confirmation and the saved progress record.
+ * The frontend uses this data to determine which lessons are completed
+ * and display the learner's course progress.
  */
 
 export async function GET() {
   try {
-    // 1. Authenticate the learner before reading progress records.
+    // 1.
     const user = await authServer.requireLearner();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
 
-    // 2. Retrieve only progress records belonging to the authenticated learner.
+    // 2.
     const progress = await db
-      .select({
-        lessonId: learnerProgressTable.lessonId,
-        completed: learnerProgressTable.completed,
-      })
+      .select()
       .from(learnerProgressTable)
       .where(eq(learnerProgressTable.userId, user.id));
 
-    // 3. Return the learner's saved progress records.
+    // 3.
     return NextResponse.json(progress);
   } catch (error) {
     return handleRouteError(error, 'Error fetching learner progress');
   }
 }
 
+/**
+ * POST /api/learner/progress
+ *
+ * Marks a lesson as completed for the authenticated learner.
+ *
+ * This endpoint:
+ * 1. Checks that the requesting user is authenticated.
+ * 2. Reads the lesson ID from the request body.
+ * 3. Validates that a lesson ID was provided.
+ * 4. Inserts a completed progress record or updates the existing record.
+ * 5. Returns a confirmation message and the updated progress record.
+ *
+ * The frontend calls this endpoint when a learner marks a lesson
+ * as complete, allowing their progress to be saved in the database.
+ */
+
 export async function POST(request: Request) {
   try {
-    // 4. Authenticate the user before changing lesson progress.
+    // 1.
     const user = await authServer.getUser();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'Unauthorized');
     }
 
-    // 5. Read the lesson ID from the submitted request body.
+    // 2.
     const body = await request.json();
     const { lessonId } = body;
 
-    // 6. Require a lesson ID before saving progress.
+    // 3.
     if (!lessonId) {
       return sendApiError(400, 'BAD_REQUEST', 'Lesson ID is required');
     }
 
-    // 7. Insert a completed record or mark the existing record completed.
+    // 4.
     const result = await db
       .insert(learnerProgressTable)
       .values({
@@ -82,7 +92,7 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    // Return the saved progress record and confirmation.
+    // 5.
     return NextResponse.json({
       message: 'Progress updated',
       progress: result[0],

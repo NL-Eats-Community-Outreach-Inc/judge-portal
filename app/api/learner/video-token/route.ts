@@ -14,31 +14,32 @@ const mux = new Mux({
 });
 
 /**
- * Learner Video Token API
+ * GET /api/learner/video-token?lessonId=[lessonId]
  *
- * Generates a signed Mux playback token for a lesson's video asset.
+ * Generates a signed playback token for a lesson's Mux video.
  *
  * This endpoint:
- * 1. Authenticates the learner.
- * 2. Reads and validates the lesson ID from the query string.
- * 3. Retrieves the lesson's Sanity document reference.
- * 4. Resolves the video's Mux playback ID from Sanity.
- * 5. Generates a signed playback token.
- * 6. Returns the token and playback ID for the video player.
+ * 1. Checks that the requesting user is authenticated.
+ * 2. Reads the lesson ID from the URL query parameters.
+ * 3. Retrieves the lesson's Sanity document ID from the database.
+ * 4. Fetches the video's Mux playback ID from Sanity.
+ * 5. Generates a signed JWT for video playback.
+ * 6. Returns the token and playback ID as JSON.
  *
- * Playback credentials are requested on demand when the learner starts a video.
+ * The frontend uses this response to authenticate video playback
+ * in the learner lesson view.
  */
 
 export async function GET(request: Request) {
   try {
-    // 1. Authenticate the learner before issuing playback credentials.
+    // 1.
     const user = await authServer.requireLearner();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
 
-    // 2. Read and validate the lesson ID from the query string.
+    // 2.
     const { searchParams } = new URL(request.url);
     const lessonId = searchParams.get('lessonId');
 
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       return sendApiError(400, 'BAD_REQUEST', 'Missing lessonId');
     }
 
-    // 3. Retrieve the lesson's Sanity document reference from the database.
+    // 3.
     const [lesson] = await db
       .select({
         sanityDocumentId: lessonsTable.sanityDocumentId,
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
       return sendApiError(404, 'NOT_FOUND', 'Lesson content not configured');
     }
 
-    // 4. Resolve the Mux playback ID from the linked Sanity lesson document.
+    // 4.
     const sanityLesson = await sanityServerClient.fetch(
       `
         *[_type == "lesson" && _id == $sanityDocumentId][0]{
@@ -81,12 +82,12 @@ export async function GET(request: Request) {
       return sendApiError(404, 'NOT_FOUND', 'Lesson video not configured');
     }
 
-    // 5. Generate a signed token for the resolved Mux playback ID.
+    // 5.
     const token = await mux.jwt.signPlaybackId(playbackId, {
       type: 'video',
     });
 
-    // 6. Return the signed token and playback ID to the video player.
+    // 6.
     return NextResponse.json({
       token,
       playbackId,

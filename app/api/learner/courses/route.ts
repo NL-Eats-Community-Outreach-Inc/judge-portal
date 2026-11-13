@@ -5,29 +5,31 @@ import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { courses as coursesTable } from '@/lib/db/schema';
 
 /**
- * Learner Courses API
+ * GET /api/learner/courses
  *
- * Returns course records available to an authenticated learner.
+ * Fetches the list of courses from the database.
  *
  * This endpoint:
- * 1. Authenticates the learner.
- * 2. Retrieves all course records.
- * 3. Returns the course list as JSON.
+ * 1. Authenticates the requesting user.
+ * 2. Retrieves all courses from the database.
+ * 3. Returns the courses as JSON.
+ *
+ * The frontend uses this data to display the available courses
+ * in the learner catalogue.
  */
 
 export async function GET() {
   try {
-    // 1. Authenticate the learner before retrieving course data.
+    // 1.
     const user = await authServer.requireLearner();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
-
-    // 2. Retrieve all course records from the database.
+    // 2.
     const courses = await db.select().from(coursesTable);
 
-    // 3. Return the course records to the catalogue client.
+    // 3.
     return NextResponse.json(courses);
   } catch (error) {
     return handleRouteError(error, 'caught error no user');

@@ -14,16 +14,6 @@ import {
   type AuthServerMock,
 } from '@/tests/unit/test-utils/route-harness';
 
-const { signPlaybackId } = vi.hoisted(() => ({
-  signPlaybackId: vi.fn(),
-}));
-
-vi.mock('@mux/mux-node', () => ({
-  default: class MockMux {
-    jwt = { signPlaybackId };
-  },
-}));
-
 vi.mock('@/lib/auth', async () => {
   const { buildAuthServerMock } = await import('@/tests/unit/test-utils/route-harness');
   return { authServer: buildAuthServerMock() };
@@ -88,7 +78,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetDbMock(dbMock);
   sanityFetch.mockReset();
-  signPlaybackId.mockReset();
   signInAs(auth, fakeUser('learner'));
 });
 
@@ -159,7 +148,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: 'course-1',
         nextLessonId: 'lesson-2',
@@ -185,7 +173,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: 'course-1',
         nextLessonId: null,
@@ -206,7 +193,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: null,
         nextLessonId: null,
@@ -214,27 +200,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
         nextLessonSlug: null,
         nextModuleSlug: null,
       },
-    });
-  });
-
-  it('returns a signed thumbnail URL for video lessons', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], [nextLesson]);
-    sanityFetch.mockResolvedValue({
-      ...sanityContent,
-      lessonFormat: 'video',
-      videoContent: { asset: { playbackId: 'mux-playback-123' } },
-    });
-    signPlaybackId.mockResolvedValue('signed-thumbnail-token');
-
-    const response = await get();
-    const body = await expectJson(response);
-
-    expect(body.thumbnailUrl).toBe(
-      'https://image.mux.com/mux-playback-123/thumbnail.jpg?time=5&width=1280&height=720&token=signed-thumbnail-token'
-    );
-    expect(signPlaybackId).toHaveBeenCalledWith('mux-playback-123', {
-      type: 'thumbnail',
-      params: { time: '5', width: '1280', height: '720' },
     });
   });
 

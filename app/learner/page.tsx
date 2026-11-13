@@ -13,8 +13,9 @@ import {
   Clock3,
   Circle,
 } from 'lucide-react';
+
+// 1. Define the data types used by the dashboard.
 // Lesson metadata used to count lessons and match progress records to a course.
-// 1. Define the data structures used by the dashboard and its API responses.
 type Lesson = {
   id: string;
   moduleId: string;
@@ -25,6 +26,8 @@ type Lesson = {
   createdAt: string;
   slug: string;
 };
+
+// 2. Define module metadata used for course structure and counts.
 type Module = {
   id: string;
   courseId: string;
@@ -34,6 +37,8 @@ type Module = {
   createdAt: string;
   slug: string;
 };
+
+// 3. Define the core course fields.
 type Course = {
   id: string;
   title: string;
@@ -42,18 +47,26 @@ type Course = {
   updatedAt: string;
   slug: string;
 };
+
+// 4. Define the catalogue response shape.
 type CourseDetail = {
   course: Course;
   modules: Module[];
   lessons: Lesson[];
 };
+
+// 5. Define saved lesson progress; only completed records count below.
 type LessonProgress = {
   id: string;
   userId: string;
   lessonId: string;
   completed: boolean;
 };
+
+// 6. Define the status categories used to group courses.
 type CourseStatus = 'in-progress' | 'not-started' | 'completed';
+
+// 7. Define the derived course data used by the UI.
 type CourseWithProgress = {
   detail: CourseDetail;
   completedLessons: number;
@@ -67,37 +80,35 @@ type CourseWithProgress = {
  * Displays the learner's courses, completion progress, and catalogue search.
  *
  * This component:
- * 1. Defines the course, module, lesson, and progress data structures.
- * 2. Initializes dashboard data, search, and request state.
- * 3. Loads the course catalogue and learner progress, validating both responses.
- * 4. Derives completed-lesson lookups and each course's progress status.
- * 5. Filters and groups courses by search query and completion status.
- * 6. Calculates the module and lesson counts displayed on course cards.
- * 7. Renders reusable course cards with status and progress indicators.
- * 8. Renders reusable sections for each course status.
- * 9. Handles loading and request-error states.
- * 10. Renders the dashboard, search field, empty states, and course sections.
+ * 1. Loads course data and saved lesson progress from the learner APIs.
+ * 2. Derives each course's completion count and progress status.
+ * 3. Filters courses using the search field.
+ * 4. Groups courses into in-progress, not-started, and completed sections.
+ * 5. Renders course cards with progress indicators and course statistics.
+ * 6. Handles loading, error, empty-catalogue, and no-search-results states.
  *
- * Course data and progress are fetched together when the dashboard mounts.
+ * Course data and progress are fetched when the component mounts.
  */
 
 export default function LearnerPage() {
-  // 2. Initialize course data, learner progress, search, and request state.
   const [courses, setCourses] = useState<CourseDetail[]>([]);
   const [progress, setProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  // 1. Load course data and progress when the dashboard mounts.
   // The cancellation flag prevents state updates after unmount.
-  // 3. Fetch the course catalogue and learner progress when the dashboard mounts.
   useEffect(() => {
     let cancelled = false;
-    // Keep both requests and their shared error handling in one loader.
+
+    // 2. Keep both requests and their error handling in one loader.
     async function loadCourses() {
       try {
         setLoading(true);
         setError(null);
-        // The catalogue and progress endpoints are independent, so request them concurrently.
+
+        // 3. Fetch the course catalogue and progress concurrently.
         const [coursesResponse, progressResponse] = await Promise.all([
           fetch('/api/learner/catalog'),
           fetch('/api/learner/progress'),
@@ -107,7 +118,8 @@ export default function LearnerPage() {
           coursesResponse.json(),
           progressResponse.json(),
         ]);
-        // Both requests must succeed before the dashboard can display a complete view.
+
+        // 4. Treat either failed request as a dashboard load failure.
         if (!coursesResponse.ok) {
           throw new Error(coursesData.error_message || 'Failed to load courses');
         }
@@ -115,7 +127,8 @@ export default function LearnerPage() {
         if (!progressResponse.ok) {
           throw new Error(progressData.error_message || 'Failed to load lesson progress');
         }
-        // Validate both response shapes before storing them in component state.
+
+        // 5. Validate both API response shapes before updating state.
         if (!Array.isArray(coursesData)) {
           throw new Error('Unexpected courses API response format');
         }
@@ -147,18 +160,22 @@ export default function LearnerPage() {
       cancelled = true;
     };
   }, []);
-  // 4. Derive completed lesson IDs and calculate each course's completion status.
+
+  // 6. Build a Set of completed lesson IDs for efficient lookups.
   const completedLessonIds = useMemo(
     () => new Set(progress.filter((item) => item.completed).map((item) => item.lessonId)),
     [progress]
   );
+
+  // 7. Derive lesson counts and a display status for each course.
   const coursesWithProgress = useMemo<CourseWithProgress[]>(() => {
     return courses.map((detail) => {
       const totalLessons = detail.lessons.length;
       const completedLessons = detail.lessons.filter((lesson) =>
         completedLessonIds.has(lesson.id)
       ).length;
-      // Empty courses remain not started rather than being treated as completed.
+
+      // 8. Determine the course status without marking empty courses completed.
       let status: CourseStatus = 'not-started';
 
       if (totalLessons > 0 && completedLessons === totalLessons) {
@@ -175,7 +192,8 @@ export default function LearnerPage() {
       };
     });
   }, [courses, completedLessonIds]);
-  // 5. Apply the search query and group matching courses by progress status.
+
+  // 9. Filter by course title or description; ignore case and surrounding whitespace.
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -190,10 +208,13 @@ export default function LearnerPage() {
       );
     });
   }, [coursesWithProgress, search]);
+
+  // 10. Group the filtered courses by progress status.
   const inProgressCourses = filteredCourses.filter((item) => item.status === 'in-progress');
   const notStartedCourses = filteredCourses.filter((item) => item.status === 'not-started');
   const completedCourses = filteredCourses.filter((item) => item.status === 'completed');
-  // 6. Return the module and lesson counts displayed on a course card.
+
+  // 11. Return the module and lesson counts shown on a course card.
   function getCourseStats(courseDetail: CourseDetail) {
     return {
       modules: courseDetail.modules.length,
@@ -205,7 +226,6 @@ export default function LearnerPage() {
    * Render a course card with status, progress, and module/lesson counts.
    * Reuse this helper across the dashboard's status sections.
    */
-  // 7. Render a reusable course card with status, progress, and content counts.
   function renderCourseCard(item: CourseWithProgress) {
     const { detail, completedLessons, totalLessons, status } = item;
     const stats = getCourseStats(detail);
@@ -216,14 +236,14 @@ export default function LearnerPage() {
       <Link
         key={detail.course.id}
         href={`/learner/courses/${detail.course.slug}`}
-        className={`group grid aspect-square min-w-0 grid-rows-[1fr_1fr] overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        className={`group flex min-h-64 min-w-0 flex-col overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           isCompleted
             ? 'border-border/70 bg-muted/60 hover:border-muted-foreground/40'
             : 'border-border bg-card hover:border-primary/40'
         }`}
       >
         <div
-          className={`relative flex min-h-0 items-center justify-between overflow-hidden p-5 sm:p-6 ${
+          className={`relative flex h-28 items-center justify-between overflow-hidden p-5 ${
             isCompleted
               ? 'bg-gradient-to-br from-gray-500/20 via-slate-500/10 to-muted'
               : status === 'in-progress'
@@ -258,7 +278,7 @@ export default function LearnerPage() {
           </span>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden p-5 sm:p-6">
+        <div className="flex flex-1 flex-col p-5">
           <h3
             className={`text-lg font-semibold leading-snug ${
               isCompleted ? 'text-muted-foreground' : 'group-hover:text-primary'
@@ -328,7 +348,6 @@ export default function LearnerPage() {
    * Render a group of courses with the same progress status.
    * Omit empty groups so the dashboard does not show headings without cards.
    */
-  // 8. Render a course-status section, omitting it when no courses match.
   function renderSection({
     title,
     description,
@@ -364,14 +383,15 @@ export default function LearnerPage() {
             {emptyMessage}
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {items.map(renderCourseCard)}
           </div>
         )}
       </section>
     );
   }
-  // 9. Handle loading and request-error states before rendering the dashboard.
+
+  // 12. Render loading and error states before the main dashboard.
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
@@ -379,6 +399,8 @@ export default function LearnerPage() {
       </main>
     );
   }
+
+  // 13. Display an accessible error state if loading fails.
   if (error) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-6 md:p-10">
@@ -389,9 +411,10 @@ export default function LearnerPage() {
       </main>
     );
   }
-  // 10. Render the dashboard header, search, empty states, and grouped course cards.
+
+  // 14. Render the dashboard header, search, and grouped course sections.
   return (
-    <main className="w-full min-w-0 space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+    <main className="mx-auto w-full max-w-[1600px] space-y-10 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium text-violet-600 dark:text-violet-300">
           <GraduationCap className="h-5 w-5" />
@@ -429,7 +452,6 @@ export default function LearnerPage() {
         </div>
 
         {/* An empty catalogue differs from a non-empty catalogue with no search matches. */}
-        {/* Distinguish an empty catalogue from a search with no matching courses. */}
         {courses.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center">
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
