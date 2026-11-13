@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
 import { mockRequest } from '@/tests/unit/test-utils/mock-request';
 import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import {
   fakeUser,
   signInAs,
@@ -34,6 +35,9 @@ vi.mock('@/lib/db/results', () => ({
   loadCountedScores: vi.fn(),
   loadEventCriteria: vi.fn(),
 }));
+vi.mock('@/lib/db/conflicts', () => ({
+  loadEventConflicts: vi.fn(),
+}));
 
 const auth = authServer as unknown as AuthServerMock;
 const orgMock = org as unknown as OrgMock;
@@ -48,6 +52,7 @@ beforeEach(() => {
   scopeToOrg(orgMock);
   vi.mocked(loadCountedScores).mockResolvedValue(SCORES);
   vi.mocked(loadEventCriteria).mockResolvedValue(CRITERIA);
+  vi.mocked(loadEventConflicts).mockResolvedValue(new Map());
 });
 
 describe('GET /api/admin/results', () => {

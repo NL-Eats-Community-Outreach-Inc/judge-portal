@@ -7,6 +7,7 @@ import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { csvRow, csvAttachment } from '@/lib/utils/csv';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import { criterionApplies, formatAwardType } from '@/lib/results';
 
 export async function GET(request: NextRequest) {
@@ -22,71 +23,81 @@ export async function GET(request: NextRequest) {
 
     await requireEventInOrg(eventId, orgId);
 
-    // Counted rows only (assigned judges, applicable criteria), same as the dashboard
-    const [allScores, allCriteria, allTeams, allJudges, eventResult] = await Promise.all([
-      loadCountedScores(eventId),
-      loadEventCriteria(eventId),
-      db
-        .select({
-          id: teams.id,
-          name: teams.name,
-          presentationOrder: teams.presentationOrder,
-          awardType: teams.awardType,
-        })
-        .from(teams)
-        .where(eq(teams.eventId, eventId))
-        .orderBy(teams.presentationOrder),
-      db
-        .select({ id: users.id, email: users.email })
-        .from(users)
-        .innerJoin(eventJudges, eq(eventJudges.judgeId, users.id))
-        .where(eq(eventJudges.eventId, eventId))
-        .orderBy(users.email),
-      db.select({ name: events.name }).from(events).where(eq(events.id, eventId)).limit(1),
-    ]);
+    // Load the existing score matrix and independent conflict declarations together.
+    const [allScores, allCriteria, allTeams, allJudges, eventResult, conflictMap] =
+      await Promise.all([
+        loadCountedScores(eventId),
+        loadEventCriteria(eventId),
+        db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            presentationOrder: teams.presentationOrder,
+            awardType: teams.awardType,
+          })
+          .from(teams)
+          .where(eq(teams.eventId, eventId))
+          .orderBy(teams.presentationOrder),
+        db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .innerJoin(eventJudges, eq(eventJudges.judgeId, users.id))
+          .where(eq(eventJudges.eventId, eventId))
+          .orderBy(users.email),
+        db.select({ name: events.name }).from(events).where(eq(events.id, eventId)).limit(1),
+        loadEventConflicts(eventId),
+      ]);
 
-    // score by team → judge → criterion
+    // Index scores by team → judge → criterion. Conflict declarations remain separate.
     const scoreMatrix = new Map<string, number>();
     for (const row of allScores) {
       scoreMatrix.set(`${row.team.id}:${row.judge.id}:${row.criterion.id}`, row.score);
     }
 
-    // Row 1: team columns, then the judge's email local part repeated per criterion.
-    // Row 2: the criterion name and maximum under each judge.
+    // Each judge gets one conflict column followed by their criterion columns.
     const headerRow1: Array<string | number> = ['Team Name', 'Presentation Order', 'Award Type'];
     const headerRow2: Array<string | number> = ['', '', ''];
     for (const judge of allJudges) {
+      const judgeLabel = judge.email.split('@')[0];
+      headerRow1.push(judgeLabel);
+      headerRow2.push('Conflict of Interest');
+
       for (const criterion of allCriteria) {
-        headerRow1.push(judge.email.split('@')[0]);
+        headerRow1.push(judgeLabel);
         headerRow2.push(`${criterion.name} (/${criterion.maxScore})`);
       }
     }
 
     const lines = [csvRow(headerRow1), csvRow(headerRow2)];
 
-    // One row per team: integer score, blank when not scored, N/A when the
-    // criterion does not apply to the team's award type
+    // One row per team. Missing scores remain blank; non-applicable criteria remain N/A.
+    // Missing declarations are explicitly labelled rather than treated as "No".
     for (const team of allTeams) {
       const row: Array<string | number> = [
         team.name,
         team.presentationOrder,
         formatAwardType(team.awardType),
       ];
+
       for (const judge of allJudges) {
+        const conflict = conflictMap.get(`${team.id}:${judge.id}`);
+        row.push(conflict === undefined ? 'Not declared' : conflict ? 'Yes' : 'No');
+
         for (const criterion of allCriteria) {
           if (!criterionApplies(team.awardType, criterion.category)) {
             row.push('N/A');
             continue;
           }
+
           const score = scoreMatrix.get(`${team.id}:${judge.id}:${criterion.id}`);
           row.push(score === undefined ? '' : score);
         }
       }
+
       lines.push(csvRow(row));
     }
 
     const csvContent = lines.join('\n') + '\n';
-
     const eventName = eventResult[0]?.name || 'event';
 
     const headers = new Headers();
