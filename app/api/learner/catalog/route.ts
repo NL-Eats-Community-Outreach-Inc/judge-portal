@@ -9,45 +9,32 @@ import {
   lessons as lessonsTable,
 } from '@/lib/db/schema';
 
-/**
- * Learner Catalogue API
- *
- * Returns the course catalogue with each course's associated modules and lessons.
- *
- * This endpoint:
- * 1. Authenticates the learner.
- * 2. Retrieves all courses.
- * 3. Retrieves modules belonging to those courses.
- * 4. Retrieves lessons belonging to those modules.
- * 5. Assembles and returns the nested course catalogue.
- */
 export async function GET() {
   try {
-    // 1. Authenticate the learner before exposing catalogue data.
     const user = await authServer.requireLearner();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
 
-    // 2. Retrieve all courses that form the catalogue.
+    // Query 1: all courses.
     const courses = await db.select().from(coursesTable);
 
     const courseIds = courses.map((course) => course.id);
 
-    // 3. Retrieve modules associated with the retrieved courses.
+    // Query 2: all modules belonging to those courses.
     const modules = courseIds.length
       ? await db.select().from(modulesTable).where(inArray(modulesTable.courseId, courseIds))
       : [];
 
     const moduleIds = modules.map((module) => module.id);
 
-    // 4. Retrieve lessons associated with the retrieved modules.
+    // Query 3: all lessons belonging to those modules.
     const lessons = moduleIds.length
       ? await db.select().from(lessonsTable).where(inArray(lessonsTable.moduleId, moduleIds))
       : [];
 
-    // 5. Assemble each course with its matching modules and lessons.
+    // Assemble the same CourseDetail shape the pages already use.
     const result = courses.map((course) => {
       const courseModules = modules.filter((module) => module.courseId === course.id);
 

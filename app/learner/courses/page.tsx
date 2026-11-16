@@ -7,14 +7,12 @@
  *
  * This component:
  * 1. Defines the course, module, and lesson data types.
- * 2. Initializes catalogue data and search/request state.
- * 3. Fetches and validates course data from the learner catalogue API.
- * 4. Filters courses by title or description on the client.
- * 5. Renders the catalogue heading and search control.
- * 6. Displays loading, error, and empty-result states.
- * 7. Renders matching course cards with module and lesson counts.
+ * 2. Loads course data from the learner catalogue API.
+ * 3. Filters courses by title or description.
+ * 4. Displays loading, error, and empty-result states.
+ * 5. Renders course cards with module and lesson counts.
  *
- * Search is performed locally, so changing the query does not trigger another API request.
+ * Uses client-side search so results update without additional API requests.
  */
 
 import Link from 'next/link';
@@ -60,13 +58,13 @@ type CourseDetail = {
 };
 
 export default function AllCoursesPage() {
-  // 2. Initialize catalogue data, search input, and request state.
+  // 2. Initialize catalogue data and UI state.
   const [courses, setCourses] = useState<CourseDetail[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 3. Fetch and validate the course catalogue when the page mounts.
+  // 3. Fetch the course catalogue when the page mounts.
   useEffect(() => {
     let cancelled = false;
 
@@ -120,7 +118,7 @@ export default function AllCoursesPage() {
     };
   }, []);
 
-  // 4. Filter courses by title or description without making additional API requests.
+  // 4. Filter courses by title or description without additional API requests.
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -131,7 +129,7 @@ export default function AllCoursesPage() {
     );
   }, [courses, search]);
 
-  // 5. Render the catalogue heading, course count, and search field.
+  // 5. Render the catalogue heading and search field.
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-8 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <section className="space-y-2">
@@ -173,7 +171,7 @@ export default function AllCoursesPage() {
           </div>
         </div>
 
-        {/* 6. Handle loading, request errors, and empty search results. */}
+        {/* 6. Show skeleton cards while the catalogue request is pending. */}
         {loading ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (

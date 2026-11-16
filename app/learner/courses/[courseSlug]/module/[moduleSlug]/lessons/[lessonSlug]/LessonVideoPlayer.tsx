@@ -1,23 +1,9 @@
 'use client';
 
-/**
- * Lesson Video Player — Lazy-Loaded Mux Video Component
- *
- * Handles the playback experience for individual learner video lessons.
- *
- * This component:
- * 1. Displays a thumbnail preview before video playback begins.
- * 2. Dynamically imports the Mux video player when requested.
- * 3. Fetches a signed playback token from the learner video-token API.
- * 4. Manages loading and error states during video initialization.
- * 5. Renders the Mux player once the video data has been retrieved.
- */
-
 import { useState } from 'react';
 import type { ComponentType } from 'react';
 import Image from 'next/image';
 
-// 1. Define the data structures required to display and initialize video playback.
 type VideoData = {
   token: string;
   playbackId: string;
@@ -40,7 +26,6 @@ export default function LessonVideoPlayer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. Dynamically load the Mux player and retrieve the playback credentials when requested.
   async function handlePlay() {
     if (loading || video) return;
 
@@ -53,7 +38,6 @@ export default function LessonVideoPlayer({
         fetch(`/api/learner/video-token?lessonId=${encodeURIComponent(lessonId)}`),
       ]);
 
-      // 3. Retrieve and validate the signed playback token from the video-token API.
       const data: VideoData & { error_message?: string } = await response.json();
 
       if (!response.ok) {
@@ -68,12 +52,10 @@ export default function LessonVideoPlayer({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load video');
     } finally {
-      // 4. Reset loading state and preserve any errors for display.
       setLoading(false);
     }
   }
 
-  // 5. Render the initialized Mux player or the thumbnail preview with playback controls.
   if (video && Player) {
     return (
       <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">

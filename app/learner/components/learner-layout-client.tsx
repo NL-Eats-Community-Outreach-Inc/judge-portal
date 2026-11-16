@@ -1,21 +1,5 @@
 'use client';
 
-/**
- * Learner Layout — Client-Side Shell
- *
- * Provides the shared navigation, header, and responsive layout
- * for the learner portal.
- *
- * This component:
- * 1. Tracks the current route and mobile sidebar state.
- * 2. Identifies lesson pages that require a full-width layout.
- * 3. Controls opening and closing the mobile navigation drawer.
- * 4. Renders the sidebar, application header, and page content.
- *
- * Lesson pages hide the persistent desktop sidebar to give the
- * video player more room, while keeping navigation accessible.
- */
-
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { PanelLeftOpen } from 'lucide-react';
@@ -30,30 +14,27 @@ interface LearnerLayoutClientProps {
 }
 
 export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps) {
-  // 1. Track the active route and whether the mobile sidebar is open.
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // 2. Detect lesson pages so the video player can use the full available width.
+  // The lesson player gets its own full-width layout.
   const isLessonPage = /^\/learner\/courses\/[^/]+\/module\/[^/]+\/lessons\/[^/]+\/?$/.test(
     pathname
   );
 
-  // 3. Provide a shared handler for closing the mobile navigation drawer.
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  // 4. Render the responsive learner layout and its navigation controls.
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background">
-        {/* Persistent desktop sidebar, hidden on lesson pages. */}
+        {/* Keep the normal desktop sidebar everywhere except the lesson player. */}
         {!isLessonPage && (
           <div className="fixed left-0 top-0 z-40 hidden h-full md:block">
             <LearnerSidebar />
           </div>
         )}
 
-        {/* Mobile sidebar drawer with a backdrop to dismiss it. */}
+        {/* The original sidebar becomes an overlay drawer when opened. */}
         {isSidebarOpen && (
           <>
             <button
@@ -71,7 +52,7 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
 
         <div className={`min-h-screen ${isLessonPage ? '' : 'md:ml-64'}`}>
           <div className="sticky top-0 z-30 flex min-w-0 items-center border-b border-violet-200/70 bg-violet-50/90 backdrop-blur-md dark:border-violet-950 dark:bg-zinc-900/95">
-            {/* Lesson pages use a dedicated button to open portal navigation. */}
+            {/* Desktop drawer toggle: shown on lesson pages only. */}
             {isLessonPage && (
               <button
                 type="button"
@@ -96,7 +77,6 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
             </div>
           </div>
 
-          {/* Render the active learner page inside the shared layout. */}
           <main className="min-w-0">{children}</main>
         </div>
       </div>

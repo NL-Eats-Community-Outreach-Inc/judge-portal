@@ -11,22 +11,6 @@ import {
 } from '@/lib/db/schema';
 import { sanityServerClient } from '@/lib/sanity/server-client';
 
-/**
- * Learner Lesson Detail API
- *
- * Returns lesson metadata, Sanity content, navigation, and a signed thumbnail
- * URL when the lesson includes a supported video format.
- *
- * This endpoint:
- * 1. Authenticates the learner.
- * 2. Resolves the lesson, course, and module route parameters.
- * 3. Retrieves the lesson within the specified course and module.
- * 4. Loads the next lesson and linked Sanity content.
- * 5. Generates a signed thumbnail URL when video content is available.
- * 6. Returns lesson content, navigation details, and the thumbnail URL.
- *
- * Full video playback tokens are generated separately when playback is requested.
- */
 const mux = new Mux({
   tokenId: process.env.MUX_TOKEN_ID,
   tokenSecret: process.env.MUX_TOKEN_SECRET,
@@ -38,14 +22,14 @@ export async function GET(
   { params }: { params: Promise<{ lessonSlug: string }> }
 ) {
   try {
-    // 1. Authenticate the learner before returning lesson content.
+    // 1. Authenticate the learner.
     const user = await authServer.requireLearner();
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');
     }
 
-    // 2. Read the lesson slug from the route and course/module slugs from the query string.
+    // 2. Get the lesson slug from the route and course/module slugs from query.
     const { lessonSlug } = await params;
     const { searchParams } = new URL(request.url);
 
@@ -56,7 +40,7 @@ export async function GET(
       return sendApiError(400, 'BAD_REQUEST', 'Missing courseSlug or moduleSlug parameter');
     }
 
-    // 3. Retrieve the lesson only when all three requested slugs match.
+    // 3. Find the lesson only within the requested course and module.
     const [result] = await db
       .select({ lesson: lessonsTable })
       .from(lessonsTable)
@@ -87,7 +71,7 @@ export async function GET(
       .where(eq(modulesTable.id, lesson.moduleId))
       .limit(1);
 
-    // 4. Load the next lesson and linked Sanity content concurrently.
+    // Fetch navigation and Sanity content concurrently.
     const [nextLessons, sanityLesson] = await Promise.all([
       db
         .select({
@@ -131,7 +115,7 @@ export async function GET(
       return sendApiError(404, 'NOT_FOUND', 'Lesson content not found');
     }
 
-    // 5. Sign only the thumbnail here. The playback token is still generated
+    // Sign only the thumbnail here. The playback token is still generated
     // separately by /api/learner/video-token when the learner clicks Play.
     let thumbnailUrl: string | null = null;
     const playbackId = sanityLesson?.videoContent?.asset?.playbackId;
@@ -152,7 +136,7 @@ export async function GET(
       thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?token=${encodeURIComponent(thumbnailToken)}`;
     }
 
-    // 6. Return lesson metadata, Sanity content, navigation, and the signed thumbnail URL.
+    // Return lesson content, navigation, and the signed thumbnail URL.
     return NextResponse.json({
       lesson,
       content: sanityLesson,
