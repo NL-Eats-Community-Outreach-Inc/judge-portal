@@ -1,7 +1,6 @@
-BEGIN;
 
 -- 1. Create the role-assignment table.
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
     user_id uuid NOT NULL,
     role public.user_role NOT NULL,
     granted_by uuid,
@@ -24,7 +23,7 @@ CREATE TABLE public.user_roles (
 );
 
 -- 2. Index user_id for retrieving all roles assigned to a user.
-CREATE INDEX idx_user_roles_user
+CREATE INDEX IF NOT EXISTS idx_user_roles_user
     ON public.user_roles USING btree (user_id);
 
 -- 3. Backfill every existing user's current role.
@@ -40,7 +39,8 @@ SELECT
     role,
     NULL,
     'migration'
-FROM public.users;
+FROM public.users
+ON CONFLICT (user_id, role) DO NOTHING;
 
 -- 4. RLS helper functions.
 --    SECURITY DEFINER lets these functions check users.role without being
@@ -87,6 +87,9 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
 -- 6. Users can read their own available roles.
 --    Active admins and super admins can read all role assignments.
+DROP POLICY IF EXISTS "Users can read own roles"
+    ON public.user_roles;
+
 CREATE POLICY "Users can read own roles"
     ON public.user_roles
     FOR SELECT
@@ -99,6 +102,9 @@ CREATE POLICY "Users can read own roles"
 
 -- 7. Active admins can grant/revoke ordinary roles.
 --    Only active super admins can grant, modify, or revoke super_admin.
+DROP POLICY IF EXISTS "Admins can insert ordinary roles"
+    ON public.user_roles;
+
 CREATE POLICY "Admins can insert ordinary roles"
     ON public.user_roles
     FOR INSERT
@@ -110,6 +116,9 @@ CREATE POLICY "Admins can insert ordinary roles"
         )
         OR public.is_active_super_admin()
     );
+
+DROP POLICY IF EXISTS "Admins can update ordinary roles"
+    ON public.user_roles;
 
 CREATE POLICY "Admins can update ordinary roles"
     ON public.user_roles
@@ -130,6 +139,9 @@ CREATE POLICY "Admins can update ordinary roles"
         OR public.is_active_super_admin()
     );
 
+DROP POLICY IF EXISTS "Admins can delete ordinary roles"
+    ON public.user_roles;
+
 CREATE POLICY "Admins can delete ordinary roles"
     ON public.user_roles
     FOR DELETE
@@ -141,5 +153,3 @@ CREATE POLICY "Admins can delete ordinary roles"
         )
         OR public.is_active_super_admin()
     );
-
-COMMIT;
