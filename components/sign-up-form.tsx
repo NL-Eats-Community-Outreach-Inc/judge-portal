@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OTPInput } from '@/components/auth/otp-input';
 import { Building2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -101,7 +100,10 @@ function getStepMeta(stepType: StepType): { title: string; description: string }
 }
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
-  const [role, setRole] = useState<UserRole>('judge');
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(['judge']);
+
+  const primaryRole = selectedRoles[0];
+  const hasJudgeRole = selectedRoles.includes('judge');
   const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -121,8 +123,9 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const router = useRouter();
 
   // Step sequence based on role
-  const stepSequence: StepType[] =
-    role === 'judge' ? ['role-email', 'organizations', 'auth'] : ['role-email', 'auth'];
+  const stepSequence: StepType[] = hasJudgeRole
+    ? ['role-email', 'organizations', 'auth']
+    : ['role-email', 'auth'];
   const totalSteps = stepSequence.length;
   const currentStepType = stepSequence[currentStep];
   const stepMeta = getStepMeta(currentStepType);
@@ -136,22 +139,31 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       .finally(() => setOrgsLoading(false));
   }, []);
 
-  const handleRoleChange = (value: string) => {
-    console.log('Role selected:', value);
+  const handleRoleToggle = (value: UserRole) => {
+    setSelectedRoles((current) => {
+      const next = current.includes(value)
+        ? current.filter((role) => role !== value)
+        : [...current, value];
 
-    setRole(value as UserRole);
+      if (!next.includes('judge')) {
+        setSelectedOrgIds([]);
+      }
+
+      return next;
+    });
+
     setCurrentStep(0);
     setDirection('forward');
     setError(null);
-
-    if (value !== 'judge') {
-      setSelectedOrgIds([]);
-    }
   };
 
   const validateCurrentStep = (): boolean => {
     switch (currentStepType) {
       case 'role-email':
+        if (selectedRoles.length === 0) {
+          setError('Please select at least one role');
+          return false;
+        }
         if (!email || !email.includes('@')) {
           setError('Please enter a valid email address');
           return false;
@@ -202,6 +214,12 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     setIsLoading(true);
     setError(null);
 
+    if (selectedRoles.length === 0) {
+      setError('Please select at least one role');
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== repeatPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
@@ -209,16 +227,22 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     }
 
     try {
-      const redirectPath = getPostAuthRedirect(role);
+      const initialRole = primaryRole;
+      if (!initialRole) throw new Error('Please select at least one role');
+
+      const redirectPath = getPostAuthRedirect(initialRole);
+      const callbackUrl = new URL('/api/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', redirectPath);
 
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback?next=${redirectPath}&role=${role}`,
+          emailRedirectTo: callbackUrl.toString(),
           data: {
-            role: role,
-            organization_ids: role === 'judge' ? selectedOrgIds : [],
+            role: initialRole,
+            roles: selectedRoles,
+            organization_ids: hasJudgeRole ? selectedOrgIds : [],
           },
         },
       });
@@ -226,20 +250,21 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       if (error) throw error;
 
       if (data.user && data.session) {
-        if (role === 'judge' && selectedOrgIds.length > 0) {
-          for (const orgId of selectedOrgIds) {
-            const { error: memberError } = await supabase.from('organization_members').insert({
-              organization_id: orgId,
-              user_id: data.user.id,
-            });
-            if (memberError && !memberError.message.includes('duplicate')) {
-              console.error('Error creating org membership:', memberError);
-            }
-          }
+        // Ensure profile, all selected roles, and Judge organization memberships
+        // exist whether or not the database trigger created the profile.
+        const response = await fetch('/api/auth/complete-signup', {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error ?? 'Failed to complete account setup');
         }
 
         router.push(redirectPath);
+        router.refresh();
       } else {
+        // The callback completes setup after the user confirms their email.
         router.push('/auth/sign-up-success');
       }
     } catch (error: unknown) {
@@ -255,15 +280,25 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     setIsLoading(true);
     setError(null);
 
+    if (selectedRoles.length === 0) {
+      setError('Please select at least one role');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      const initialRole = primaryRole;
+      if (!initialRole) throw new Error('Please select at least one role');
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
           data: {
             invite_pending: true,
-            role: role,
-            organization_ids: role === 'judge' ? selectedOrgIds : [],
+            role: initialRole,
+            roles: selectedRoles,
+            organization_ids: hasJudgeRole ? selectedOrgIds : [],
           },
         },
       });
@@ -293,40 +328,32 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       });
 
       if (error) throw error;
+      if (!data.user) throw new Error('Verification succeeded but no user was returned');
 
-      if (data.user) {
-        const roleFromMetadata = data.user.user_metadata?.role as UserRole | undefined;
+      const metadata = data.user.user_metadata ?? {};
+      const metadataRoles = Array.isArray(metadata.roles) ? metadata.roles : [metadata.role];
+      const validRoles = metadataRoles.filter(
+        (value: unknown): value is UserRole =>
+          value === 'judge' || value === 'participant' || value === 'learner'
+      );
+      const rolesToUse = [...new Set(validRoles)];
+      const initialRole = rolesToUse[0];
 
-        if (!roleFromMetadata || !['judge', 'participant', 'learner'].includes(roleFromMetadata)) {
-          console.error('Invalid or missing role in user metadata:', roleFromMetadata);
-          throw new Error('Invalid role configuration. Please try signing up again.');
-        }
-
-        const { error: insertError } = await supabase.from('users').insert({
-          id: data.user.id,
-          email: data.user.email,
-          role: roleFromMetadata,
-        });
-
-        if (insertError && !insertError.message.includes('duplicate')) {
-          console.error('Error creating user record:', insertError);
-          throw new Error('Failed to complete account setup');
-        }
-
-        if (roleFromMetadata === 'judge' && selectedOrgIds.length > 0) {
-          for (const orgId of selectedOrgIds) {
-            const { error: memberError } = await supabase.from('organization_members').insert({
-              organization_id: orgId,
-              user_id: data.user.id,
-            });
-            if (memberError && !memberError.message.includes('duplicate')) {
-              console.error('Error creating org membership:', memberError);
-            }
-          }
-        }
-
-        router.push(getPostAuthRedirect(roleFromMetadata));
+      if (!initialRole) {
+        throw new Error('Invalid role configuration. Please try signing up again.');
       }
+
+      const response = await fetch('/api/auth/complete-signup', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error ?? 'Failed to complete account setup');
+      }
+
+      router.push(getPostAuthRedirect(initialRole));
+      router.refresh();
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -392,42 +419,61 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
               {currentStepType === 'role-email' && (
                 <div className="space-y-5">
                   <div className="space-y-3">
-                    <Label>I am registering as a</Label>
-                    <RadioGroup value={role} onValueChange={handleRoleChange}>
-                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                        <RadioGroupItem value="judge" id="role-judge" />
-                        <Label htmlFor="role-judge" className="flex-1 cursor-pointer">
-                          <div>
-                            <p className="font-medium">Judge</p>
-                            <p className="text-xs text-muted-foreground">
-                              Score and evaluate team projects
-                            </p>
+                    <Label>Which roles do you want on your account?</Label>
+                    {(
+                      [
+                        {
+                          value: 'judge',
+                          title: 'Judge',
+                          description: 'Score and evaluate team projects',
+                        },
+                        {
+                          value: 'participant',
+                          title: 'Participant',
+                          description: 'Join events and create teams',
+                        },
+                        {
+                          value: 'learner',
+                          title: 'Student',
+                          description: 'Join courses and lessons',
+                        },
+                      ] as const
+                    ).map((option) => {
+                      const isSelected = selectedRoles.includes(option.value);
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleRoleToggle(option.value)}
+                          aria-pressed={isSelected}
+                          className={cn(
+                            'w-full rounded-lg border p-3 text-left transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            isSelected
+                              ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                              : 'border-border hover:bg-muted/50'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={cn(
+                                'flex h-5 w-5 items-center justify-center rounded border',
+                                isSelected
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-muted-foreground/40'
+                              )}
+                            >
+                              {isSelected && <Check className="h-3.5 w-3.5" />}
+                            </div>
+                            <div>
+                              <p className="font-medium">{option.title}</p>
+                              <p className="text-xs text-muted-foreground">{option.description}</p>
+                            </div>
                           </div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                        <RadioGroupItem value="participant" id="role-participant" />
-                        <Label htmlFor="role-participant" className="flex-1 cursor-pointer">
-                          <div>
-                            <p className="font-medium">Participant</p>
-                            <p className="text-xs text-muted-foreground">
-                              Join events and create teams
-                            </p>
-                          </div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                        <RadioGroupItem value="learner" id="role-learner" />
-                        <Label htmlFor="role-learner" className="flex-1 cursor-pointer">
-                          <div>
-                            <p className="font-medium">Student</p>
-                            <p className="text-xs text-muted-foreground">
-                              Join courses and lessons
-                            </p>
-                          </div>
-                        </Label>
-                      </div>
-                    </RadioGroup>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="grid gap-2">
@@ -546,8 +592,19 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <div className="space-y-4">
                   {/* Email display */}
                   <div className="rounded-lg bg-muted/50 px-3 py-2.5">
-                    <p className="text-xs text-muted-foreground">Signing up as</p>
-                    <p className="text-sm font-medium truncate">{email}</p>
+                    <p className="text-xs text-muted-foreground">Signing up with these roles</p>
+                    <p className="text-sm font-medium">
+                      {selectedRoles
+                        .map((role) =>
+                          role === 'learner'
+                            ? 'Student'
+                            : role === 'judge'
+                              ? 'Judge'
+                              : 'Participant'
+                        )
+                        .join(', ')}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{email}</p>
                   </div>
 
                   {EMAIL_FEATURES_ENABLED ? (

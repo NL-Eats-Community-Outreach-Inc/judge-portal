@@ -24,7 +24,8 @@ import { apiFetch, ApiError, messageOf } from '@/lib/api/client';
 
 interface InvitationInfo {
   email: string;
-  role: string;
+  roles?: string[];
+  role?: string; // Legacy compatibility
   customMessage?: string;
   organizationName?: string | null;
 }
@@ -222,7 +223,7 @@ export default function InviteLandingPage() {
     );
   }
 
-  const role = invitationInfo?.role || 'judge';
+  const role = invitationInfo?.roles?.[0] || invitationInfo?.role || 'judge';
   const config = ROLE_CONFIG[role] || ROLE_CONFIG.judge;
   const RoleIcon = config.icon;
 

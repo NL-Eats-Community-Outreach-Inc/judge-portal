@@ -216,6 +216,34 @@ export const users = pgTable(
   })
 );
 
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+
+    role: userRoleEnum('role').notNull(),
+
+    grantedBy: uuid('granted_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+
+    grantedSource: text('granted_source').notNull(),
+
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'string',
+    })
+      .default(sql`timezone('utc'::text, now())`)
+      .notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.userId, table.role] }),
+    userIdx: index('idx_user_roles_user').on(table.userId),
+  })
+);
+
 export const teams = pgTable(
   'teams',
   {
@@ -350,7 +378,7 @@ export const invitations = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     token: text('token').notNull().unique(),
     email: text('email').notNull(),
-    role: invitationRoleEnum('role').notNull(),
+    roles: invitationRoleEnum('roles').array().notNull(),
     status: invitationStatusEnum('status').default('pending').notNull(),
     customMessage: text('custom_message'),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
@@ -525,3 +553,18 @@ export type Submission = typeof submissions.$inferSelect;
 export type NewSubmission = typeof submissions.$inferInsert;
 export type SubmissionAiScore = typeof submissionAiScores.$inferSelect;
 export type NewSubmissionAiScore = typeof submissionAiScores.$inferInsert;
+
+export type Course = typeof courses.$inferSelect;
+export type NewCourse = typeof courses.$inferInsert;
+
+export type Module = typeof modules.$inferSelect;
+export type NewModule = typeof modules.$inferInsert;
+
+export type Lesson = typeof lessons.$inferSelect;
+export type NewLesson = typeof lessons.$inferInsert;
+
+export type LearnerProgress = typeof learnerProgress.$inferSelect;
+export type NewLearnerProgress = typeof learnerProgress.$inferInsert;
+
+export type UserRole = typeof userRoles.$inferSelect;
+export type NewUserRole = typeof userRoles.$inferInsert;

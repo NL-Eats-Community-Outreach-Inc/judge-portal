@@ -31,7 +31,7 @@ function invitation(overrides: Partial<Invitation> = {}): Invitation {
     id: 'inv-1',
     token: 'tok-1',
     email: 'invitee@example.com',
-    role: 'admin',
+    roles: ['admin'],
     status: 'pending',
     customMessage: 'Welcome',
     expiresAt: EXPIRES_AT,
@@ -82,7 +82,7 @@ describe('GET /api/invite/validate', () => {
       success: true,
       invitation: {
         email: 'invitee@example.com',
-        role: 'admin',
+        roles: ['admin'],
         customMessage: 'Welcome',
         organizationName: 'NL Eats',
       },
@@ -122,7 +122,7 @@ describe('POST /api/invite/validate (email flow, unlinked from the UI)', () => {
       expect(body).toMatchObject({ success: true, invitation: { email: 'invitee@example.com' } });
       expect(signInWithOtp).toHaveBeenCalledWith({
         email: 'invitee@example.com',
-        options: { shouldCreateUser: true, data: { invite_pending: true, role: 'admin' } },
+        options: { shouldCreateUser: true, data: { invite_pending: true, roles: ['admin'] } },
       });
     });
 
