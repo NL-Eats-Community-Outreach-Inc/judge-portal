@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS public.judge_team_conflicts (
   judge_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   has_conflict BOOLEAN NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT unique_judge_team_conflict
     UNIQUE (event_id, judge_id, team_id)
 );

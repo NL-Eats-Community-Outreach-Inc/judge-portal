@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -781,7 +788,7 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
 
                   {/* Comment input */}
                   <div className="space-y-2">
-                    <Label htmlFor={`comment-${criterion.id}`}>Comments (required)</Label>
+                    <Label htmlFor={`comment-${criterion.id}`}>Comments (optional)</Label>
                     <Textarea
                       id={`comment-${criterion.id}`}
                       placeholder="Add your comments about this criterion..."
@@ -842,114 +849,91 @@ export function TeamScoringInterface({ team, criteria, eventId }: TeamScoringInt
         </Card>
       </div>
 
-      {/* Conflict of Interest Declaration Modal */}
-      {(conflictLoadError || conflictOfInterest === null) && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="conflict-modal-title"
-          aria-describedby="conflict-modal-description"
-        >
-          <Card className="w-full max-w-lg border shadow-2xl">
-            <div className="space-y-5 p-6 sm:p-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                  <AlertTriangle className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 id="conflict-modal-title" className="text-xl font-semibold">
-                    Conflict of Interest Declaration
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {conflictLoadError
-                      ? 'Unable to load your declaration'
-                      : 'Required before proceeding'}
+      <AlertDialog open={conflictLoadError || conflictOfInterest === null}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conflict of Interest Declaration</AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflictLoadError ? 'Unable to load your declaration' : 'Required before proceeding'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {conflictLoadError ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                We couldn&apos;t check whether you&apos;ve already submitted a declaration. Please
+                try again before continuing.
+              </p>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => setConflictLoadAttempt((attempt) => attempt + 1)}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Before you begin...</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Do you have a conflict of interest with this team?
+                </p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  This may include personal, professional, financial, or other relationships that
+                  could influence, or reasonably appear to influence, your evaluation.
+                </p>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-sm">
+                    Your response will be recorded for event administrators. Regardless of your
+                    answer, you may continue to score this team.
                   </p>
                 </div>
               </div>
 
-              {conflictLoadError ? (
-                <div className="space-y-3">
-                  <p id="conflict-modal-description" className="text-sm text-muted-foreground">
-                    We couldn&apos;t check whether you&apos;ve already submitted a declaration.
-                    Please try again before continuing.
-                  </p>
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Do you have a conflict of interest?</p>
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     type="button"
-                    className="w-full"
-                    onClick={() => setConflictLoadAttempt((attempt) => attempt + 1)}
+                    variant="outline"
+                    className="h-14 gap-2"
+                    disabled={savingConflict}
+                    onClick={() => handleConflictOfInterestChange(true)}
                   >
-                    Try again
+                    {savingConflict ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    Yes
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-14 gap-2"
+                    disabled={savingConflict}
+                    onClick={() => handleConflictOfInterestChange(false)}
+                  >
+                    {savingConflict ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    No
                   </Button>
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold">Before you begin...</h3>
-                    <p
-                      id="conflict-modal-description"
-                      className="text-sm leading-relaxed text-muted-foreground"
-                    >
-                      Do you have a conflict of interest with this team?
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      This may include personal, professional, financial, or other relationships
-                      that could influence, or reasonably appear to influence, your evaluation.
-                    </p>
-                    <div className="rounded-lg bg-muted/50 p-3">
-                      <p className="text-sm">
-                        Your response will be recorded for event administrators. Regardless of your
-                        answer, you may continue to score this team.
-                      </p>
-                    </div>
-                  </div>
+              </div>
 
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Do you have a conflict of interest?</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-14 gap-2"
-                        disabled={savingConflict}
-                        onClick={() => handleConflictOfInterestChange(true)}
-                      >
-                        {savingConflict ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        Yes
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-14 gap-2"
-                        disabled={savingConflict}
-                        onClick={() => handleConflictOfInterestChange(false)}
-                      >
-                        {savingConflict ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        No
-                      </Button>
-                    </div>
-                  </div>
-
-                  {savingConflict && (
-                    <p className="text-center text-sm text-muted-foreground">
-                      Saving your declaration...
-                    </p>
-                  )}
-                </>
+              {savingConflict && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Saving your declaration...
+                </p>
               )}
-            </div>
-          </Card>
-        </div>
-      )}
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confetti for full event completion */}
       <CompletionConfetti show={showConfetti} onComplete={() => setShowConfetti(false)} />

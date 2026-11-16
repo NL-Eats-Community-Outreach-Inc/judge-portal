@@ -42,7 +42,7 @@ async function scoreCriterion(
   comment = 'Automated test scoring comment'
 ) {
   const card = criterionCard(page, name);
-  await card.getByRole('textbox', { name: 'Comments (required)' }).fill(comment);
+  await card.getByRole('textbox', { name: 'Comments (optional)' }).fill(comment);
   await card
     .getByRole('button', {
       name: String(value),
@@ -306,7 +306,7 @@ test.describe('Judge scoring @smoke', () => {
     await expect(page.locator('h3', { hasText: 'QA-Tech-Merit' })).toBeVisible();
     const techCard = criterionCard(page, 'QA-Tech-Merit');
     await techCard
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('E9 debounce persistence test');
     await techCard.getByRole('button', { name: '7', exact: true }).click();
     await page.goto('/judge');
@@ -317,7 +317,7 @@ test.describe('Judge scoring @smoke', () => {
     await expect(page.locator('h3', { hasText: 'QA-Innovation' })).toBeVisible();
     const innovationCard = criterionCard(page, 'QA-Innovation');
     await innovationCard
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('E9 team navigation persistence test');
     await innovationCard.getByRole('button', { name: '5', exact: true }).click();
     await sidebarRow(page, 'QA-Alpha').click();
@@ -374,7 +374,7 @@ test.describe('Judge scoring @smoke', () => {
     expect(probe).toEqual([false, 401]);
     const businessCard = criterionCard(page, 'QA-Biz-Viability');
     await businessCard
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('Expired session test');
     await businessCard.getByRole('button', { name: '8', exact: true }).click();
     await expect(page.getByText('Your session has expired')).toBeVisible({ timeout: 10_000 });
@@ -397,7 +397,7 @@ test.describe('Judge scoring @smoke', () => {
     // Prepare a valid score entry, then remove the assignment before saving.
     const card = criterionCard(page, 'QA-Tech-Merit');
     await card
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('Assignment interruption test');
     // the admin unassigns judge 1 while the page is open (judge 2 stays)
     await assignJudges(adminApi, eventId, [judgeIds.judge2]);
@@ -435,7 +435,7 @@ test.describe('Judge scoring @smoke', () => {
     await expect(page.locator('h3', { hasText: 'QA-Innovation' })).toBeVisible();
     const card = criterionCard(page, 'QA-Innovation');
     await card
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('Completed event interruption test');
     await setEventStatus(adminApi, eventId, 'completed', eventName);
 
@@ -469,7 +469,7 @@ test.describe('Judge scoring @smoke', () => {
     await expect(page.locator('h3', { hasText: 'QA-Biz-Viability' })).toBeVisible();
     const card = criterionCard(page, 'QA-Biz-Viability');
     await card
-      .getByRole('textbox', { name: 'Comments (required)' })
+      .getByRole('textbox', { name: 'Comments (optional)' })
       .fill('Network interruption test');
     // the venue Wi-Fi drops for one request
     await page.route('**/api/judge/scores', (route) => route.abort());
@@ -499,7 +499,7 @@ test.describe('Judge scoring @smoke', () => {
     await page.goto(`/judge/event/${eventId}/team/${ids.delta}`);
     await expect(page.locator('h3', { hasText: 'QA-Presentation' })).toBeVisible();
 
-    // The comment field is labelled required, but an empty comment is accepted.
+    // The comment field is labelled optional, but an empty comment is accepted.
     await scoreCriterion(page, 'QA-Presentation', 3, '');
 
     // Verify that the score was persisted and the empty comment became null.
