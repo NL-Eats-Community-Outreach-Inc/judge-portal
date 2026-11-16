@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
 import { mockRequest } from '@/tests/unit/test-utils/mock-request';
 import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import {
   fakeUser,
   signInAs,
@@ -33,6 +34,9 @@ vi.mock('@/lib/db/results', () => ({
   loadCountedScores: vi.fn(),
   loadEventCriteria: vi.fn(),
 }));
+vi.mock('@/lib/db/conflicts', () => ({
+  loadEventConflicts: vi.fn(),
+}));
 
 const auth = authServer as unknown as AuthServerMock;
 const orgMock = org as unknown as OrgMock;
@@ -55,6 +59,7 @@ beforeEach(() => {
   );
   vi.mocked(loadCountedScores).mockResolvedValue(SCORES);
   vi.mocked(loadEventCriteria).mockResolvedValue(CRITERIA);
+  vi.mocked(loadEventConflicts).mockResolvedValue(new Map());
 });
 
 describe('GET /api/admin/results/export-judge-scores', () => {
@@ -86,16 +91,24 @@ describe('GET /api/admin/results/export-judge-scores', () => {
 
     const lines = (await response.text()).trimEnd().split('\n');
     expect(lines[0]).toBe(
-      'Team Name,Presentation Order,Award Type,judge1,judge1,judge1,judge1,judge2,judge2,judge2,judge2'
+      'Team Name,Presentation Order,Award Type,judge1,judge1,judge1,judge1,judge1,judge2,judge2,judge2,judge2,judge2'
     );
+
     expect(lines[1]).toBe(
-      ',,,QA-Tech-Merit (/10),QA-Innovation (/10),QA-Biz-Viability (/10),QA-Presentation (/10),' +
-        'QA-Tech-Merit (/10),QA-Innovation (/10),QA-Biz-Viability (/10),QA-Presentation (/10)'
+      ',,,Conflict of Interest,QA-Tech-Merit (/10),QA-Innovation (/10),QA-Biz-Viability (/10),QA-Presentation (/10),' +
+        'Conflict of Interest,QA-Tech-Merit (/10),QA-Innovation (/10),QA-Biz-Viability (/10),QA-Presentation (/10)'
     );
-    expect(lines[2]).toBe('QA-Alpha,1,Technical,8,6,N/A,N/A,7,9,N/A,N/A');
-    expect(lines[3]).toBe('QA-Beta,2,Business,N/A,N/A,9,7,N/A,N/A,5,10');
-    expect(lines[4]).toBe('"QA-Gamma ""Quoted"", Team",3,General,10,8,6,4,6,6,,');
-    expect(lines[5]).toBe('QA-Delta,4,General,,,,,,,,');
+
+    expect(lines[2]).toBe('QA-Alpha,1,Technical,Not declared,8,6,N/A,N/A,Not declared,7,9,N/A,N/A');
+
+    expect(lines[3]).toBe('QA-Beta,2,Business,Not declared,N/A,N/A,9,7,Not declared,N/A,N/A,5,10');
+
+    expect(lines[4]).toBe(
+      '"QA-Gamma ""Quoted"", Team",3,General,Not declared,10,8,6,4,Not declared,6,6,,'
+    );
+
+    expect(lines[5]).toBe('QA-Delta,4,General,Not declared,,,,,Not declared,,,,');
+
     expect(lines).toHaveLength(6);
   });
 });

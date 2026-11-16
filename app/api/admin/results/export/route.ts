@@ -7,6 +7,7 @@ import { getAdminOrgId, requireEventInOrg } from '@/lib/auth/org';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { csvRow, csvAttachment } from '@/lib/utils/csv';
 import { loadCountedScores, loadEventCriteria } from '@/lib/db/results';
+import { loadEventConflicts } from '@/lib/db/conflicts';
 import { computeTeamTotals, rankTeamTotals, scoreForMode, formatAwardType } from '@/lib/results';
 import type { ScoreMode } from '@/lib/types';
 
@@ -50,11 +51,19 @@ export async function GET(request: NextRequest) {
       .limit(1);
     const eventName = eventResult?.name || 'event';
 
-    // Same rows and math as the results dashboard, so the file matches the screen
-    const [allScores, allCriteria] = await Promise.all([
+    // Scores and conflict declarations are loaded separately; declarations never affect scoring.
+    const [allScores, allCriteria, conflictMap] = await Promise.all([
       loadCountedScores(eventId),
       loadEventCriteria(eventId),
+      loadEventConflicts(eventId),
     ]);
+
+    const conflictCountsByTeam = new Map<string, number>();
+    for (const [key, hasConflict] of conflictMap) {
+      if (!hasConflict) continue;
+      const teamId = key.split(':')[0];
+      conflictCountsByTeam.set(teamId, (conflictCountsByTeam.get(teamId) ?? 0) + 1);
+    }
 
     let teamTotals = computeTeamTotals(allScores, allCriteria);
     if (awardTypeFilter !== 'all') {
@@ -62,11 +71,12 @@ export async function GET(request: NextRequest) {
     }
     const ranked = rankTeamTotals(teamTotals, scoreMode);
 
-    // `Tied` marks rows whose score in the exported mode equals a neighbour's
     const lines = [
-      `Rank,Tied,Team Name,Award Type,Presentation Order,${SCORE_MODE_LABEL[scoreMode]},Number of Scores,Judge Count`,
-      ...ranked.map((team) =>
-        csvRow([
+      `Rank,Tied,Team Name,Award Type,Presentation Order,${SCORE_MODE_LABEL[scoreMode]},Number of Scores,Judge Count,Declared Conflicts`,
+      ...ranked.map((team) => {
+        const teamConflictCount = conflictCountsByTeam.get(team.teamId) ?? 0;
+
+        return csvRow([
           team.rank,
           team.tied ? 'yes' : '',
           team.teamName,
@@ -75,8 +85,9 @@ export async function GET(request: NextRequest) {
           scoreForMode(team, scoreMode),
           team.totalScores,
           team.judgeCount,
-        ])
-      ),
+          teamConflictCount,
+        ]);
+      }),
     ];
     const csvContent = lines.join('\n') + '\n';
 

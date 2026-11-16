@@ -262,13 +262,14 @@ test.describe('Admin results', () => {
         `${mode[0].toUpperCase()}${mode.slice(1)} Score`,
         'Number of Scores',
         'Judge Count',
+        'Declared Conflicts',
       ]);
       expect(rows.slice(1).map((r) => [r[2], r[5]])).toEqual(expected.map((e) => [...e]));
       expect(rows.slice(1).map((r) => r[0])).toEqual(['1', '2', '3']);
       // no ties in S0
       expect(rows.slice(1).map((r) => r[1])).toEqual(['', '', '']);
       const gamma = rows.find((r) => r[2] === GAMMA)!;
-      expect(gamma).toHaveLength(8);
+      expect(gamma).toHaveLength(9);
       expect(gamma[3]).toBe('General');
     }
 
@@ -285,45 +286,93 @@ test.describe('Admin results', () => {
       j1,
       j1,
       j1,
+      j1,
+      j2,
       j2,
       j2,
       j2,
       j2,
     ]);
-    expect(matrix[1].slice(3, 7)).toEqual([
+
+    expect(matrix[1]).toEqual([
+      '',
+      '',
+      '',
+      'Conflict of Interest',
+      'QA-Tech-Merit (/10)',
+      'QA-Innovation (/10)',
+      'QA-Biz-Viability (/10)',
+      'QA-Presentation (/10)',
+      'Conflict of Interest',
       'QA-Tech-Merit (/10)',
       'QA-Innovation (/10)',
       'QA-Biz-Viability (/10)',
       'QA-Presentation (/10)',
     ]);
+
     expect(matrix[2]).toEqual([
       'QA-Alpha',
       '1',
       'Technical',
+      'Not declared',
       '8',
       '6',
       'N/A',
       'N/A',
+      'Not declared',
       '7',
       '9',
       'N/A',
       'N/A',
     ]);
+
     expect(matrix[3]).toEqual([
       'QA-Beta',
       '2',
       'Business',
+      'Not declared',
       'N/A',
       'N/A',
       '9',
       '7',
+      'Not declared',
       'N/A',
       'N/A',
       '5',
       '10',
     ]);
-    expect(matrix[4]).toEqual([GAMMA, '3', 'General', '10', '8', '6', '4', '6', '6', '', '']);
-    expect(matrix[5]).toEqual(['QA-Delta', '4', 'General', '', '', '', '', '', '', '', '']);
+
+    expect(matrix[4]).toEqual([
+      GAMMA,
+      '3',
+      'General',
+      'Not declared',
+      '10',
+      '8',
+      '6',
+      '4',
+      'Not declared',
+      '6',
+      '6',
+      '',
+      '',
+    ]);
+
+    expect(matrix[5]).toEqual([
+      'QA-Delta',
+      '4',
+      'General',
+      'Not declared',
+      '',
+      '',
+      '',
+      '',
+      'Not declared',
+      '',
+      '',
+      '',
+      '',
+    ]);
   });
 
   test('M1–M4: score change, third judge assigned and unassigned, award type narrowed', async ({
@@ -532,6 +581,7 @@ test.describe('Admin results', () => {
       'Team',
       'Award Type',
       'Judge',
+      'Conflict of Interest',
       'Criterion',
       'Score',
       'Comment',
@@ -541,21 +591,58 @@ test.describe('Admin results', () => {
     expect(rows.slice(1).map((r) => r[1])).not.toContain('QA-Delta');
     // ordered by presentation order, judge email, criterion display order
     expect(rows.slice(1, 5)).toEqual([
-      ['1', 'QA-Alpha', 'Technical', ACCOUNTS.judge1.email, 'QA-Tech-Merit', '10', ''],
-      ['1', 'QA-Alpha', 'Technical', ACCOUNTS.judge1.email, 'QA-Innovation', '6', ''],
-      ['1', 'QA-Alpha', 'Technical', ACCOUNTS.judge2.email, 'QA-Tech-Merit', '7', ''],
-      ['1', 'QA-Alpha', 'Technical', ACCOUNTS.judge2.email, 'QA-Innovation', '9', ''],
+      [
+        '1',
+        'QA-Alpha',
+        'Technical',
+        ACCOUNTS.judge1.email,
+        'Not declared',
+        'QA-Tech-Merit',
+        '10',
+        '',
+      ],
+      [
+        '1',
+        'QA-Alpha',
+        'Technical',
+        ACCOUNTS.judge1.email,
+        'Not declared',
+        'QA-Innovation',
+        '6',
+        '',
+      ],
+      [
+        '1',
+        'QA-Alpha',
+        'Technical',
+        ACCOUNTS.judge2.email,
+        'Not declared',
+        'QA-Tech-Merit',
+        '7',
+        '',
+      ],
+      [
+        '1',
+        'QA-Alpha',
+        'Technical',
+        ACCOUNTS.judge2.email,
+        'Not declared',
+        'QA-Innovation',
+        '9',
+        '',
+      ],
     ]);
     expect(rows[9]).toEqual([
       '3',
       GAMMA,
       'General',
       ACCOUNTS.judge1.email,
+      'Not declared',
       'QA-Tech-Merit',
       '10',
       COMMENT,
     ]);
-    expect(rows.slice(1).filter((r) => r[6] !== '')).toHaveLength(1);
+    expect(rows.slice(1).filter((r) => r[7] !== '')).toHaveLength(1);
 
     // the button next to the matrix export downloads the same file
     const context = await adminContextFor(browser, eventId);

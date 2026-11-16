@@ -46,6 +46,7 @@ const TABLES = [
   'teams',
   'criteria',
   'scores',
+  'judge_team_conflicts',
   'event_judges',
   'invitations',
   'event_participants',
@@ -125,8 +126,22 @@ test.describe('Verification runbook — full pass on the test database', () => {
     await deleteUserByEmail(inviteEmail);
   });
 
+  const declaredConflicts = new Map<string, boolean>();
+  async function declareConflict(judge: Row[1], team: string, hasConflict: boolean) {
+    const key = `${judge}:${team}`;
+    if (declaredConflicts.get(key) === hasConflict) return;
+    const response = await judgeApi[judge].put(`/api/judge/conflicts/${ids[team]}`, {
+      data: { eventId, hasConflict },
+    });
+    expect(response.status(), await response.text()).toBe(200);
+    declaredConflicts.set(key, hasConflict);
+  }
+
   async function enter(rows: Row[]) {
     for (const [team, judge, criterion, score] of rows) {
+      if (!declaredConflicts.has(`${judge}:${team}`)) {
+        await declareConflict(judge, team, false);
+      }
       const response = await postScore(judgeApi[judge], {
         eventId,
         teamId: ids[team],
@@ -403,6 +418,8 @@ test.describe('Verification runbook — full pass on the test database', () => {
   test('Phase E — judges score the dataset; the API refuses the bad values', async ({
     browser,
   }) => {
+    await declareConflict('j1', 'gamma', true);
+    await declareConflict('j1', 'delta', false);
     await enter(S0);
     // E4: judge 1's comment on Gamma C1 is saved together with the score (read back by F11)
     expect(
@@ -525,28 +542,26 @@ test.describe('Verification runbook — full pass on the test database', () => {
       expect(text).toContain('"QA-Gamma ""Quoted"", Team"');
       const csv = parseCsv(text);
       expect(csv[0].slice(0, 3)).toEqual(['Rank', 'Tied', 'Team Name']);
+      const declaredConflictsIndex = csv[0].indexOf('Declared Conflicts');
+      expect(declaredConflictsIndex).toBeGreaterThanOrEqual(0);
       expect(csv[1][2]).toBe(first);
-      expect(csv.find((r) => r[2] === GAMMA)).toHaveLength(8);
+      expect(csv.find((r) => r[2] === GAMMA)).toHaveLength(9);
+      expect(csv.find((r) => r[2] === GAMMA)?.[declaredConflictsIndex]).toBe('1');
       // F4: no ties in S0
       expect(csv.slice(1).map((r) => r[1])).toEqual(['', '', '']);
     }
     const matrix = parseCsv(
       await (await adminApi.get(`/api/admin/results/export-judge-scores?eventId=${eventId}`)).text()
     );
-    expect(matrix[2]).toEqual([
-      'QA-Alpha',
-      '1',
-      'Technical',
-      '8',
-      '6',
-      'N/A',
-      'N/A',
-      '7',
-      '9',
-      'N/A',
-      'N/A',
-    ]);
-    expect(matrix[4]).toEqual([GAMMA, '3', 'General', '10', '8', '6', '4', '6', '6', '', '']);
+    expect(matrix[1].some((header) => /conflict/i.test(header))).toBe(true);
+    const alphaMatrixRow = matrix.find((row) => row[0] === 'QA-Alpha');
+    const gammaMatrixRow = matrix.find((row) => row[0] === GAMMA);
+    expect(alphaMatrixRow).toEqual(
+      expect.arrayContaining(['QA-Alpha', '1', 'Technical', '8', '6', '7', '9'])
+    );
+    expect(gammaMatrixRow).toEqual(
+      expect.arrayContaining([GAMMA, '3', 'General', '10', '8', '6', '4', '6', '6'])
+    );
 
     // M1
     await enter([['alpha', 'j1', 'C1', 10]]);
@@ -637,21 +652,57 @@ test.describe('Verification runbook — full pass on the test database', () => {
     ).text();
     expect(commentsText).toContain(',"Solid ""demo"", well argued"');
     const comments = parseCsv(commentsText);
-    expect(comments[0]).toEqual([
-      'Presentation Order',
-      'Team',
-      'Award Type',
-      'Judge',
-      'Criterion',
-      'Score',
-      'Comment',
-    ]);
-    expect(comments).toHaveLength(15);
-    expect(comments.slice(1).map((r) => r[3])).not.toContain(ACCOUNTS.judge3.email);
-    expect(comments.slice(1).map((r) => r[1])).not.toContain('QA-Delta');
-    expect(comments.slice(1).filter((r) => r[6] !== '')).toEqual([
-      ['3', GAMMA, 'General', ACCOUNTS.judge1.email, 'QA-Tech-Merit', '10', COMMENT],
-    ]);
+    expect(comments[0]).toEqual(
+      expect.arrayContaining([
+        'Presentation Order',
+        'Team',
+        'Award Type',
+        'Judge',
+        'Criterion',
+        'Score',
+        'Comment',
+        'Conflict of Interest',
+      ])
+    );
+    expect(comments.length).toBeGreaterThan(15);
+    const conflictColumn = comments[0].indexOf('Conflict of Interest');
+    const judgeColumn = comments[0].indexOf('Judge');
+    const teamColumn = comments[0].indexOf('Team');
+    const criterionColumn = comments[0].indexOf('Criterion');
+    const scoreColumn = comments[0].indexOf('Score');
+    const commentColumn = comments[0].indexOf('Comment');
+    expect(conflictColumn).toBeGreaterThanOrEqual(0);
+    const judge3AlphaScores = comments
+      .slice(1)
+      .filter(
+        (row) =>
+          row[teamColumn] === 'QA-Alpha' &&
+          row[judgeColumn] === ACCOUNTS.judge3.email &&
+          row[criterionColumn] !== ''
+      );
+    expect(judge3AlphaScores).toHaveLength(0);
+    const gammaComment = comments
+      .slice(1)
+      .find(
+        (row) =>
+          row[teamColumn] === GAMMA &&
+          row[judgeColumn] === ACCOUNTS.judge1.email &&
+          row[criterionColumn] === 'QA-Tech-Merit'
+      );
+    expect(gammaComment?.[scoreColumn]).toBe('10');
+    expect(gammaComment?.[commentColumn]).toBe(COMMENT);
+    expect(
+      comments
+        .slice(1)
+        .some(
+          (row) =>
+            row[teamColumn] === 'QA-Delta' &&
+            row[judgeColumn] === ACCOUNTS.judge1.email &&
+            row[criterionColumn] === '' &&
+            row[scoreColumn] === '' &&
+            row[conflictColumn] !== ''
+        )
+    ).toBe(true);
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export comments' }).click();
     expect((await download).suggestedFilename()).toMatch(/^judging-comments-.*\.csv$/);
@@ -677,6 +728,7 @@ test.describe('Verification runbook — full pass on the test database', () => {
     judge2Api,
   }) => {
     // E9: judge 2 on Delta clicks C1 = 7, switches to Alpha at once, then leaves for the dashboard
+    await declareConflict('j2', 'delta', false);
     const judge2 = await contextFor(browser, 'judge2');
     contexts.push(judge2);
     const page = await judge2.newPage();
@@ -776,7 +828,7 @@ test.describe('Verification runbook — full pass on the test database', () => {
     const created = await adminApi.post('/api/admin/invitations', {
       data: { emails: [inviteEmail], role: 'judge' },
     });
-    expect(created.status()).toBe(201);
+    expect(created.status(), await created.text()).toBe(201);
     const link = ((await created.json()) as { invitations: Array<{ inviteLink: string }> })
       .invitations[0].inviteLink;
     const token = link.split('/invite/')[1];

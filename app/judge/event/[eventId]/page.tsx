@@ -180,7 +180,7 @@ export default function EventPage() {
                 3
               </div>
               <p className="text-muted-foreground text-sm md:text-base">
-                Add comments to provide valuable feedback (optional)
+                Add comments to provide valuable feedback
               </p>
             </div>
             <div className="flex items-center gap-2.5 md:gap-3">
