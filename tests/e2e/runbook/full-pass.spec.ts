@@ -672,12 +672,14 @@ test.describe('Verification runbook — full pass on the test database', () => {
     const scoreColumn = comments[0].indexOf('Score');
     const commentColumn = comments[0].indexOf('Comment');
     expect(conflictColumn).toBeGreaterThanOrEqual(0);
-    const judge3AlphaScores = comments.slice(1).filter(
-      (row) =>
-        row[teamColumn] === 'QA-Alpha' &&
-        row[judgeColumn] === ACCOUNTS.judge3.email &&
-        row[criterionColumn] !== ''
-    );
+    const judge3AlphaScores = comments
+      .slice(1)
+      .filter(
+        (row) =>
+          row[teamColumn] === 'QA-Alpha' &&
+          row[judgeColumn] === ACCOUNTS.judge3.email &&
+          row[criterionColumn] !== ''
+      );
     expect(judge3AlphaScores).toHaveLength(0);
     const gammaComment = comments
       .slice(1)
