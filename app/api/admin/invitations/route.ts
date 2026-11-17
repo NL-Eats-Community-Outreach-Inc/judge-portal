@@ -1,165 +1,210 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authServer } from '@/lib/auth';
-import { createBatchInvitations, getExistingInvitation } from '@/lib/auth';
+import { authServer, createBatchInvitations, getExistingInvitation } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, invitations, organizationMembers } from '@/lib/db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { invitations, users, userRoles, organizationMembers } from '@/lib/db/schema';
+import { eq, desc, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
+const VALID_ROLES = ['admin', 'judge', 'participant', 'learner'] as const;
+
+type InvitationRole = (typeof VALID_ROLES)[number];
+
 /**
  * POST /api/admin/invitations
- * Create invitations (batch supported)
+ *
+ * Supports:
+ * - Existing pending invitation detection.
+ * - Automatic organization membership for existing judges.
+ * - Existing registered account detection.
+ * - New multi-role invitation creation.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin role
     const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
 
     const body = await request.json();
-    const { emails, role = 'judge', customMessage, expiresInDays = 7 } = body;
+    const { emails, customMessage, expiresInDays = 7 } = body;
 
-    // Validate role
-    const validRoles = ['admin', 'judge', 'participant', 'learner'];
-    if (!validRoles.includes(role)) {
-      return sendApiError(400, 'BAD_REQUEST', 'Invalid role');
+    // Support both the new roles array and legacy single-role property.
+    const requestedRoles: unknown = Array.isArray(body.roles)
+      ? body.roles
+      : body.role
+        ? [body.role]
+        : ['judge'];
+
+    if (
+      !Array.isArray(requestedRoles) ||
+      requestedRoles.length === 0 ||
+      !requestedRoles.every(
+        (role: unknown) => typeof role === 'string' && VALID_ROLES.includes(role as InvitationRole)
+      )
+    ) {
+      return sendApiError(400, 'BAD_REQUEST', 'Invalid or missing invitation roles');
     }
 
-    // Validation
-    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+    const roles = [...new Set(requestedRoles as InvitationRole[])];
+
+    if (!Array.isArray(emails) || emails.length === 0) {
       return sendApiError(400, 'BAD_REQUEST', 'At least one email is required');
     }
 
-    // Validate email format
+    if (!emails.every((email: unknown) => typeof email === 'string')) {
+      return sendApiError(400, 'BAD_REQUEST', 'Email addresses must be strings');
+    }
+
+    const normalizedEmails = [
+      ...new Set(emails.map((email: string) => email.trim().toLowerCase())),
+    ];
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const invalidEmails = emails.filter((email: string) => !emailRegex.test(email));
+    const invalidEmails = normalizedEmails.filter((email) => !emailRegex.test(email));
+
     if (invalidEmails.length > 0) {
       return sendApiError(400, 'BAD_REQUEST', 'Invalid email addresses');
     }
 
-    // Check for existing pending invitations
+    // 1. Find emails that already have pending invitations.
     const existingInvites: string[] = [];
-    for (const email of emails) {
+
+    for (const email of normalizedEmails) {
       const existing = await getExistingInvitation(email, orgId);
+
       if (existing) {
         existingInvites.push(email);
       }
     }
 
-    // Check for already registered users and auto-add existing judges to org
-    const alreadyRegistered: Array<{ email: string; role: string }> = [];
-    const autoAdded: Array<{ email: string }> = [];
-    for (const email of emails) {
-      const existingUser = await db
-        .select({ id: users.id, email: users.email, role: users.role })
-        .from(users)
-        .where(sql`lower(${users.email}) = lower(${email})`)
-        .limit(1);
+    const existingInviteSet = new Set(existingInvites);
 
-      if (existingUser[0]) {
-        // If this is a judge invite and user is already a judge, check org membership
-        if (existingUser[0].role === 'judge' && role === 'judge') {
-          const existingMembership = await db
-            .select()
-            .from(organizationMembers)
-            .where(
-              and(
-                eq(organizationMembers.userId, existingUser[0].id),
-                eq(organizationMembers.organizationId, orgId)
-              )
-            )
-            .limit(1);
+    const remainingEmails = normalizedEmails.filter((email) => !existingInviteSet.has(email));
 
-          if (existingMembership[0]) {
-            // Already a member of this org
-            alreadyRegistered.push({
-              email: existingUser[0].email!,
-              role: existingUser[0].role! + ' (already in your org)',
-            });
-          } else {
-            // Existing judge NOT in this org — auto-add to org directly (no invitation needed)
-            await db
-              .insert(organizationMembers)
-              .values({
-                organizationId: orgId,
-                userId: existingUser[0].id,
-              })
-              .onConflictDoNothing();
+    // 2. Find accounts that already exist.
+    const existingUsers = remainingEmails.length
+      ? await db
+          .select({
+            id: users.id,
+            email: users.email,
+            activeRole: users.role,
+            assignedRole: userRoles.role,
+          })
+          .from(users)
+          .leftJoin(userRoles, eq(userRoles.userId, users.id))
+          .where(inArray(sql`lower(${users.email})`, remainingEmails))
+      : [];
 
-            autoAdded.push({ email: existingUser[0].email! });
-          }
-        } else {
-          alreadyRegistered.push({
-            email: existingUser[0].email!,
-            role: existingUser[0].role!,
-          });
-        }
+    // Combine the joined role rows into one entry per account.
+    const accountMap = new Map<
+      string,
+      {
+        id: string;
+        email: string;
+        roles: Set<string>;
+      }
+    >();
+
+    for (const row of existingUsers) {
+      const email = row.email.toLowerCase();
+
+      let account = accountMap.get(row.id);
+
+      if (!account) {
+        account = {
+          id: row.id,
+          email,
+          roles: new Set<string>(),
+        };
+
+        accountMap.set(row.id, account);
+      }
+
+      // Preserve the legacy active role as well as assigned roles.
+      if (row.activeRole) {
+        account.roles.add(row.activeRole);
+      }
+
+      if (row.assignedRole) {
+        account.roles.add(row.assignedRole);
       }
     }
 
-    // Filter out emails with existing invitations, registered users, or auto-added judges
-    const registeredEmails = alreadyRegistered.map((u) => u.email);
-    const autoAddedEmails = autoAdded.map((u) => u.email);
-    const newEmails = emails.filter(
-      (email: string) =>
-        !existingInvites.includes(email) &&
-        !registeredEmails.includes(email) &&
-        !autoAddedEmails.includes(email)
-    );
+    const existingUserEmails = new Set([...accountMap.values()].map((account) => account.email));
 
-    if (newEmails.length === 0 && autoAdded.length === 0) {
-      return NextResponse.json(
-        {
-          message: 'All emails are already invited or registered',
-          existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
-          alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
-        },
-        { status: 200 }
-      );
+    const newEmails = remainingEmails.filter((email) => !existingUserEmails.has(email));
+
+    // 3. Automatically add existing judges when the request is
+    // exclusively for the judge role.
+    const autoAdded: Array<{ email: string }> = [];
+    const alreadyRegistered: Array<{
+      email: string;
+      roles: string[];
+    }> = [];
+
+    const judgeOnlyRequest = roles.length === 1 && roles[0] === 'judge';
+
+    const judgeMemberships: Array<{
+      organizationId: string;
+      userId: string;
+    }> = [];
+
+    for (const account of accountMap.values()) {
+      const isJudge = account.roles.has('judge');
+
+      if (judgeOnlyRequest && isJudge) {
+        judgeMemberships.push({
+          organizationId: orgId,
+          userId: account.id,
+        });
+
+        autoAdded.push({ email: account.email });
+      } else {
+        alreadyRegistered.push({
+          email: account.email,
+          roles: [...account.roles],
+        });
+      }
     }
 
-    // If all new emails were auto-added (no invitations needed)
-    if (newEmails.length === 0 && autoAdded.length > 0) {
-      return NextResponse.json({
-        success: true,
-        invitations: [],
-        autoAdded,
-        existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
-        alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
-      });
+    if (judgeMemberships.length > 0) {
+      await db.insert(organizationMembers).values(judgeMemberships).onConflictDoNothing();
     }
 
-    // Create invitations with org assignment
-    const createdInvitations = await createBatchInvitations({
-      emails: newEmails,
-      role,
-      customMessage,
-      expiresInDays,
-      createdBy: user.id,
-      organizationId: orgId,
-    });
+    // 4. Create invitations only for genuinely new accounts.
+    const createdInvitations = newEmails.length
+      ? await createBatchInvitations({
+          emails: newEmails,
+          roles,
+          customMessage,
+          expiresInDays,
+          createdBy: user.id,
+          organizationId: orgId,
+        })
+      : [];
 
-    // Generate invite links
+    // 5. Generate invitation links.
     const origin = request.nextUrl.origin;
+
     const invitesWithLinks = createdInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
-      role: invite.role,
+      roles: invite.roles,
       status: invite.status,
       expiresAt: invite.expiresAt,
       inviteLink: `${origin}/invite/${invite.token}`,
     }));
 
+    const hasNewInvitations = invitesWithLinks.length > 0;
+
     return NextResponse.json(
       {
         success: true,
         invitations: invitesWithLinks,
-        autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
         existingInvites: existingInvites.length > 0 ? existingInvites : undefined,
         alreadyRegistered: alreadyRegistered.length > 0 ? alreadyRegistered : undefined,
+        autoAdded: autoAdded.length > 0 ? autoAdded : undefined,
       },
-      { status: 201 }
+      { status: hasNewInvitations ? 201 : 200 }
     );
   } catch (error) {
     return handleRouteError(error, 'Create invitations error');
@@ -168,27 +213,26 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/admin/invitations
- * List invitations for admin's organization
+ *
+ * Lists invitations belonging to the administrator's organization.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin role
     const user = await authServer.requireAdmin();
     const orgId = await getAdminOrgId(user.id);
 
-    // Get org-scoped invitations
     const orgInvitations = await db
       .select()
       .from(invitations)
       .where(eq(invitations.organizationId, orgId))
       .orderBy(desc(invitations.createdAt));
 
-    // Generate invite links
     const origin = request.nextUrl.origin;
+
     const invitesWithLinks = orgInvitations.map((invite) => ({
       id: invite.id,
       email: invite.email,
-      role: invite.role,
+      roles: invite.roles,
       status: invite.status,
       customMessage: invite.customMessage,
       expiresAt: invite.expiresAt,

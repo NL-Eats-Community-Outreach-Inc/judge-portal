@@ -106,8 +106,9 @@ describe('POST /api/admin/sync-users', () => {
         id: 'a2',
         email: 'missing@example.com',
         action: 'created',
-        role: 'judge',
-        organizationId: 'org-1',
+        roles: ['judge'],
+        activeRole: 'judge',
+        organizationId: null,
       },
     ]);
     expect(dbMock.transaction).toHaveBeenCalledTimes(1);
@@ -117,7 +118,16 @@ describe('POST /api/admin/sync-users', () => {
       role: 'judge',
       organizationId: null,
     });
-    expect(insert.chain.values).toHaveBeenNthCalledWith(2, {
+    expect(insert.chain.values).toHaveBeenNthCalledWith(2, [
+      {
+        userId: 'a2',
+        role: 'judge',
+        grantedBy: null,
+        grantedSource: 'invitation',
+      },
+    ]);
+
+    expect(insert.chain.values).toHaveBeenNthCalledWith(3, {
       organizationId: 'org-1',
       userId: 'a2',
     });
@@ -137,7 +147,12 @@ describe('POST /api/admin/sync-users', () => {
 
     const body = await expectJson<{ results: Array<Record<string, unknown>> }>(await POST());
 
-    expect(body.results[0]).toMatchObject({ action: 'created', role: 'participant' });
+    expect(body.results[0]).toMatchObject({
+      action: 'created',
+      roles: ['participant'],
+      activeRole: 'participant',
+      organizationId: null,
+    });
     expect(insert.chain.values).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'a2', role: 'participant' })
     );
@@ -156,8 +171,9 @@ describe('POST /api/admin/sync-users', () => {
 
     expect(body.results[0]).toMatchObject({
       action: 'created',
-      role: 'judge',
-      organizationId: 'org-1',
+      roles: ['judge'],
+      activeRole: 'judge',
+      organizationId: null,
     });
     expect(insert.chain.values).toHaveBeenCalledWith({ organizationId: 'org-1', userId: 'a2' });
   });
@@ -172,7 +188,7 @@ describe('POST /api/admin/sync-users', () => {
     mockSelectSequence(
       dbMock.select,
       [],
-      [{ email: 'invited@example.com', role: 'admin', status: 'pending' }]
+      [{ email: 'invited@example.com', roles: ['admin'], status: 'pending' }]
     );
     const insert = buildAssertableMutationMock([]);
     dbMock.insert.mockReturnValue(insert.insertMock);
@@ -181,9 +197,11 @@ describe('POST /api/admin/sync-users', () => {
 
     expect(body.results[0]).toMatchObject({
       action: 'created',
-      role: 'admin',
+      roles: ['admin'],
+      activeRole: 'admin',
       organizationId: 'org-1',
     });
+
     expect(insert.chain.values).toHaveBeenCalledWith({
       id: 'a2',
       email: 'Invited@Example.com',
@@ -205,7 +223,12 @@ describe('POST /api/admin/sync-users', () => {
 
     const body = await expectJson<{ results: Array<Record<string, unknown>> }>(await POST());
 
-    expect(body.results[0]).toMatchObject({ action: 'created', role: 'judge' });
+    expect(body.results[0]).toMatchObject({
+      action: 'created',
+      roles: ['judge'],
+      activeRole: 'judge',
+      organizationId: null,
+    });
   });
 
   it('reports a row that could not be created without failing the call', async () => {

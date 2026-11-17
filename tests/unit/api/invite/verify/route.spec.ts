@@ -37,7 +37,7 @@ function invitation(overrides: Partial<Invitation> = {}): Invitation {
     id: 'inv-1',
     token: 'tok-1',
     email: 'invitee@example.com',
-    role: 'judge',
+    roles: ['judge'],
     status: 'pending',
     customMessage: null,
     expiresAt: EXPIRES_AT,
@@ -110,7 +110,11 @@ describe('POST /api/invite/verify with the flag on', () => {
     expect(body).toEqual({
       success: true,
       redirectUrl: '/judge',
-      user: { id: 'auth-1', email: 'invitee@example.com', role: 'judge' },
+      user: {
+        id: 'auth-1',
+        email: 'invitee@example.com',
+        role: ['judge'],
+      },
     });
     expect(finalizeInvitationAcceptance).toHaveBeenCalledWith(invitation(), 'auth-1');
   });

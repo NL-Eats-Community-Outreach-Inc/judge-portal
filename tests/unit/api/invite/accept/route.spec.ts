@@ -47,7 +47,7 @@ function invitation(overrides: Partial<Invitation> = {}): Invitation {
     id: 'inv-1',
     token: 'tok-1',
     email: 'Invitee@Example.com',
-    role: 'judge',
+    roles: ['judge'],
     status: 'pending',
     customMessage: null,
     expiresAt: EXPIRES_AT,
@@ -175,7 +175,7 @@ describe('POST /api/invite/accept', () => {
         email: 'Invitee@Example.com',
         password: 'secret-pass',
         email_confirm: true,
-        user_metadata: { invite_pending: true, role: 'judge' },
+        user_metadata: { invite_pending: true, roles: ['judge'] },
       });
       expect(finalizeInvitationAcceptance).toHaveBeenCalledWith(invitation(), 'auth-1');
     });

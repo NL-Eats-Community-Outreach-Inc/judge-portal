@@ -53,44 +53,51 @@ describe('GET /api/auth/callback', () => {
     expect(dbMock.insert).not.toHaveBeenCalled();
   });
 
-  it('creates the profile row (role from the URL) and judge memberships from metadata', async () => {
+  it('creates the profile row and judge memberships from signup metadata', async () => {
     exchangeCodeForSession.mockResolvedValue({
       data: {
         user: {
           id: 'auth-1',
           email: 'new@example.com',
-          user_metadata: { organization_ids: ['org-1'] },
+          user_metadata: {
+            role: 'judge',
+            organization_ids: ['org-1'],
+          },
         },
       },
       error: null,
     });
+
     mockSelectSequence(dbMock.select, []);
+
     const userInsert = buildAssertableMutationMock([]);
+    const roleInsert = buildAssertableMutationMock([]);
     const memberInsert = buildAssertableMutationMock([]);
+
     dbMock.insert
       .mockReturnValueOnce(userInsert.insertMock)
+      .mockReturnValueOnce(roleInsert.insertMock)
       .mockReturnValueOnce(memberInsert.insertMock);
 
-    const response = await get('?code=abc&role=judge');
+    const response = await get('?code=abc');
 
     expect(response.headers.get('location')).toBe('http://localhost:3000/judge');
+
     expect(userInsert.chain.values).toHaveBeenCalledWith({
       id: 'auth-1',
       email: 'new@example.com',
       role: 'judge',
     });
+
+    expect(roleInsert.chain.values).toHaveBeenCalledWith({
+      userId: 'auth-1',
+      role: 'judge',
+      grantedSource: 'self_signup',
+    });
+
     expect(memberInsert.chain.values).toHaveBeenCalledWith({
       organizationId: 'org-1',
       userId: 'auth-1',
     });
-  });
-
-  it('still redirects when the profile write fails', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    dbMock.select.mockImplementation(() => {
-      throw new Error('db down');
-    });
-    expect((await get('?code=abc')).headers.get('location')).toBe('http://localhost:3000/judge');
-    spy.mockRestore();
   });
 });

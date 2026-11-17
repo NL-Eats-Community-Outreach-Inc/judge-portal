@@ -94,7 +94,13 @@ describe('POST /api/super-admin/organizations/[orgId]/admins', () => {
     // org, pending invitation lookup, existing user lookup
     mockSelectSequence(dbMock.select, [org], [], []);
     const insert = buildAssertableMutationMock([
-      { id: 'inv-1', email: 'new@example.com', role: 'admin', status: 'pending', token: 'tok-1' },
+      {
+        id: 'inv-1',
+        email: 'new@example.com',
+        roles: ['admin'],
+        status: 'pending',
+        token: 'tok-1',
+      },
     ]);
     dbMock.insert.mockReturnValue(insert.insertMock);
 
@@ -108,7 +114,7 @@ describe('POST /api/super-admin/organizations/[orgId]/admins', () => {
     expect(insert.chain.values).toHaveBeenCalledWith([
       expect.objectContaining({
         email: 'new@example.com',
-        role: 'admin',
+        roles: ['admin'],
         organizationId: 'org-1',
         createdBy: 'super_admin-1',
       }),

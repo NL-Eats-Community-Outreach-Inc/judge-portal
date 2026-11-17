@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, organizationMembers, invitations } from '@/lib/db/schema';
+import { users, userRoles, organizationMembers, invitations } from '@/lib/db/schema';
 import { desc, inArray, sql } from 'drizzle-orm';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getAdminOrgId } from '@/lib/auth/org';
@@ -18,6 +18,20 @@ function isSyncableRole(value: unknown): value is SyncableRole {
   return typeof value === 'string' && (SYNCABLE_ROLES as readonly string[]).includes(value);
 }
 
+function getSyncableRoles(value: unknown): SyncableRole[] {
+  if (!Array.isArray(value)) return [];
+
+  return [...new Set(value.filter(isSyncableRole))];
+}
+
+function getMetadataRoles(metadata: Record<string, unknown> | undefined): SyncableRole[] {
+  const roles = getSyncableRoles(metadata?.roles);
+
+  if (roles.length > 0) return roles;
+
+  const legacyRole = metadata?.role;
+  return isSyncableRole(legacyRole) ? [legacyRole] : [];
+}
 /**
  * Creates the missing `public.users` row for every auth user that has none,
  * in the calling admin's organization. Used on event day when a judge's
@@ -59,16 +73,24 @@ export async function POST() {
 
     // The latest invitation per email decides the role, whatever its status
     const missingEmails = missing.map((u) => u.email!.toLowerCase());
-    const invitedRoles = new Map<string, SyncableRole>();
+    const invitedRoles = new Map<string, SyncableRole[]>();
+
     if (missingEmails.length > 0) {
       const rows = await db
-        .select({ email: invitations.email, role: invitations.role })
+        .select({
+          email: invitations.email,
+          roles: invitations.roles,
+        })
         .from(invitations)
         .where(inArray(sql`lower(${invitations.email})`, missingEmails))
         .orderBy(desc(invitations.createdAt));
       for (const row of rows) {
         const key = row.email.toLowerCase();
-        if (!invitedRoles.has(key)) invitedRoles.set(key, row.role);
+
+        if (!invitedRoles.has(key)) {
+          const roles = getSyncableRoles(row.roles);
+          if (roles.length > 0) invitedRoles.set(key, roles);
+        }
       }
     }
 
@@ -88,32 +110,48 @@ export async function POST() {
         continue;
       }
 
-      const metadataRole = authUser.user_metadata?.role;
-      const role: SyncableRole =
-        invitedRoles.get(authUser.email.toLowerCase()) ??
-        (isSyncableRole(metadataRole) ? metadataRole : 'judge');
+      const roles =
+        invitedRoles.get(authUser.email.toLowerCase()) ?? getMetadataRoles(authUser.user_metadata);
+
+      const assignedRoles: SyncableRole[] = roles.length > 0 ? roles : ['judge'];
+      const activeRole = assignedRoles[0];
 
       try {
         await db.transaction(async (tx) => {
           await tx.insert(users).values({
             id: authUser.id,
             email: authUser.email!,
-            role,
-            organizationId: role === 'admin' ? orgId : null,
+            role: activeRole,
+            organizationId: assignedRoles.includes('admin') ? orgId : null,
           });
-          if (role === 'judge') {
+
+          await tx
+            .insert(userRoles)
+            .values(
+              assignedRoles.map((role) => ({
+                userId: authUser.id,
+                role,
+                grantedBy: null,
+                grantedSource: 'invitation' as const,
+              }))
+            )
+            .onConflictDoNothing();
+
+          if (assignedRoles.includes('judge')) {
             await tx
               .insert(organizationMembers)
               .values({ organizationId: orgId, userId: authUser.id })
               .onConflictDoNothing();
           }
         });
+
         results.push({
           id: authUser.id,
           email: authUser.email,
           action: 'created',
-          role,
-          organizationId: orgId,
+          roles: assignedRoles,
+          activeRole,
+          organizationId: assignedRoles.includes('admin') ? orgId : null,
         });
       } catch (error) {
         results.push({
