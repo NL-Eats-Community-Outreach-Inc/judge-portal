@@ -358,7 +358,7 @@ SELECT DISTINCT i.organization_id, u.id
 FROM invitations i
 INNER JOIN users u ON u.email = i.email
 WHERE i.status = 'accepted'
-  AND i.role = 'judge'
+  AND 'judge' = ANY(i.roles)
   AND i.organization_id IS NOT NULL
   AND u.role = 'judge'
 ON CONFLICT (organization_id, user_id) DO NOTHING;
