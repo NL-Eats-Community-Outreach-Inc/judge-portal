@@ -198,11 +198,10 @@ export default function CoursePage({ params }: { params: Promise<{ courseSlug: s
 
       {/* Course overview */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        
-      {/* Course heading */}
-      <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-5 sm:p-6 md:p-9">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm sm:h-12 sm:w-12">
-          <GraduationCap className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+        {/* Course heading */}
+        <div className="bg-gradient-to-br from-violet-600/20 via-purple-500/10 to-background p-5 sm:p-6 md:p-9">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background/80 shadow-sm sm:h-12 sm:w-12">
+            <GraduationCap className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
           </div>
 
           <p className="mt-4 text-xs font-semibold tracking-wide text-primary sm:mt-5 sm:text-sm">

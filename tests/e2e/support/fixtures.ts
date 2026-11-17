@@ -1,4 +1,11 @@
-import { test as base, request, type APIRequestContext, type Browser } from '@playwright/test';
+import {
+  test as base,
+  request,
+  type APIRequestContext,
+  type Browser,
+  type BrowserContextOptions,
+} from '@playwright/test';
+
 import { ACCOUNTS, storageStatePath, type RoleKey } from './accounts';
 
 /**
@@ -13,6 +20,7 @@ export const test = base.extend<RoleApis>({
   judge1Api: async ({}, use) => use(await apiFor('judge1')),
   judge2Api: async ({}, use) => use(await apiFor('judge2')),
   judge3Api: async ({}, use) => use(await apiFor('judge3')),
+  learnerApi: async ({}, use) => use(await apiFor('learner')),
   participantAApi: async ({}, use) => use(await apiFor('participantA')),
   participantBApi: async ({}, use) => use(await apiFor('participantB')),
   superAdminApi: async ({}, use) => use(await apiFor('superAdmin')),
@@ -27,9 +35,35 @@ export async function apiFor(key: RoleKey): Promise<APIRequestContext> {
   });
 }
 
-/** A browser context signed in as `key` (one context per role, as the runbook prescribes). */
-export async function contextFor(browser: Browser, key: RoleKey) {
-  return browser.newContext({ storageState: storageStatePath(key) });
+/**
+ * Creates an authenticated browser context.
+ * Optional settings allow viewport and device emulation.
+ */
+export async function contextFor(
+  browser: Browser,
+  key: RoleKey,
+  options: BrowserContextOptions = {}
+) {
+  return browser.newContext({
+    storageState: storageStatePath(key),
+    ...options,
+  });
+}
+
+/**
+ * Creates an authenticated mobile browser context.
+ * Uses Chromium mobile emulation.
+ */
+export async function mobileContextFor(browser: Browser, key: RoleKey = 'learner') {
+  return contextFor(browser, key, {
+    viewport: {
+      width: 393,
+      height: 852,
+    },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
 }
 
 export { ACCOUNTS };

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -24,8 +23,9 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
   const [isTabletSidebarOpen, setIsTabletSidebarOpen] = useState(false);
 
   // The lesson viewer has its own course navigation and full-width layout.
-  const isLessonPage =
-    /^\/learner\/courses\/[^/]+\/module\/[^/]+\/lessons\/[^/]+\/?$/.test(pathname);
+  const isLessonPage = /^\/learner\/courses\/[^/]+\/module\/[^/]+\/lessons\/[^/]+\/?$/.test(
+    pathname
+  );
 
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -49,11 +49,7 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
                 className="absolute inset-0 bg-black/30"
               />
 
-              <LearnerSidebar
-                isOverlay
-                isOpen
-                onClose={() => setIsTabletSidebarOpen(false)}
-              />
+              <LearnerSidebar isOverlay isOpen onClose={() => setIsTabletSidebarOpen(false)} />
             </div>
           )}
 
@@ -73,9 +69,7 @@ export function LearnerLayoutClient({ user, children }: LearnerLayoutClientProps
 
           {/* Main application area. */}
           <div
-            className={`min-h-screen ${
-              isLessonPage ? 'md:ml-16 lg:ml-0' : 'md:ml-16 lg:ml-64'
-            }`}
+            className={`min-h-screen ${isLessonPage ? 'md:ml-16 lg:ml-0' : 'md:ml-16 lg:ml-64'}`}
           >
             <div className="sticky top-0 z-30 flex min-w-0 items-center border-b border-violet-200/70 bg-violet-50/90 backdrop-blur-md dark:border-violet-950 dark:bg-zinc-900/95">
               {/* Desktop drawer toggle for the full-width lesson viewer. */}
