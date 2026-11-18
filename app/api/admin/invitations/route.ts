@@ -6,7 +6,7 @@ import { eq, desc, inArray, sql } from 'drizzle-orm';
 import { getAdminOrgId } from '@/lib/auth/org';
 import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 
-const VALID_ROLES = ['admin', 'judge', 'participant', 'learner'] as const;
+const VALID_ROLES = ['admin', 'judge', 'participant', 'learner', 'teacher'] as const;
 
 type InvitationRole = (typeof VALID_ROLES)[number];
 

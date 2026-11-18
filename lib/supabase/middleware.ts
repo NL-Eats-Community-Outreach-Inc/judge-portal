@@ -128,6 +128,8 @@ export async function updateSession(request: NextRequest) {
         url.pathname = '/participant';
       } else if (role === 'learner') {
         url.pathname = '/learner';
+      } else if (role === 'teacher') {
+        url.pathname = '/learner';
       } else {
         url.pathname = '/judge';
       }
@@ -146,7 +148,9 @@ export async function updateSession(request: NextRequest) {
               ? '/participant'
               : role === 'learner'
                 ? '/learner'
-                : '/judge';
+                : role === 'teacher'
+                  ? '/learner'
+                  : '/judge';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -163,7 +167,9 @@ export async function updateSession(request: NextRequest) {
               ? '/participant'
               : role === 'learner'
                 ? '/learner'
-                : '/judge';
+                : role === 'teacher'
+                  ? '/learner'
+                  : '/judge';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -182,7 +188,9 @@ export async function updateSession(request: NextRequest) {
                 ? '/participant'
                 : role === 'learner'
                   ? '/learner'
-                  : '/';
+                  : role === 'teacher'
+                    ? '/learner'
+                    : '/';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
@@ -199,17 +207,18 @@ export async function updateSession(request: NextRequest) {
               ? '/admin'
               : role === 'learner'
                 ? '/learner'
-                : '/judge';
+                : role === 'teacher'
+                  ? '/learner'
+                  : '/judge';
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
     }
 
-    // Learner routes - only learners can access
+    // Learner routes - Learners and Teachers share the classroom
     if (pathname.startsWith('/learner')) {
-      if (role !== 'learner') {
+      if (role !== 'learner' && role !== 'teacher') {
         const url = request.nextUrl.clone();
-
         url.pathname =
           role === 'super_admin'
             ? '/super-admin'

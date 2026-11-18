@@ -124,7 +124,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     const invitationData = newEmails.map((email) => ({
       token: generateInvitationToken(),
       email,
-      roles: ['admin'] as ('admin' | 'judge' | 'participant' | 'learner')[],
+      roles: ['admin'] as ('admin' | 'judge' | 'participant' | 'learner' | 'teacher')[],
       customMessage: customMessage || null,
       expiresAt,
       createdBy: user.id,

@@ -6,13 +6,14 @@
 
 -- Step 1: Create invitation role enum
 DO $$ BEGIN
-  CREATE TYPE invitation_role AS ENUM ('judge', 'participant', 'admin', 'learner');
+  CREATE TYPE invitation_role AS ENUM ('judge', 'participant', 'admin', 'learner', 'teacher');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
 ALTER TYPE invitation_role ADD VALUE IF NOT EXISTS 'admin';
 ALTER TYPE invitation_role ADD VALUE IF NOT EXISTS 'learner';
+ALTER TYPE invitation_role ADD VALUE IF NOT EXISTS 'teacher';
 
 -- Step 2: Create invitation status enum
 DO $$ BEGIN

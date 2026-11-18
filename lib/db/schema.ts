@@ -22,6 +22,7 @@ export const userRoleEnum = pgEnum('user_role', [
   'participant',
   'super_admin',
   'learner',
+  'teacher',
 ]);
 export const criteriaCategoryEnum = pgEnum('criteria_category', ['technical', 'business']);
 export const teamAwardTypeEnum = pgEnum('team_award_type', ['technical', 'business', 'both']);
@@ -30,6 +31,7 @@ export const invitationRoleEnum = pgEnum('invitation_role', [
   'participant',
   'admin',
   'learner',
+  'teacher',
 ]);
 export const invitationStatusEnum = pgEnum('invitation_status', [
   'pending',

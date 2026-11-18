@@ -65,6 +65,14 @@ const ROLE_CONFIG: Record<
       'You can access your courses and track your lesson progress once your account is created.',
     icon: GraduationCap,
   },
+  teacher: {
+    title: "You've Been Invited as a Teacher!",
+    label: 'Teacher Account',
+    description: "You've been invited to access and edit courses and lessons.",
+    afterReg:
+      'You can edit your courses and moderate comments once your account is created.',
+    icon: GraduationCap,
+  },
 };
 
 export default function InviteLandingPage() {

@@ -18,7 +18,7 @@ import { LearnerLayoutClient } from './components/learner-layout-client';
 
 export default async function LearnerLayout({ children }: { children: React.ReactNode }) {
   // 1. Retrieve the current authenticated user on the server.
-  const user = await authServer.getUser();
+  const user = await authServer.requireAnyRole(['learner', 'teacher']);
 
   // 2. Redirect unauthenticated users to login.
   if (!user) {
@@ -26,7 +26,7 @@ export default async function LearnerLayout({ children }: { children: React.Reac
   }
 
   // 3. Restrict this route tree to users with the learner role.
-  if (user.role !== 'learner') {
+  if (user.role !== 'learner' && user.role !== 'teacher') {
     redirect('/');
   }
 

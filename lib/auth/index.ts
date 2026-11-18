@@ -4,7 +4,7 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'super_admin' | 'admin' | 'judge' | 'participant' | 'learner';
+export type UserRole = 'super_admin' | 'admin' | 'judge' | 'participant' | 'learner' | 'teacher';
 
 // Export invitation utilities
 export * from './invitation';
@@ -55,6 +55,16 @@ export const authServer = {
     return user;
   },
 
+  async requireAnyRole(requiredRoles: UserRole[]) {
+    const user = await this.requireAuth();
+
+    if (!user.role || !requiredRoles.includes(user.role)) {
+      throw new Error(`One of these roles is required: ${requiredRoles.join(', ')}`);
+    }
+
+    return user;
+  },
+
   async requireAdmin() {
     return await this.requireRole('admin');
   },
@@ -73,5 +83,9 @@ export const authServer = {
 
   async requireLearner() {
     return await this.requireRole('learner');
+  },
+
+  async requireTeacher() {
+    return await this.requireRole('teacher');
   },
 };

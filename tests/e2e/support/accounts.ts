@@ -14,13 +14,14 @@ export type RoleKey =
   | 'participantA'
   | 'participantB'
   | 'superAdmin'
-  | 'learner';
+  | 'learner'
+  | 'teacher';
 
 export interface Account {
   key: RoleKey;
   email: string;
   password: string;
-  role: 'admin' | 'judge' | 'participant' | 'super_admin' | 'learner';
+  role: 'admin' | 'judge' | 'participant' | 'super_admin' | 'learner' | 'teacher';
   home: string;
 }
 
@@ -83,6 +84,13 @@ export const ACCOUNTS: Record<RoleKey, Account> = {
     email: env('LEARNER_EMAIL', 'learner@test.com'),
     password: env('LEARNER_PASSWORD', '123456'),
     role: 'learner',
+    home: '/learner',
+  },
+  teacher: {
+    key: 'teacher',
+    email: env('TEACHER_EMAIL', 'teacher@test.com'),
+    password: env('TEACHER_PASSWORD', '123456'),
+    role: 'teacher',
     home: '/learner',
   },
 };

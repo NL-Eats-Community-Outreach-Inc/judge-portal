@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { organizationMembers, userRoles, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-export const SIGNUP_ROLES = ['judge', 'participant', 'learner'] as const;
+export const SIGNUP_ROLES = ['judge', 'participant', 'learner', 'teacher'] as const;
 export type SignupRole = (typeof SIGNUP_ROLES)[number];
 
 function isSignupRole(value: unknown): value is SignupRole {

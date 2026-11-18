@@ -22,7 +22,7 @@ import { learnerProgress as learnerProgressTable } from '@/lib/db/schema';
 export async function GET() {
   try {
     // 1.
-    const user = await authServer.requireLearner();
+    const user = await authServer.requireAnyRole(['learner', 'teacher']);
 
     if (!user) {
       return sendApiError(401, 'BAD_REQUEST', 'UNAUTHORIZED');

@@ -21,6 +21,7 @@ export const test = base.extend<RoleApis>({
   judge2Api: async ({}, use) => use(await apiFor('judge2')),
   judge3Api: async ({}, use) => use(await apiFor('judge3')),
   learnerApi: async ({}, use) => use(await apiFor('learner')),
+  teacherApi: async ({}, use) => use(await apiFor('teacher')),
   participantAApi: async ({}, use) => use(await apiFor('participantA')),
   participantBApi: async ({}, use) => use(await apiFor('participantB')),
   superAdminApi: async ({}, use) => use(await apiFor('superAdmin')),

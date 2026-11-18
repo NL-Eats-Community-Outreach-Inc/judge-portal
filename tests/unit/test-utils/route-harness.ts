@@ -7,7 +7,7 @@ import { vi, expect } from 'vitest';
 import type { UserRole } from '@/lib/auth';
 
 export type Role = UserRole;
-export const ROLES: Role[] = ['super_admin', 'admin', 'judge', 'participant', 'learner'];
+export const ROLES: Role[] = ['super_admin', 'admin', 'judge', 'participant', 'learner', 'teacher'];
 
 export interface FakeUser {
   id: string;
@@ -27,6 +27,7 @@ export function buildAuthServerMock() {
     requireSuperAdmin: vi.fn(),
     requireParticipant: vi.fn(),
     requireLearner: vi.fn(),
+    requireTeacher: vi.fn(),
   };
 }
 
@@ -48,6 +49,7 @@ const REQUIRE_BY_ROLE: Record<Role, keyof AuthServerMock> = {
   judge: 'requireJudge',
   participant: 'requireParticipant',
   learner: 'requireLearner',
+  teacher: 'requireTeacher',
 };
 
 /** Every `require*` resolves for `user.role` and rejects with the helper's error otherwise. */

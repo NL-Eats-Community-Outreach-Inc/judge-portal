@@ -129,6 +129,8 @@ export function InvitationsList({ refreshTrigger, actionButton }: InvitationsLis
         return <Badge variant="secondary">Participant</Badge>;
       case 'learner':
         return <Badge variant="outline">Learner</Badge>;
+      case 'teacher':
+        return <Badge variant="outline">Teacher</Badge>;
       default:
         return <Badge variant="outline">{role}</Badge>;
     }

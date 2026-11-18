@@ -27,6 +27,7 @@ const APP_ROLES = [
   'participant',
   'super_admin',
   'learner',
+  'teacher',
 ] as const satisfies readonly AppRole[];
 
 function isAppRole(role: unknown): role is AppRole {
