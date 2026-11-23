@@ -52,21 +52,26 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith('/auth') ||
       pathname.startsWith('/invite') ||
       pathname.startsWith('/api/invite') ||
-      pathname.startsWith('/api/organizations/public')
+      pathname.startsWith('/api/organizations/public') ||
+      pathname === '/api/teacher/mux/webhooks'
     ) {
       return supabaseResponse;
     }
+
     if (isApiRequest) {
       return sendApiError(401, 'UNAUTHORIZED', 'Authentication required');
     }
+
     // Redirect to login for protected routes
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
+
     // Preserve query params for participant routes (for demo deep linking)
     if (pathname.startsWith('/participant')) {
       const originalUrl = pathname + request.nextUrl.search;
       url.searchParams.set('next', originalUrl);
     }
+
     return NextResponse.redirect(url);
   }
 
@@ -97,6 +102,7 @@ export async function updateSession(request: NextRequest) {
       if (isApiRequest) {
         return sendApiError(403, 'NO_PROFILE', 'Your account has no profile yet');
       }
+
       const url = request.nextUrl.clone();
       url.pathname = '/auth/sign-up';
       return NextResponse.redirect(url);
@@ -108,6 +114,7 @@ export async function updateSession(request: NextRequest) {
       if (isApiRequest) {
         return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
       }
+
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
       return NextResponse.redirect(url);
@@ -127,9 +134,9 @@ export async function updateSession(request: NextRequest) {
       } else if (role === 'participant') {
         url.pathname = '/participant';
       } else if (role === 'learner') {
-        url.pathname = '/learner';
+        url.pathname = '/classroom/learner';
       } else if (role === 'teacher') {
-        url.pathname = '/learner';
+        url.pathname = '/classroom/teacher';
       } else {
         url.pathname = '/judge';
       }
@@ -147,12 +154,14 @@ export async function updateSession(request: NextRequest) {
             : role === 'participant'
               ? '/participant'
               : role === 'learner'
-                ? '/learner'
+                ? '/classroom/learner'
                 : role === 'teacher'
-                  ? '/learner'
+                  ? '/classroom/teacher'
                   : '/judge';
+
         return NextResponse.redirect(url);
       }
+
       return supabaseResponse;
     }
 
@@ -166,12 +175,14 @@ export async function updateSession(request: NextRequest) {
             : role === 'participant'
               ? '/participant'
               : role === 'learner'
-                ? '/learner'
+                ? '/classroom/learner'
                 : role === 'teacher'
-                  ? '/learner'
+                  ? '/classroom/teacher'
                   : '/judge';
+
         return NextResponse.redirect(url);
       }
+
       return supabaseResponse;
     }
 
@@ -187,12 +198,14 @@ export async function updateSession(request: NextRequest) {
               : role === 'participant'
                 ? '/participant'
                 : role === 'learner'
-                  ? '/learner'
+                  ? '/classroom/learner'
                   : role === 'teacher'
-                    ? '/learner'
+                    ? '/classroom/teacher'
                     : '/';
+
         return NextResponse.redirect(url);
       }
+
       return supabaseResponse;
     }
 
@@ -206,17 +219,19 @@ export async function updateSession(request: NextRequest) {
             : role === 'admin'
               ? '/admin'
               : role === 'learner'
-                ? '/learner'
+                ? '/classroom/learner'
                 : role === 'teacher'
-                  ? '/learner'
+                  ? '/classroom/teacher'
                   : '/judge';
+
         return NextResponse.redirect(url);
       }
+
       return supabaseResponse;
     }
 
-    // Learner routes - Learners and Teachers share the classroom
-    if (pathname.startsWith('/learner')) {
+    // Classroom entry point - learners and teachers
+    if (pathname === '/classroom') {
       if (role !== 'learner' && role !== 'teacher') {
         const url = request.nextUrl.clone();
         url.pathname =
@@ -234,12 +249,55 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse;
     }
 
+    // Learner classroom routes
+    if (pathname.startsWith('/classroom/learner')) {
+      if (role !== 'learner') {
+        const url = request.nextUrl.clone();
+        url.pathname =
+          role === 'super_admin'
+            ? '/super-admin'
+            : role === 'admin'
+              ? '/admin'
+              : role === 'participant'
+                ? '/participant'
+                : role === 'teacher'
+                  ? '/classroom/teacher'
+                  : '/judge';
+
+        return NextResponse.redirect(url);
+      }
+
+      return supabaseResponse;
+    }
+
+    // Teacher classroom routes
+    if (pathname.startsWith('/classroom/teacher')) {
+      if (role !== 'teacher') {
+        const url = request.nextUrl.clone();
+        url.pathname =
+          role === 'super_admin'
+            ? '/super-admin'
+            : role === 'admin'
+              ? '/admin'
+              : role === 'participant'
+                ? '/participant'
+                : role === 'learner'
+                  ? '/classroom/learner'
+                  : '/judge';
+
+        return NextResponse.redirect(url);
+      }
+
+      return supabaseResponse;
+    }
+
     // All other authenticated routes
   } catch (error) {
     console.error('Error in middleware:', error);
     if (isApiRequest) {
       return sendApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal server error');
     }
+
     // On error, redirect to login
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
@@ -250,14 +308,12 @@ export async function updateSession(request: NextRequest) {
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:
   //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
+  // 2. Copy over the cookies:
   //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
   // 3. Change the myNewResponse object to fit your needs, but avoid changing
   //    the cookies!
   // 4. Finally:
   //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse;
 }

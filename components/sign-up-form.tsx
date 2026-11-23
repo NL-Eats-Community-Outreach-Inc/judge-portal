@@ -21,8 +21,8 @@ type UserRole = 'judge' | 'participant' | 'learner' | 'teacher';
 const ROLE_HOME: Record<UserRole, string> = {
   judge: '/judge',
   participant: '/participant',
-  learner: '/learner',
-  teacher: 'learner',
+  learner: '/classroom/learner',
+  teacher: '/classroom/teacher',
 };
 
 /**

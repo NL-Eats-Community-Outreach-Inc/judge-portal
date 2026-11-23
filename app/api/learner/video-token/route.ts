@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import Mux from '@mux/mux-node';
+import { mux } from '@/lib/mux/client';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { authServer } from '@/lib/auth';
@@ -7,22 +7,16 @@ import { sendApiError, handleRouteError } from '@/lib/utils/api-errors';
 import { lessons as lessonsTable } from '@/lib/db/schema';
 import { sanityServerClient } from '@/lib/sanity/server-client';
 
-const mux = new Mux({
-  tokenId: process.env.MUX_TOKEN_ID,
-  tokenSecret: process.env.MUX_TOKEN_SECRET,
-  jwtPrivateKey: process.env.MUX_SIGNING_KEY_PRIVATE,
-});
-
 /**
- * GET /api/learner/video-token?lessonId=[lessonId]
+ * GET /api/learner/video-token?lessonId=[lessonId]&blockKey=[blockKey]
  *
- * Generates a signed playback token for a lesson's Mux video.
+ * Generates a signed playback token for a Mux video content block.
  *
  * This endpoint:
  * 1. Checks that the requesting user is authenticated.
  * 2. Reads the lesson ID from the URL query parameters.
  * 3. Retrieves the lesson's Sanity document ID from the database.
- * 4. Fetches the video's Mux playback ID from Sanity.
+ * 4. Fetches the selected video block's Mux playback ID from Sanity.
  * 5. Generates a signed JWT for video playback.
  * 6. Returns the token and playback ID as JSON.
  *
@@ -42,9 +36,10 @@ export async function GET(request: Request) {
     // 2.
     const { searchParams } = new URL(request.url);
     const lessonId = searchParams.get('lessonId');
+    const blockKey = searchParams.get('blockKey');
 
-    if (!lessonId) {
-      return sendApiError(400, 'BAD_REQUEST', 'Missing lessonId');
+    if (!lessonId || !blockKey) {
+      return sendApiError(400, 'BAD_REQUEST', 'Missing lessonId or blockKey');
     }
 
     // 3.
@@ -66,13 +61,12 @@ export async function GET(request: Request) {
 
     // 4.
     const sanityLesson = await sanityServerClient.fetch(
-      `
-        *[_type == "lesson" && _id == $sanityDocumentId][0]{
-          "playbackId": videoContent.asset->playbackId
-        }
-      `,
+      `*[_type == "lesson" && _id == $sanityDocumentId][0]{
+        "playbackId": contentBlocks[_key == $blockKey && _type == "videoBlock"][0].video.asset->playbackId
+      }`,
       {
         sanityDocumentId: lesson.sanityDocumentId,
+        blockKey,
       }
     );
 

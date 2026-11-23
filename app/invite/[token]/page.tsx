@@ -69,8 +69,7 @@ const ROLE_CONFIG: Record<
     title: "You've Been Invited as a Teacher!",
     label: 'Teacher Account',
     description: "You've been invited to access and edit courses and lessons.",
-    afterReg:
-      'You can edit your courses and moderate comments once your account is created.',
+    afterReg: 'You can edit your courses and moderate comments once your account is created.',
     icon: GraduationCap,
   },
 };

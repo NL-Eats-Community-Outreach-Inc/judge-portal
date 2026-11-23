@@ -167,8 +167,8 @@ const ROLE_HOME: Record<InvitationRole, string> = {
   admin: '/admin',
   judge: '/judge',
   participant: '/participant',
-  learner: '/learner',
-  teacher: '/learner',
+  learner: '/classroom/learner',
+  teacher: '/classroom/teacher',
 };
 
 /**

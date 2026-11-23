@@ -11,6 +11,16 @@ import {
 } from '@/lib/db/schema';
 import { sanityServerClient } from '@/lib/sanity/server-client';
 
+type LessonContentBlock = {
+  _type?: string;
+  video?: {
+    asset?: {
+      playbackId?: string | null;
+    } | null;
+  } | null;
+  [key: string]: unknown;
+};
+
 const mux = new Mux({
   tokenId: process.env.MUX_TOKEN_ID,
   tokenSecret: process.env.MUX_TOKEN_SECRET,
@@ -92,16 +102,46 @@ export async function GET(
         `*[_type == "lesson" && _id == $sanityDocumentId][0]{
           _id,
           title,
-          lessonFormat,
-          content,
-          videoContent{
-            _type,
-            asset->{
-              _id,
-              _type,
-              assetId,
-              playbackId,
-              status
+          contentBlocks[]{
+            ...,
+            _type == "imageBlock" => {
+              ...,
+              image{
+                ...,
+                asset->{
+                  _id,
+                  _type,
+                  url,
+                  metadata
+                }
+              }
+            },
+            _type == "fileBlock" => {
+              ...,
+              file{
+                ...,
+                asset->{
+                  _id,
+                  _type,
+                  url,
+                  mimeType,
+                  size,
+                  originalFilename
+                }
+              }
+            },
+            _type == "videoBlock" => {
+              ...,
+              video{
+                ...,
+                asset->{
+                  _id,
+                  _type,
+                  assetId,
+                  playbackId,
+                  status
+                }
+              }
             }
           }
         }`,
@@ -115,32 +155,34 @@ export async function GET(
       return sendApiError(404, 'NOT_FOUND', 'Lesson content not found');
     }
 
-    // Sign only the thumbnail here. The playback token is still generated
+    // Sign thumbnails for modular video blocks. Playback tokens are still
+    // generated separately when the learner presses Play.
+    const contentBlocks = await Promise.all(
+      ((sanityLesson.contentBlocks ?? []) as LessonContentBlock[]).map(async (block) => {
+        const playbackId = block?._type === 'videoBlock' ? block.video?.asset?.playbackId : null;
+
+        if (!playbackId) return block;
+
+        const thumbnailToken = await mux.jwt.signPlaybackId(playbackId, {
+          type: 'thumbnail',
+          params: { time: '5', width: '1280', height: '720' },
+        });
+
+        return {
+          ...block,
+          thumbnailUrl: `https://image.mux.com/${playbackId}/thumbnail.jpg?token=${encodeURIComponent(thumbnailToken)}`,
+        };
+      })
+    );
+
+    // Return lesson content and navigation. Video playback tokens are generated
     // separately by /api/learner/video-token when the learner clicks Play.
-    let thumbnailUrl: string | null = null;
-    const playbackId = sanityLesson?.videoContent?.asset?.playbackId;
-
-    if (
-      playbackId &&
-      (sanityLesson.lessonFormat === 'video' || sanityLesson.lessonFormat === 'both')
-    ) {
-      const thumbnailToken = await mux.jwt.signPlaybackId(playbackId, {
-        type: 'thumbnail',
-        params: {
-          time: '5',
-          width: '1280',
-          height: '720',
-        },
-      });
-
-      thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?token=${encodeURIComponent(thumbnailToken)}`;
-    }
-
-    // Return lesson content, navigation, and the signed thumbnail URL.
     return NextResponse.json({
       lesson,
-      content: sanityLesson,
-      thumbnailUrl,
+      content: {
+        ...sanityLesson,
+        contentBlocks,
+      },
       navigation: {
         courseId: module?.courseId ?? null,
         nextLessonId: nextLesson?.id ?? null,

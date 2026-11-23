@@ -84,14 +84,14 @@ export const ACCOUNTS: Record<RoleKey, Account> = {
     email: env('LEARNER_EMAIL', 'learner@test.com'),
     password: env('LEARNER_PASSWORD', '123456'),
     role: 'learner',
-    home: '/learner',
+    home: '/classroom/learner',
   },
   teacher: {
     key: 'teacher',
     email: env('TEACHER_EMAIL', 'teacher@test.com'),
     password: env('TEACHER_PASSWORD', '123456'),
     role: 'teacher',
-    home: '/learner',
+    home: '/classroom/teacher',
   },
 };
 

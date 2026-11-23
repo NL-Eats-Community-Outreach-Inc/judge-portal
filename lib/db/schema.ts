@@ -142,7 +142,7 @@ export const lessons = pgTable(
       .references(() => modules.id, { onDelete: 'cascade' })
       .notNull(),
 
-    sanityDocumentId: uuid('sanityDocumentId').notNull(),
+    sanityDocumentId: text('sanityDocumentId').notNull(),
 
     title: text('title').notNull(),
     description: text('description'),

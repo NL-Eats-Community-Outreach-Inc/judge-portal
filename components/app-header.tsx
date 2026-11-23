@@ -45,8 +45,8 @@ const ROLE_HOME: Record<AppRole, string> = {
   judge: '/judge',
   participant: '/participant',
   super_admin: '/super-admin',
-  learner: '/learner',
-  teacher: '/teacher',
+  learner: '/classroom/learner',
+  teacher: '/classroom/teacher',
 };
 
 function truncate(value: string, maxLength: number) {
