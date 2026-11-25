@@ -17,6 +17,10 @@ const { signPlaybackId } = vi.hoisted(() => ({
   signPlaybackId: vi.fn(),
 }));
 
+vi.mock('@/lib/mux/client', () => ({
+  mux: { jwt: { signPlaybackId } },
+}));
+
 vi.mock('@mux/mux-node', () => ({
   default: class MockMux {
     jwt = {
@@ -45,7 +49,7 @@ const auth = authServer as unknown as AuthServerMock;
 const dbMock = db as unknown as DbMock;
 const sanityFetch = sanityServerClient.fetch as unknown as ReturnType<typeof vi.fn>;
 
-const get = (query = '?lessonId=lesson-1') =>
+const get = (query = '?lessonId=lesson-1&blockKey=video-block-1') =>
   GET(new Request(`http://localhost/api/learner/video-token${query}`));
 
 const lesson = {
@@ -68,8 +72,13 @@ describe('GET /api/learner/video-token', () => {
     await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
-  it('returns 400 when lessonId is missing', async () => {
+  it('returns 400 when lessonId or blockKey is missing', async () => {
     await expectApiError(await get(''), 400, 'BAD_REQUEST');
+  });
+
+  it('returns 400 when blockKey is missing', async () => {
+    await expectApiError(await get('?lessonId=lesson-1'), 400, 'BAD_REQUEST');
+    expect(dbMock.select).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the lesson does not exist', async () => {
@@ -114,6 +123,11 @@ describe('GET /api/learner/video-token', () => {
       playbackId: 'mux-playback-123',
     });
 
+    expect(sanityFetch).toHaveBeenCalledOnce();
+    expect(sanityFetch.mock.calls[0][1]).toEqual({
+      sanityDocumentId: lesson.sanityDocumentId,
+      blockKey: 'video-block-1',
+    });
     expect(signPlaybackId).toHaveBeenCalledWith('mux-playback-123', { type: 'video' });
   });
   it('handles database errors', async () => {

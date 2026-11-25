@@ -2,12 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from '@/app/api/learner/catalog/route';
 import { authServer } from '@/lib/auth';
 import { db } from '@/lib/db';
-import {
-  buildDbMock,
-  mockSelectSequence,
-  resetDbMock,
-  type DbMock,
-} from '@/tests/unit/test-utils/mock-db';
+import { mockSelectSequence, resetDbMock, type DbMock } from '@/tests/unit/test-utils/mock-db';
 import {
   fakeUser,
   signInAs,

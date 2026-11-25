@@ -22,6 +22,7 @@ export function buildAuthServerMock() {
     getUser: vi.fn(),
     requireAuth: vi.fn(),
     requireRole: vi.fn(),
+    requireAnyRole: vi.fn(), // Add this
     requireAdmin: vi.fn(),
     requireJudge: vi.fn(),
     requireSuperAdmin: vi.fn(),
@@ -56,8 +57,10 @@ const REQUIRE_BY_ROLE: Record<Role, keyof AuthServerMock> = {
 export function signInAs(auth: AuthServerMock, user: FakeUser) {
   auth.getUser.mockResolvedValue(user);
   auth.requireAuth.mockResolvedValue(user);
-  auth.requireRole.mockImplementation(async (role: Role) => {
-    if (role !== user.role) throw new Error(`${role} role required`);
+  auth.requireAnyRole.mockImplementation(async (roles: Role[]) => {
+    if (!roles.includes(user.role)) {
+      throw new Error(`${roles.join(' or ')} role required`);
+    }
     return user;
   });
   for (const role of ROLES) {
@@ -77,6 +80,7 @@ export function signOut(auth: AuthServerMock) {
   const error = new Error('Authentication required');
   auth.requireAuth.mockRejectedValue(error);
   auth.requireRole.mockRejectedValue(error);
+  auth.requireAnyRole.mockRejectedValue(error);
   for (const role of ROLES) auth[REQUIRE_BY_ROLE[role]].mockRejectedValue(error);
 }
 

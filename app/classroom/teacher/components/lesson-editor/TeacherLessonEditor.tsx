@@ -13,6 +13,7 @@ import {
   type PortableTextBlock,
   type TextBlockRenderProps,
 } from '@portabletext/editor';
+import Image from 'next/image';
 import { EventListenerPlugin, NodePlugin } from '@portabletext/editor/plugins';
 import { uploadVideo } from '@/lib/mux/upload-video';
 
@@ -868,10 +869,11 @@ export default function TeacherLessonEditor({
                     (block.image as { asset?: { url?: string } } | null)?.asset?.url ||
                       uploadedAssets[block._key]?.url
                   ) && (
-                    <img
+                    <Image
                       src={
                         uploadedAssets[block._key]?.url ||
-                        (block.image as { asset?: { url?: string } }).asset?.url
+                        (block.image as { asset?: { url?: string } }).asset?.url ||
+                        '' // Provide a default empty string if src is undefined
                       }
                       alt={String(block.alt ?? '')}
                       className="h-24 max-w-xs rounded-lg border object-contain"
@@ -1011,7 +1013,7 @@ export default function TeacherLessonEditor({
                   className="flex gap-3 rounded-lg border p-3 text-left hover:bg-gray-50 disabled:opacity-40"
                 >
                   {asset.thumbnailUrl ? (
-                    <img
+                    <Image
                       src={asset.thumbnailUrl}
                       alt=""
                       className="h-16 w-28 rounded object-cover"

@@ -12,6 +12,9 @@ export async function submitLoginForm(page: Page, email: string, password: strin
   const emailBox = page.getByLabel('Email');
   const passwordBox = page.getByLabel('Password');
   for (let attempt = 0; attempt < 5; attempt++) {
+    console.log('Current login URL:', page.url());
+    console.log('Email inputs:', await page.locator('input[type="email"]').count());
+    console.log('All inputs:', await page.locator('input').count());
     await emailBox.fill(email);
     await passwordBox.fill(password);
     await page.waitForTimeout(250);

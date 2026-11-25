@@ -22,6 +22,7 @@ import LessonVideoPlayer from '@/app/classroom/components/shared/LessonVideoPlay
 import FileBlockViewer from '@/app/classroom/components/shared/FileBlockViewer';
 import { PortableText } from '@portabletext/react';
 import { apiFetch } from '@/lib/api/client';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import type { PortableTextBlock } from '@portabletext/types';
 import Link from 'next/link';
@@ -536,7 +537,7 @@ export default function LessonPage({ params }: LessonPageProps) {
                     if (!imageUrl) return null;
                     return (
                       <figure key={block._key} className="space-y-2">
-                        <img
+                        <Image
                           src={imageUrl}
                           alt={block.image?.alt ?? ''}
                           className="h-auto w-full rounded-2xl border border-border object-contain"

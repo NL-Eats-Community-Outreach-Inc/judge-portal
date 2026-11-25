@@ -18,6 +18,10 @@ const { signPlaybackId } = vi.hoisted(() => ({
   signPlaybackId: vi.fn(),
 }));
 
+vi.mock('@/lib/mux/client', () => ({
+  mux: { jwt: { signPlaybackId } },
+}));
+
 vi.mock('@mux/mux-node', () => ({
   default: class MockMux {
     jwt = { signPlaybackId };
@@ -64,14 +68,13 @@ const lesson = {
 const sanityContent = {
   _id: 'sanity-lesson-1',
   title: 'Your First Program',
-  content: [],
-  videoContent: null,
-};
-
-const module = {
-  id: 'module-1',
-  courseId: 'course-1',
-  slug: 'getting-started',
+  contentBlocks: [
+    {
+      _key: 'text-block-1',
+      _type: 'textBlock',
+      content: [],
+    },
+  ],
 };
 
 const nextLesson = {
@@ -82,7 +85,37 @@ const nextLesson = {
   moduleId: 'module-1',
 };
 
+const moduleData = {
+  id: 'module-1',
+  courseId: 'course-1',
+  slug: 'getting-started',
+};
+
 const joinedLesson = { lesson };
+
+type LessonResponse = {
+  lesson: typeof lesson;
+  content: {
+    title: string;
+    contentBlocks: {
+      _key: string;
+      _type: string;
+      thumbnailUrl?: string | null;
+      video?: {
+        asset?: {
+          playbackId?: string | null;
+        } | null;
+      } | null;
+    }[];
+  };
+  navigation: {
+    courseId: string | null;
+    nextLessonId: string | null;
+    nextLessonTitle: string | null;
+    nextLessonSlug: string | null;
+    nextModuleSlug: string | null;
+  };
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -121,7 +154,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
   });
 
   it('returns 404 when Sanity content does not exist', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [moduleData], []);
 
     sanityFetch.mockResolvedValue(null);
 
@@ -150,7 +183,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
   });
 
   it('returns the lesson, Sanity content, and navigation', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], [nextLesson]);
+    mockSelectSequence(dbMock.select, [joinedLesson], [moduleData], [nextLesson]);
 
     sanityFetch.mockResolvedValue(sanityContent);
 
@@ -159,7 +192,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: 'course-1',
         nextLessonId: 'lesson-2',
@@ -176,7 +208,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
   });
 
   it('returns null next-lesson fields when there is no next lesson', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [moduleData], []);
 
     sanityFetch.mockResolvedValue(sanityContent);
 
@@ -185,7 +217,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: 'course-1',
         nextLessonId: null,
@@ -206,7 +237,6 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
     expect(await expectJson(response)).toEqual({
       lesson,
       content: sanityContent,
-      thumbnailUrl: null,
       navigation: {
         courseId: null,
         nextLessonId: null,
@@ -218,18 +248,23 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
   });
 
   it('returns a signed thumbnail URL for video lessons', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], [nextLesson]);
+    mockSelectSequence(dbMock.select, [joinedLesson], [moduleData], [nextLesson]);
     sanityFetch.mockResolvedValue({
       ...sanityContent,
-      lessonFormat: 'video',
-      videoContent: { asset: { playbackId: 'mux-playback-123' } },
+      contentBlocks: [
+        {
+          _key: 'video-block-1',
+          _type: 'videoBlock',
+          video: { asset: { playbackId: 'mux-playback-123' } },
+        },
+      ],
     });
     signPlaybackId.mockResolvedValue('signed-thumbnail-token');
 
     const response = await get();
-    const body = await expectJson(response);
+    const body = (await expectJson(response)) as LessonResponse;
 
-    expect(body.thumbnailUrl).toBe(
+    expect(body.content.contentBlocks[0].thumbnailUrl).toBe(
       'https://image.mux.com/mux-playback-123/thumbnail.jpg?token=signed-thumbnail-token'
     );
     expect(signPlaybackId).toHaveBeenCalledWith('mux-playback-123', {
@@ -249,7 +284,7 @@ describe('GET /api/learner/lessons/[lessonSlug]', () => {
   });
 
   it('handles Sanity fetch errors', async () => {
-    mockSelectSequence(dbMock.select, [joinedLesson], [module], []);
+    mockSelectSequence(dbMock.select, [joinedLesson], [moduleData], []);
 
     sanityFetch.mockRejectedValue(new Error('Sanity unavailable'));
 
