@@ -60,7 +60,24 @@ describe('GET /api/learner/progress', () => {
     await expectApiError(await get(), 401, 'UNAUTHORIZED');
   });
 
+  it('returns 403 when the signed-in user is an admin', async () => {
+    signInAs(auth, fakeUser('admin'));
+
+    await expectApiError(await get(), 403, 'FORBIDDEN');
+
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
   it('returns the signed-in learner progress', async () => {
+    mockSelectSequence(dbMock.select, progress);
+
+    const response = await get();
+
+    expect(await expectJson(response)).toEqual(progress);
+  });
+
+  it('allows teachers to retrieve progress', async () => {
+    signInAs(auth, fakeUser('teacher'));
     mockSelectSequence(dbMock.select, progress);
 
     const response = await get();
@@ -75,13 +92,33 @@ describe('GET /api/learner/progress', () => {
 
     expect(await expectJson(response)).toEqual([]);
   });
+
+  it('handles database errors', async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error('Database unavailable');
+    });
+
+    const response = await get();
+
+    expect(response.status).toBe(500);
+  });
 });
 
 describe('POST /api/learner/progress', () => {
   it('returns 401 when unauthenticated', async () => {
     signOut(auth);
 
-    await expectApiError(await post({ lessonId: 'lesson-1' }), 401, 'BAD_REQUEST');
+    await expectApiError(await post({ lessonId: 'lesson-1' }), 401, 'UNAUTHORIZED');
+
+    expect(dbMock.insert).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the signed-in user is an admin', async () => {
+    signInAs(auth, fakeUser('admin'));
+
+    await expectApiError(await post({ lessonId: 'lesson-1' }), 403, 'FORBIDDEN');
+
+    expect(dbMock.insert).not.toHaveBeenCalled();
   });
 
   it('returns 400 when lessonId is missing', async () => {
@@ -116,6 +153,7 @@ describe('POST /api/learner/progress', () => {
     });
 
     expect(dbMock.insert).toHaveBeenCalledOnce();
+
     expect(values).toHaveBeenCalledWith({
       userId: 'learner-1',
       lessonId: 'lesson-1',
@@ -129,17 +167,36 @@ describe('POST /api/learner/progress', () => {
     expect(conflictConfig.set).toMatchObject({
       completed: true,
     });
+
     expect(conflictConfig.target).toHaveLength(2);
   });
 
-  it('handles database errors', async () => {
-    dbMock.select.mockImplementation(() => {
-      throw new Error('Database unavailable');
+  it('saves completed progress for the signed-in teacher', async () => {
+    signInAs(auth, fakeUser('teacher'));
+
+    const savedProgress = {
+      ...progress[0],
+      userId: 'teacher-1',
+    };
+
+    const returning = vi.fn().mockResolvedValue([savedProgress]);
+    const onConflictDoUpdate = vi.fn().mockReturnValue({ returning });
+    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
+
+    dbMock.insert.mockReturnValue({ values } as never);
+
+    const response = await post({ lessonId: 'lesson-1' });
+
+    expect(await expectJson(response)).toMatchObject({
+      message: 'Progress updated',
+      progress: savedProgress,
     });
 
-    const response = await get();
-
-    expect(response.status).toBe(500);
+    expect(values).toHaveBeenCalledWith({
+      userId: 'teacher-1',
+      lessonId: 'lesson-1',
+      completed: true,
+    });
   });
 
   it('handles database errors when saving progress', async () => {

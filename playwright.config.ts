@@ -1,20 +1,19 @@
-
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: ['.env.local', '.env'] });
 
 /**
- * General E2E tests continue running in Chromium, Firefox, and WebKit.
+ * End-to-end suite: `tests/e2e/**`, serial (one worker) against the test
+ * database on `BASE_URL` (default http://localhost:3000). `global-setup.ts`
+ * signs in the six role accounts once and saves their storage state; every
+ * spec builds its own `QA-` event through the admin API and deletes it again.
  *
- * Classroom lifecycle:
- * 1. Teacher creates a course, module, lesson, and content blocks.
- * 2. Learner suite runs against that classroom in all three browsers.
- * 3. Teacher deletes the classroom.
- * 4. Learner access to the deleted classroom is verified.
- *
- * Playwright project dependencies control this order.
+ * Run one spec: `npx playwright test tests/e2e/judge/scoring.spec.ts --project=chromium`
+ * The `@smoke` subset: `npx playwright test --grep @smoke --project=chromium`
  */
+
+
 export default defineConfig({
   testDir: './tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
@@ -30,55 +29,30 @@ export default defineConfig({
     trace: 'on-first-retry',
     navigationTimeout: 30_000,
   },
+  
   projects: [
-    // Existing E2E tests, excluding classroom lifecycle specs.
+    // Non-classroom E2E coverage remains on Chromium.
     {
       name: 'chromium',
-      testIgnore: /classroom\/(learner|teacher)\//,
+      testIgnore: /classroom\//,
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      testIgnore: /classroom\/(learner|teacher)\//,
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      testIgnore: /classroom\/(learner|teacher)\//,
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // STAGE 1: Teacher creates the classroom.
+    // Create the shared classroom fixture exactly once.
     {
       name: 'classroom-teacher-setup',
       testMatch: /classroom\/teacher\/setup\.spec\.ts/,
-      teardown: 'classroom-teacher-delete',
+      teardown: 'classroom-teacher-cleanup',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    // STAGE 2: Learners test the classroom in all three browsers.
+    // Every classroom learner and navigation spec runs against that fixture.
     {
-      name: 'classroom-learner-chromium',
-      testMatch: /classroom\/learner\/.*\.spec\.ts/,
+      name: 'classroom-learner',
+      testMatch: /classroom\/(learner|navigation)\/.*\.spec\.ts/,
       dependencies: ['classroom-teacher-setup'],
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      name: 'classroom-learner-firefox',
-      testMatch: /classroom\/learner\/.*\.spec\.ts/,
-      dependencies: ['classroom-teacher-setup'],
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'classroom-learner-webkit',
-      testMatch: /classroom\/learner\/.*\.spec\.ts/,
-      dependencies: ['classroom-teacher-setup'],
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // STAGE 3: Teacher deletes the classroom and verifies learner access is revoked.
-    {
-      name: 'classroom-teacher-delete',
+      name: 'classroom-teacher-cleanup',
       testMatch: /classroom\/teacher\/delete-and-verify\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },

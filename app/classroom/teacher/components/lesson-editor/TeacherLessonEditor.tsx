@@ -222,6 +222,7 @@ export default function TeacherLessonEditor({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -259,7 +260,17 @@ export default function TeacherLessonEditor({
     async function loadLesson() {
       try {
         setLoading(true);
+        setLoaded(false);
         setError(null);
+        setSuccess(false);
+
+        setTitle('');
+        setSlug('');
+        setSlugManuallyEdited(false);
+        setDescription('');
+        setContentBlocks([]);
+        setUploadedAssets({});
+        setEditorKey((current) => current + 1);
 
         const response = await fetch(
           `/api/teacher/lessons/${encodeURIComponent(lessonSlug)}?courseSlug=${encodeURIComponent(courseSlug)}&moduleSlug=${encodeURIComponent(moduleSlug)}`,
@@ -335,6 +346,7 @@ export default function TeacherLessonEditor({
         setContentBlocks(blocks.length > 0 ? blocks : [createEmptyTextBlock()]);
 
         setEditorKey((current) => current + 1);
+        setLoaded(true);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load lesson.');
@@ -353,6 +365,7 @@ export default function TeacherLessonEditor({
 
   async function saveLesson() {
     try {
+      if (!loaded || loading || saving) return;
       const missingMedia = contentBlocks.find(
         (block) =>
           (block._type === 'imageBlock' && !block.image) ||
@@ -411,7 +424,7 @@ export default function TeacherLessonEditor({
     return <div className="p-8 text-sm text-gray-500">Loading lesson editor...</div>;
   }
 
-  if (error && contentBlocks.length === 0) {
+  if (!loaded && error) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
         {error}
@@ -589,7 +602,7 @@ export default function TeacherLessonEditor({
         <button
           type="button"
           onClick={saveLesson}
-          disabled={saving}
+          disabled={!loaded || loading || saving}
           className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save lesson'}
@@ -873,9 +886,12 @@ export default function TeacherLessonEditor({
                       src={
                         uploadedAssets[block._key]?.url ||
                         (block.image as { asset?: { url?: string } }).asset?.url ||
-                        '' // Provide a default empty string if src is undefined
+                        ''
                       }
                       alt={String(block.alt ?? '')}
+                      width={320}
+                      height={96}
+                      unoptimized
                       className="h-24 max-w-xs rounded-lg border object-contain"
                     />
                   )}
@@ -1016,6 +1032,9 @@ export default function TeacherLessonEditor({
                     <Image
                       src={asset.thumbnailUrl}
                       alt=""
+                      width={112}
+                      height={64}
+                      unoptimized
                       className="h-16 w-28 rounded object-cover"
                     />
                   ) : (

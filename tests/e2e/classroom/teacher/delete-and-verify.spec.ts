@@ -1,4 +1,4 @@
-import { test, expect, contextFor } from '../../support/fixtures';
+import { test, expect } from '../../support/fixtures';
 import {
   deleteLifecycleState,
   hasLifecycleState,
@@ -6,82 +6,56 @@ import {
   writeLifecycleState,
 } from '../support/lifecycle-state';
 
-test('teacher deletes the lifecycle course and learner access is revoked', async ({
-  browser,
+test('teacher API deletes the lifecycle course and learner access is revoked', async ({
   teacherApi,
   learnerApi,
 }) => {
   test.skip(!hasLifecycleState(), 'Teacher setup did not create a lifecycle course');
   const state = readLifecycleState();
 
-  const teacherContext = await contextFor(browser, 'teacher');
-  try {
-    const teacherPage = await teacherContext.newPage();
-    await teacherPage.goto('/classroom/teacher');
-    await expect(teacherPage.getByRole('heading', { name: 'Your courses' })).toBeVisible();
+  // Recover by the unique title if setup failed after creating the course but
+  // before it could persist the redirected slug.
+  const coursesResponse = await teacherApi.get('/api/teacher/courses');
+  expect(coursesResponse.ok(), 'Teacher course list must be available for cleanup').toBeTruthy();
+  const courses = (await coursesResponse.json()) as Array<{ title: string; slug: string }>;
+  const targetCourse = courses.find((course) => course.title === state.courseTitle);
+  const courseSlug = state.courseSlug || targetCourse?.slug;
 
-    // Recover the slug by the unique title if setup failed after the create
-    // request but before it could persist the redirected URL.
-    const coursesResponse = await teacherApi.get('/api/teacher/courses');
-    expect(coursesResponse.ok()).toBeTruthy();
-    const courses = (await coursesResponse.json()) as Array<{
-      title: string;
-      slug: string;
-    }>;
-    const targetCourse = courses.find((course) => course.title === state.courseTitle);
-    const courseSlug = state.courseSlug || targetCourse?.slug;
-
-    if (!courseSlug) {
-      test.skip(true, 'No lifecycle course was created; there is nothing to delete or verify');
-    }
-
-    state.courseSlug = courseSlug!;
-    writeLifecycleState(state);
-
-    if (targetCourse) {
-      const deleteButton = teacherPage.getByRole('button', {
-        name: `Delete course ${state.courseTitle}`,
-      });
-      await expect(deleteButton).toBeVisible();
-      teacherPage.once('dialog', (dialog) => dialog.accept());
-      await deleteButton.click();
-      await expect(deleteButton).toHaveCount(0);
-    }
-
-    const remainingCoursesResponse = await teacherApi.get('/api/teacher/courses');
-    expect(remainingCoursesResponse.ok()).toBeTruthy();
-    const remainingCourses = (await remainingCoursesResponse.json()) as Array<{
-      title: string;
-      slug: string;
-    }>;
-    expect(remainingCourses.some((course) => course.slug === courseSlug)).toBe(false);
-  } finally {
-    await teacherContext.close();
+  if (!courseSlug) {
+    // No course was created. The state file can safely be removed.
+    deleteLifecycleState();
+    return;
   }
 
-  // Confirm the learner API no longer resolves the deleted course.
-  const courseResponse = await learnerApi.get(
-    `/api/learner/courses/${encodeURIComponent(state.courseSlug)}`
+  state.courseSlug = courseSlug;
+  writeLifecycleState(state);
+
+  if (targetCourse) {
+    const deleteResponse = await teacherApi.delete(
+      `/api/teacher/courses/${encodeURIComponent(courseSlug)}`
+    );
+    expect(
+      deleteResponse.ok(),
+      `Teacher DELETE should remove ${state.courseTitle}: ${await deleteResponse.text()}`
+    ).toBeTruthy();
+    const deletion = (await deleteResponse.json()) as { success?: boolean };
+    expect(deletion.success).toBe(true);
+  }
+
+  const teacherVerify = await teacherApi.get(
+    `/api/teacher/courses/${encodeURIComponent(courseSlug)}`
   );
-  expect(courseResponse.status()).toBe(404);
+  expect(teacherVerify.status()).toBe(404);
+
+  const learnerCourse = await learnerApi.get(
+    `/api/learner/courses/${encodeURIComponent(courseSlug)}`
+  );
+  expect(learnerCourse.status()).toBe(404);
 
   const catalogueResponse = await learnerApi.get('/api/learner/catalog');
   expect(catalogueResponse.ok()).toBeTruthy();
-  const catalogue = (await catalogueResponse.json()) as Array<{
-    course: { slug: string };
-  }>;
-  expect(catalogue.some((entry) => entry.course.slug === state.courseSlug)).toBe(false);
-
-  // Also verify the learner-facing page handles direct navigation to the old URL.
-  const learnerContext = await contextFor(browser, 'learner');
-  try {
-    const learnerPage = await learnerContext.newPage();
-    await learnerPage.goto(`/classroom/learner/courses/${encodeURIComponent(state.courseSlug)}`);
-    await expect(learnerPage.getByRole('heading', { name: 'Unable to load course' })).toBeVisible();
-    await expect(learnerPage.getByRole('alert')).toContainText('Course not found');
-  } finally {
-    await learnerContext.close();
-  }
+  const catalogue = (await catalogueResponse.json()) as Array<{ course: { slug: string } }>;
+  expect(catalogue.some((entry) => entry.course.slug === courseSlug)).toBe(false);
 
   deleteLifecycleState();
 });

@@ -59,22 +59,45 @@ type LearnerProgress = {
 };
 
 // Combined response containing database metadata, Sanity content, and navigation.
+
 type LessonContentBlock = {
   _key: string;
   _type: 'textBlock' | 'imageBlock' | 'fileBlock' | 'videoBlock' | string;
+
+  // Text content
   content?: PortableTextBlock[];
+
+  // Image block metadata (top-level in Sanity)
+  alt?: string;
+  caption?: string;
   image?: {
-    alt?: string;
-    caption?: string;
-    asset?: { url?: string };
-  };
+    asset?: {
+      url?: string;
+    } | null;
+  } | null;
+
+  // File block
   file?: {
-    asset?: { url?: string; originalFilename?: string; mimeType?: string; size?: number };
+    asset?: {
+      url?: string;
+      originalFilename?: string;
+      mimeType?: string;
+      size?: number;
+    };
   };
+
+  // Shared block metadata
   title?: string;
   description?: string;
+
+  // Video block
   thumbnailUrl?: string | null;
-  video?: { asset?: { playbackId?: string; status?: string } };
+  video?: {
+    asset?: {
+      playbackId?: string;
+      status?: string;
+    };
+  };
 };
 
 type Lesson = {
@@ -534,17 +557,24 @@ export default function LessonPage({ params }: LessonPageProps) {
 
                   if (block._type === 'imageBlock') {
                     const imageUrl = block.image?.asset?.url;
+
                     if (!imageUrl) return null;
+
                     return (
                       <figure key={block._key} className="space-y-2">
                         <Image
                           src={imageUrl}
-                          alt={block.image?.alt ?? ''}
+                          alt={block.alt ?? ''}
+                          width={1200}
+                          height={675}
+                          unoptimized
+                          sizes="(max-width: 768px) 100vw, 1200px"
                           className="h-auto w-full rounded-2xl border border-border object-contain"
                         />
-                        {block.image?.caption && (
-                          <figcaption className="text-center text-sm text-muted-foreground">
-                            {block.image.caption}
+
+                        {block.caption && (
+                          <figcaption className="text-sm text-muted-foreground">
+                            {block.caption}
                           </figcaption>
                         )}
                       </figure>

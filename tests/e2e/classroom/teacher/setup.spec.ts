@@ -33,7 +33,7 @@ test('teacher creates a course, module, lesson and all supported content blocks'
 
   // Use an existing ready Mux asset so the test exercises the real video
   // selection and learner playback-token flow without uploading a large video.
-  const muxResponse = await teacherApi.get('/api/teacher/mux/assets?limit=100');
+  const muxResponse = await teacherApi.get('/api/teacher/mux/assets?limit=50');
   expect(muxResponse.ok(), 'Teacher Mux asset library must be available').toBeTruthy();
   const muxPayload = (await muxResponse.json()) as {
     assets?: Array<{
@@ -149,7 +149,18 @@ test('teacher creates a course, module, lesson and all supported content blocks'
     const videoDialog = page.getByRole('dialog');
     await expect(videoDialog.getByRole('heading', { name: 'Choose a video' })).toBeVisible();
     const videoLabel = videoAsset!.title || videoAsset!.id;
+    // The editor loads the library independently in the browser. Wait for that
+    // request to finish and surface its actual error instead of timing out on a
+    // button that may never exist.
+    await expect(videoDialog.getByText('Loading video library...')).toHaveCount(0, {
+      timeout: 20_000,
+    });
+    const pickerError = videoDialog.locator('.text-red-600');
+    if (await pickerError.isVisible()) {
+      throw new Error(`Mux video picker failed: ${await pickerError.innerText()}`);
+    }
     const videoChoice = videoDialog.getByRole('button').filter({ hasText: videoLabel }).first();
+    await expect(videoChoice).toBeVisible({ timeout: 15_000 });
     await expect(videoChoice).toBeEnabled();
     await videoChoice.click();
     await expect(videoCard).toContainText(`Selected: mux-video-${videoAsset!.id}`);

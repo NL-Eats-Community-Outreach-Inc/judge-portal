@@ -16,13 +16,12 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch, messageOf } from '@/lib/api/client';
 
-type UserRole = 'judge' | 'participant' | 'learner' | 'teacher';
+type UserRole = 'judge' | 'participant' | 'learner';
 
 const ROLE_HOME: Record<UserRole, string> = {
   judge: '/judge',
   participant: '/participant',
-  learner: '/classroom/learner',
-  teacher: '/classroom/teacher',
+  learner: '/classroom/learner'
 };
 
 /**
@@ -335,7 +334,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       const metadataRoles = Array.isArray(metadata.roles) ? metadata.roles : [metadata.role];
       const validRoles = metadataRoles.filter(
         (value: unknown): value is UserRole =>
-          value === 'judge' || value === 'participant' || value === 'learner' || value === 'teacher'
+          value === 'judge' || value === 'participant' || value === 'learner'
       );
       const rolesToUse = [...new Set(validRoles)];
       const initialRole = rolesToUse[0];
@@ -437,11 +436,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                           value: 'learner',
                           title: 'Student',
                           description: 'Join courses and lessons',
-                        },
-                        {
-                          value: 'teacher',
-                          title: 'teacher',
-                          description: 'Manage courses and discussions',
                         },
                       ] as const
                     ).map((option) => {
@@ -607,8 +601,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                             : role === 'judge'
                               ? 'Judge'
                               : role === 'participant'
-                                ? 'Participant'
-                                : 'Teacher'
+                                ? 'Participant' :
+                                null
                         )
                         .join(', ')}
                     </p>
